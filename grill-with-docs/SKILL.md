@@ -4,7 +4,7 @@ description: 开发新功能第 1 步(调研)入口:事实调研坐实 + 逼问�
 disable-model-invocation: true
 ---
 
-> Fork 自 mattpocock/skills(2026-07 快照,原版仅一行组合指令)。修改:前置"事实调研"纪律。
+> Fork 自 mattpocock/skills(2026-07 快照)。修改:前置"事实调研"纪律。
 
 # 第 1 步:调研 = ① 事实坐实 + ② 需求对齐
 

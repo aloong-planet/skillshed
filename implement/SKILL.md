@@ -4,7 +4,7 @@ description: 按 spec/tickets 实施开发,编排七步流程第 4-7 步:分支�
 disable-model-invocation: true
 ---
 
-> Fork 自 mattpocock/skills(2026-07 快照,原版 5 行)。扩为第 4-7 步编排器:分支纪律、验证网关、双 review 门、拆解归档。
+> Fork 自 mattpocock/skills(2026-07 快照)。修改:扩为第 4-7 步编排器(分支纪律、验证网关、双 review 门、拆解归档)。
 
 实施 spec 或 tickets 描述的工作。编码全程遵循 CLAUDE.md 的**窄而完整**原则(正文只在 CLAUDE.md,此处不复制)。开始前读 CONTEXT.md 与相关 ADR。
 

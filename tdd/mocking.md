@@ -1,6 +1,6 @@
 # 何时 mock
 
-> 基于 mattpocock/skills 的 mocking.md,新增"真实注入优先于 mock"一节(审计实证)。
+> 基于 mattpocock/skills 的 mocking.md,新增"真实注入优先于 mock"一节。
 
 只在**系统边界** mock:
 

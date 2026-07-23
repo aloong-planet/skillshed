@@ -1,6 +1,6 @@
 # 好测试与坏测试(样例)
 
-> 基于 mattpocock/skills 的 tests.md,新增"假通过四形态"(来自 2026-07 真实代码审计的案例,已泛化)。
+> 基于 mattpocock/skills 的 tests.md,新增"假通过四形态"样例。
 
 ## 好测试
 
@@ -65,7 +65,7 @@ test("calculateTotal sums line items", () => {
 });
 ```
 
-## 假通过四形态(审计实证,逐个防)
+## 假通过四形态(逐个防)
 
 **① 恒真断言**——数据量撑不满阈值:
 
