@@ -56,6 +56,27 @@
 5. **participant 单字母别名** `as` 显示名;显示名中文为主,术语保留英文。
 6. 消息文案:动词开头短句。
 
-## 状态图(stateDiagram)
+## 状态图预设(stateDiagram)
 
-配色由 logic-page 模板的 themeVariables 承担(随页面深浅色自适应),状态图 `.mmd` **不带** init 块。
+同一套色语言映射到状态图:淡紫=状态节点、暖黄=注释(note)、灰阶=迁移线与标签文字。init 块拷入 `.mmd` 文件首(`%% title:` 行之后):
+
+```
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ECECFF',
+    'primaryBorderColor': '#D5D5FF',
+    'primaryTextColor': '#000000',
+    'lineColor': '#757575',
+    'textColor': '#212121',
+    'edgeLabelBackground': '#FFFFFF',
+    'noteBkgColor': '#FFF6B8',
+    'noteBorderColor': '#E4C800',
+    'noteTextColor': '#5C5100',
+    'tertiaryColor': '#f5f5f5',
+    'background': '#FFFFFF'
+  }
+}}%%
+```
+
+两套预设都是**浅底**设计;in-file 指令优先于渲染器 initialize——logic-page 的 themeVariables 只作"无 init 块的图"的兜底,pan 画布固定浅色以承载浅底图。
