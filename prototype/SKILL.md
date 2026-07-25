@@ -1,16 +1,16 @@
 ---
 name: prototype
-description: 造一次性原型回答设计问题。逻辑/状态模型对不对 → 终端驾驶 + mermaid 状态图;界面长什么样 → 免构建的自包含 HTML 变体。用户要验证状态机/数据模型/API 手感,或探索 UI 方案时激活。
+description: 造一次性原型回答设计问题。逻辑/状态模型对不对 → 终端驾驶 + mermaid 状态图;界面长什么样 → 文字选型后生成单个自包含 HTML。用户要验证状态机/数据模型/API 手感,或探索 UI 方案时激活。
 ---
 
-> Fork 自 mattpocock/skills(2026-07 快照)。修改:①原型统一放 docs/prototypes/<功能模块>/,不入 src;②Logic 原型必产 mermaid 状态图(README 三合一);③UI 原型改为自包含 HTML(零后端+必要交互+内建切换条),取代项目内路由方案。
+> Fork 自 mattpocock/skills(2026-07 快照)。修改:①原型统一放 docs/prototypes/<功能模块>/,不入 src;②Logic 原型必产 mermaid 状态图(README 三合一);③UI 原型改为"文字选型在前+单变体自包含 HTML(零后端)",取代项目内路由与多变体预生成方案。
 
 # Prototype
 
 原型是**回答一个问题的一次性代码——问题决定形态**:
 
 - **"这个逻辑/状态模型对吗?"** → [LOGIC.md](./LOGIC.md):纯逻辑模块 + 终端驾驶壳 + mermaid 状态图。
-- **"这个界面该长什么样?"** → [UI.md](./UI.md):自包含 HTML,多变体内建切换。
+- **"这个界面该长什么样?"** → [UI.md](./UI.md):文字选型 → 用户选定 → 单个自包含 HTML。
 
 形态选错整个原型作废。问题真含糊且用户不在场:后端模块倾向 logic、页面/组件倾向 UI,并在 README 顶部写明假设。
 
