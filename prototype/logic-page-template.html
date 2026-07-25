@@ -53,8 +53,20 @@
         continue; // 缺 vendor 库:降级显示图源文本
       }
       try {
-        mermaid.initialize({ startOnLoad: false, securityLevel: 'strict',
-          theme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default' });
+        // 内置 dark 主题近乎灰度,default 是浅底设计——用 base+themeVariables 接项目色板
+        const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+        mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: 'base',
+          themeVariables: dark ? {
+            primaryColor: '#2c2733', primaryTextColor: '#e6e6e5', primaryBorderColor: '#a084c7',
+            lineColor: '#9b9a97', textColor: '#e6e6e5', edgeLabelBackground: '#1f2124',
+            noteBkgColor: '#34373c', noteTextColor: '#e6e6e5', background: '#18191b',
+            secondaryColor: '#1f2124', tertiaryColor: '#232526'
+          } : {
+            primaryColor: '#f0ebf6', primaryTextColor: '#37352f', primaryBorderColor: '#8a67ab',
+            lineColor: '#787774', textColor: '#37352f', edgeLabelBackground: '#ffffff',
+            noteBkgColor: '#f7f8f9', noteTextColor: '#37352f', background: '#ffffff',
+            secondaryColor: '#ffffff', tertiaryColor: '#f7f8f9'
+          } });
         const { svg } = await mermaid.render('mmd-' + i++, d.src);
         box.innerHTML = svg;
       } catch (e) {
