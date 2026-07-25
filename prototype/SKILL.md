@@ -25,8 +25,8 @@ description: 造一次性原型回答设计问题。逻辑/状态模型对不对
 
 ## 画廊(Figma 式浏览全部原型)
 
-`docs/prototypes/index.html` = 画廊壳:左侧固定侧栏(按模块分组的原型列表,可收起) + 右侧屏幕(UI 条目 iframe 渲染;Logic 条目信息卡:问题/运行命令/README 路径)。hash 路由可分享,↑/↓ 键切换。
+`docs/prototypes/index.html` = 画廊壳:左侧 Figma 式深色工具侧栏(按模块分组,可收起,快捷键 S) + 右侧屏幕(UI 条目 iframe 渲染;Logic 条目信息卡:问题 + **mermaid 图实时渲染** + 运行命令)。hash 路由可分享,↑/↓ 键切换。
 
-- **懒创建**:首次生成原型时,若壳不存在,从本 skill 目录的 [gallery-template.html](./gallery-template.html) **原样复制**为 `docs/prototypes/index.html`,并创建空注册表 `manifest.js`。壳在项目里不手改——要改壳,改 skill 模板后重新复制。
-- **注册表同步(硬规则)**:每生成一个原型,往 `manifest.js` 的 `window.PROTOTYPES` 追加一条 `{module, type:'ui'|'logic', id, name, path, question, run?}`;删除原型同步删条目——注册表腐烂等于画廊失明。
-- 技术约束的由来:注册表用 .js 不用 .json(file:// 下 fetch JSON 被 CORS 拦,script 标签不受限);右屏用 iframe 不用内容注入(隔离各原型的 CSS/JS)。
+- **懒创建**:首次生成原型时,若壳不存在,从本 skill 目录的 [gallery-template.html](./gallery-template.html) **原样复制**为 `docs/prototypes/index.html`,创建空注册表 `manifest.js`,并**懒下载渲染库** `vendor/mermaid.min.js`(`curl -sL -o docs/prototypes/vendor/mermaid.min.js https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js`,约 3.4MB,一次下载后离线可用;缺失时 Logic 卡自动降级为提示,画廊其余功能不受影响)。壳在项目里不手改——要改壳,改 skill 模板后重新复制。
+- **注册表同步(硬规则)**:每生成一个原型,往 `manifest.js` 的 `window.PROTOTYPES` 追加一条 `{module, type:'ui'|'logic', id, name, path, question, run?, mermaidSrc?}`;删除原型同步删条目——注册表腐烂等于画廊失明。
+- 技术约束的由来:注册表与图源都用 .js 包装(file:// 下 fetch 本地文件被 CORS 拦,script 标签不受限);右屏用 iframe 不用内容注入(隔离各原型的 CSS/JS);渲染库 vendor 本地化不用 CDN 引用(离线可用,保自包含)。
