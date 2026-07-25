@@ -18,19 +18,21 @@
   *{box-sizing:border-box;margin:0;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
   body{display:flex;height:100vh;overflow:hidden;background:var(--bg);color:var(--text);font-size:13px}
 
-  .side{width:240px;flex:none;background:var(--card);border-right:1px solid var(--line);
+  /* 侧栏 = Figma 式深色工具面板:固定配色不随系统主题,与被评判的原型内容(app 风格)强区分 */
+  .side{width:240px;flex:none;background:#2c2c2e;color:#e8e8e8;border-right:1px solid #1d1d1f;
     display:flex;flex-direction:column;transition:margin .18s}
   body.fold .side{margin-left:-240px}
   .s-h{display:flex;align-items:center;justify-content:space-between;padding:14px 14px 10px}
-  .s-h b{font-size:14px}
-  .fold-btn{cursor:pointer;color:var(--text-2);border:0;background:none;font-size:14px}
+  .s-h b{font-size:13px;color:#fff;letter-spacing:.3px}
+  .fold-btn{cursor:pointer;color:#8e8e93;border:0;background:none;font-size:14px}
+  .fold-btn:hover{color:#fff}
   .list{flex:1;overflow:auto;padding:0 8px 14px}
-  .grp{font-size:11px;color:var(--text-2);font-weight:600;padding:12px 8px 4px;text-transform:lowercase}
-  .item{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:6px;cursor:pointer}
-  .item:hover{background:var(--bg)}
-  .item.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
-  .tag{font-size:10px;border:1px solid var(--line-strong);border-radius:4px;padding:0 5px;color:var(--text-2);flex:none}
-  .item.on .tag{border-color:var(--accent);color:var(--accent)}
+  .grp{font-size:10px;color:#8e8e93;font-weight:600;padding:12px 8px 4px;text-transform:uppercase;letter-spacing:.6px}
+  .item{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:6px;cursor:pointer;color:#d1d1d6}
+  .item:hover{background:#3a3a3c}
+  .item.on{background:#0d99ff;color:#fff;font-weight:600}
+  .tag{font-size:10px;border:1px solid #48484a;border-radius:4px;padding:0 5px;color:#8e8e93;flex:none}
+  .item.on .tag{border-color:rgba(255,255,255,.55);color:#fff}
 
   .unfold{position:fixed;top:12px;left:12px;z-index:9;display:none;
     background:#1b1b1f;color:#fff;border:0;border-radius:999px;padding:8px 14px;cursor:pointer;
