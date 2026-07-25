@@ -21,4 +21,12 @@ description: 造一次性原型回答设计问题。逻辑/状态模型对不对
 3. **默认零持久化**:状态只在内存——持久化是原型要检验的对象,不是它可依赖的东西。
 4. **跳过打磨**:无测试、无错误处理(仅保可跑)、无抽象、无泛化("将来支持 X"禁止)。
 5. **状态外显**:每次动作(logic)/每次切换(UI)后,渲染完整相关状态。
-6. **用后捕获**:答案(裁决+它解决的问题)记入 issue/commit;验证过的决策折进真代码/spec/ADR(mermaid 图按 to-spec 豁免条款可直接内联);原型目录整体提交到 main 之外的一次性分支并留指针;**main 只留验证过的决策,docs/prototypes/ 随之清空**。
+6. **用后捕获**:答案(裁决+它解决的问题)记入 issue/commit;验证过的决策折进真代码/spec/ADR(mermaid 图按 to-spec 豁免条款可直接内联);原型目录整体提交到 main 之外的一次性分支并留指针;**main 只留验证过的决策,docs/prototypes/ 随之清空**(画廊基建 index.html/manifest.js 保留,条目清空)。
+
+## 画廊(Figma 式浏览全部原型)
+
+`docs/prototypes/index.html` = 画廊壳:左侧固定侧栏(按模块分组的原型列表,可收起) + 右侧屏幕(UI 条目 iframe 渲染;Logic 条目信息卡:问题/运行命令/README 路径)。hash 路由可分享,↑/↓ 键切换。
+
+- **懒创建**:首次生成原型时,若壳不存在,从本 skill 目录的 [gallery-template.html](./gallery-template.html) **原样复制**为 `docs/prototypes/index.html`,并创建空注册表 `manifest.js`。壳在项目里不手改——要改壳,改 skill 模板后重新复制。
+- **注册表同步(硬规则)**:每生成一个原型,往 `manifest.js` 的 `window.PROTOTYPES` 追加一条 `{module, type:'ui'|'logic', id, name, path, question, run?}`;删除原型同步删条目——注册表腐烂等于画廊失明。
+- 技术约束的由来:注册表用 .js 不用 .json(file:// 下 fetch JSON 被 CORS 拦,script 标签不受限);右屏用 iframe 不用内容注入(隔离各原型的 CSS/JS)。
