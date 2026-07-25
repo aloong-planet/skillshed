@@ -15,7 +15,7 @@ docs/prototypes/<功能模块>/<原型名>/
 
 ## 流程
 
-1. **写下问题 + 画出模型**:①问题段落与运行命令写进 `index.html`(复制 [logic-page-template.html](./logic-page-template.html) 替换 `{{NAME}}/{{QUESTION}}/{{RUN}}/{{KEYS}}` 占位);②**mermaid 图写 `.mmd` 文件**(一图一文件,首行 `%% title: 标题`;状态机用 `stateDiagram-v2`:状态/迁移/触发动作;reducer 的 action 即迁移标签;纯函数集用 flowchart 画数据变换;时序图按 [MMD-STYLES.md](./MMD-STYLES.md) 预设与写法约定,init 块拷入文件首);③跑 `node docs/prototypes/sync-mmd.mjs` 生成 model.mmd.js;④预览走画廊(该页被 iframe 渲染)。
+1. **写下问题 + 画出模型**:①问题段落与运行命令写进 `index.html`(复制 [logic-page-template.html](./logic-page-template.html) 替换 `{{NAME}}/{{QUESTION}}/{{RUN}}/{{KEYS}}` 占位);②**mermaid 图写 `.mmd` 文件**(一图一文件,首行 `%% title: 标题`;状态机用 `stateDiagram-v2`:状态/迁移/触发动作;reducer 的 action 即迁移标签;纯函数集用 flowchart 画数据变换;时序图按 [MMD-STYLES.md](./MMD-STYLES.md) 预设与写法约定,init 块拷入文件首);③跑 `node docs/prototypes/sync-mmd.mjs` 生成 model.mmd.js;④预览走画廊(该页被 iframe 渲染;图为可交互画布——拖拽平移、捏合或 ⌘/Ctrl+滚轮平滑缩放、双击或 ⌂ 重置,普通滚轮归页面滚动,行为随模板自带)。
 2. **选语言**:随宿主项目;不为原型引入新运行时/包管理器。
 3. **逻辑隔离在可移植纯接口后**,按问题选形态(不按好接 TUI 选):纯 reducer `(state, action) => state` / 显式状态机(当"哪些动作现在合法"本身是问题时) / 纯函数集 / 带内部状态的类。零 I/O、零终端码、零 console.log 控制流;TUI 单向依赖它。这层分离是原型的遗产机制——验证过的模块可整体提升。
 4. **最小 TUI**:每帧清屏整帧重绘(不追加滚动,永远一个稳定视图);帧 = 当前状态美观打印(一行一字段或格式化 JSON,ANSI 粗体字段名、暗色次要信息)+ 底部键位表 `[a] 加用户  [q] 退出`;读一键 → dispatch → 整帧重绘;全帧一屏放下。
