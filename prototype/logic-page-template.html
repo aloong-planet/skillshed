@@ -1,0 +1,67 @@
+<!doctype html>
+<!-- Logic 原型页模板(正本在 prototype skill;生成时复制并替换 {{NAME}}/{{QUESTION}}/{{RUN}}/{{KEYS}})。
+     图源:同目录 *.mmd(正本) → sync-mmd.mjs 派生 model.mmd.js → 本页渲染。 -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>原型 — {{NAME}}</title>
+<style>
+  :root{
+    --bg:#f7f8f9; --card:#ffffff; --text:#37352f; --text-2:#787774;
+    --line:#e8eaed; --line-strong:#d9dce0; --accent:#8a67ab; --accent-soft:#f0ebf6;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#18191b; --card:#1f2124; --text:#e6e6e5; --text-2:#9b9a97;
+      --line:#2a2c30; --line-strong:#34373c; --accent:#a084c7; --accent-soft:#2c2733; }
+  }
+  *{box-sizing:border-box;margin:0;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
+  body{background:var(--bg);color:var(--text);font-size:13px;padding:28px;max-width:860px;margin:0 auto}
+  h1{font-size:16px;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+  .tag{font-size:10px;border:1px solid var(--line-strong);border-radius:4px;padding:1px 6px;color:var(--text-2)}
+  .q{color:var(--text-2);line-height:1.7;margin-bottom:18px}
+  h4{font-size:12px;color:var(--text-2);margin:18px 0 8px}
+  .dg{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;overflow-x:auto}
+  .dg svg{max-width:100%;height:auto}
+  .dg pre{font-size:12px;white-space:pre-wrap}
+  code{display:block;background:var(--card);border:1px solid var(--line);border-radius:8px;
+    padding:10px 12px;font-size:12px;user-select:all;overflow-x:auto;white-space:pre}
+  .hint{font-size:12px;color:var(--text-2);margin-top:14px}
+</style>
+</head>
+<body>
+  <h1>{{NAME}} <span class="tag">Logic</span></h1>
+  <div class="q">{{QUESTION}}</div>
+  <div id="dgs"></div>
+  <h4>终端运行(亲手驾驶)</h4>
+  <code>{{RUN}}</code>
+  <div class="hint">键位:{{KEYS}}</div>
+
+<script src="../../vendor/mermaid.min.js"></script>
+<script src="./model.mmd.js"></script>
+<script>
+  const host = document.getElementById('dgs');
+  const packs = Object.values(window.MERMAID_SOURCES || {}).flat();
+  (async () => {
+    if (!packs.length) { host.innerHTML = '<div class="hint">无图源:目录内没有 .mmd 或未跑 sync-mmd.mjs。</div>'; return; }
+    let i = 0;
+    for (const d of packs) {
+      const h = document.createElement('h4'); h.textContent = d.title;
+      const box = document.createElement('div'); box.className = 'dg';
+      host.appendChild(h); host.appendChild(box);
+      if (!window.mermaid) {
+        const pre = document.createElement('pre'); pre.textContent = d.src; box.appendChild(pre);
+        continue; // 缺 vendor 库:降级显示图源文本
+      }
+      try {
+        mermaid.initialize({ startOnLoad: false, securityLevel: 'strict',
+          theme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default' });
+        const { svg } = await mermaid.render('mmd-' + i++, d.src);
+        box.innerHTML = svg;
+      } catch (e) {
+        const pre = document.createElement('pre'); pre.textContent = d.src; box.appendChild(pre);
+      }
+    }
+  })();
+</script>
+</body>
+</html>
