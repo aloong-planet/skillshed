@@ -75,9 +75,14 @@
     'noteTextColor': '#5C5100',
     'tertiaryColor': '#f5f5f5',
     'background': '#FFFFFF'
+  },
+  'flowchart': {
+    'wrappingWidth': 320
   }
 }}%%
 ```
+
+`flowchart.wrappingWidth` 调宽标签自动折行阈值(默认约 200px,长中文标签会被逐字折行);stateDiagram 复用 flowchart 的标签排版,故写此处生效。
 
 ### 状态图写法约定(防标签与节点覆盖)
 
