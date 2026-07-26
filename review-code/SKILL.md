@@ -1,6 +1,6 @@
 ---
 name: review-code
-description: 实现后的批判式代码自审(七步第 5 步):四层法找真 bug、不变量回归反查、bug 补成测试;重构与坏味道命中项整理成清单经用户确认。/implement 编排调用;用户说"review 代码/自审代码"时也可单独激活。
+description: 实现后的批判式代码自审(第 5 步):四层法找真 bug、不变量回归反查、bug 补成测试;重构与坏味道命中项整理成清单经用户确认。/implement 编排调用;用户说"review 代码/自审代码"时也可单独激活。
 ---
 
 > 坏味道基线清单融合自 mattpocock/skills 的 code-review(Fowler 基线)。

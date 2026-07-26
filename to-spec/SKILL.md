@@ -1,6 +1,6 @@
 ---
 name: to-spec
-description: 把当前对话合成为 spec 并发布到 tracker——不采访用户,纯合成已讨论内容。七步流程第 2-3 步;grilling 达成共识后、切 ticket/实现前使用。
+description: 把当前对话合成为 spec 并发布到 tracker——不采访用户,纯合成已讨论内容。第 2-3 步;grilling 达成共识后、切 ticket/实现前使用。
 disable-model-invocation: true
 ---
 
