@@ -83,6 +83,7 @@
 ```
 
 `htmlLabels: false` 让标签走纯 SVG `<text>` 渲染而非 foreignObject——根治 mermaid 已知 bug(#6424:foreignObject 宽度算不准致长词/CJK 标签被裁);SVG text 宽度精确测量,viewBox 自然算对(Chrome 实测两侧各余 8px 不裁)。状态图标签为纯文本,无富文本损失。
+> 连带:htmlLabels:false 下每个边标签垫一块 `rect.background`(CSS 着色,`edgeLabelBackground` 变量管不到),渲染页需 CSS `.edgeLabel rect.background{fill:transparent}` 打透明——已固化进 logic-page 模板。
 
 ### 状态图写法约定(防标签与节点覆盖)
 
