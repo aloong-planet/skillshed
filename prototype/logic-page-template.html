@@ -25,8 +25,9 @@
   .dg.pan{height:56vh;padding:0;overflow:hidden;position:relative;cursor:grab;touch-action:none;user-select:none;background:#fdfdfd}
   .dg.pan.dragging{cursor:grabbing}
   .dg.pan svg{display:block;transform-origin:0 0;will-change:transform;overflow:visible}
-  /* htmlLabels:false 下,mermaid 给每个边标签垫一块 rect.background(CSS 着色,edgeLabelBackground 变量管不到)——打透明 */
-  .dg svg .edgeLabel rect.background{fill:transparent}
+  /* htmlLabels:false 下,mermaid 给每个边标签垫一块 rect.background,fill 被其样式表套成 primaryColor(#ECECFF 淡紫);
+     edgeLabelBackground 变量管不到,且 mermaid 样式特异性高,须 !important 打透明(Chrome 实测坐实) */
+  .dg svg .edgeLabel rect.background{fill:transparent !important}
   .rst{position:absolute;top:8px;right:8px;z-index:2;border:1px solid var(--line-strong);
     background:var(--card);color:var(--text-2);border-radius:6px;padding:3px 9px;font-size:12px;cursor:pointer}
   .rst:hover{color:var(--accent);border-color:var(--accent)}
