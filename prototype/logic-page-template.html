@@ -25,6 +25,9 @@
   .dg.pan{height:56vh;padding:0;overflow:hidden;position:relative;cursor:grab;touch-action:none;user-select:none;background:#fdfdfd}
   .dg.pan.dragging{cursor:grabbing}
   .dg.pan svg{display:block;transform-origin:0 0;will-change:transform}
+  /* mermaid 边标签默认框宽 200px + white-space:break-spaces → 长中文标签逐字折行;
+     状态图标签背景透明,强制 nowrap 让文字溢出框而不折行(实测:仅此有效,state.wrappingWidth 对 UMD 版无效) */
+  .dg svg .edgeLabel p,.dg svg .edgeLabel span,.dg svg foreignObject div{white-space:nowrap}
   .rst{position:absolute;top:8px;right:8px;z-index:2;border:1px solid var(--line-strong);
     background:var(--card);color:var(--text-2);border-radius:6px;padding:3px 9px;font-size:12px;cursor:pointer}
   .rst:hover{color:var(--accent);border-color:var(--accent)}

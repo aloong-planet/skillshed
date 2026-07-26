@@ -75,21 +75,17 @@
     'noteTextColor': '#5C5100',
     'tertiaryColor': '#f5f5f5',
     'background': '#FFFFFF'
-  },
-  'flowchart': {
-    'wrappingWidth': 320
   }
 }}%%
 ```
 
-`flowchart.wrappingWidth` 调宽标签自动折行阈值(默认约 200px,长中文标签会被逐字折行);stateDiagram 复用 flowchart 的标签排版,故写此处生效。
-
 ### 状态图写法约定(防标签与节点覆盖)
 
-mermaid 排版无标签避让,靠写法规避:
+mermaid 排版无标签避让,靠写法 + 页面 CSS 规避:
 
 1. **平行边合并**:同起同终点的多条迁移合成一条,触发事件用 ` / ` 枚举进同一标签——第二个标签是碰撞的头号来源。
 2. **标签求短**:细分枚举不必全上图(细节归代码/spec),图上留类别词。
 3. **拥挤时 `direction LR`**:横排给标签让出水平空间。
+4. **长标签逐字折行**:mermaid 边标签框宽默认 200px + `white-space:break-spaces`,长中文会逐字折行;`state.wrappingWidth` 对 vendor 的 UMD 版**无效**(已实测)。解法在渲染页 CSS:`.edgeLabel p/span, foreignObject div { white-space:nowrap }`——状态图标签背景透明,溢出框无害。此规则已固化进 logic-page 模板,`.mmd` 无需处理。
 
 两套预设都是**浅底**设计;in-file 指令优先于渲染器 initialize——logic-page 的 themeVariables 只作"无 init 块的图"的兜底,pan 画布固定浅色以承载浅底图。
