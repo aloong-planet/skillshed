@@ -72,7 +72,7 @@
     'primaryTextColor': '#000000',
     'lineColor': '#757575',
     'textColor': '#212121',
-    'edgeLabelBackground': '#FFFFFF',
+    'edgeLabelBackground': 'transparent',
     'noteBkgColor': '#FFF6B8',
     'noteBorderColor': '#E4C800',
     'noteTextColor': '#5C5100',
