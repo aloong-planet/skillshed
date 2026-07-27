@@ -20,7 +20,7 @@ docs/prototypes/<功能模块>/<原型名>/
 2. **写逻辑模块**:复制 [logic-template.js](./logic-template.js) 填充 `initial`/`reduce`/`legal`/`ALL_ACTIONS`/`TERMINAL`。规则只写在 `reduce` 里,`legal` 是它的派生查询(见 STATE-MACHINE.md)。
 3. **接驾驶面板**:按钮从 `legal(state)` 派生置灰、回执栏三态、清空回空态——规范与两个实现约束(aria-disabled、不用 opacity)见 STATE-MACHINE.md。
 4. **交给用户驾驶**:有价值的时刻是"等等,这不该可能"——那是想法里的 bug,正是原型的意义。要加事件就加,原型会进化;**模型演化了,改 `.mmd` 并重跑 sync-mmd.mjs**——图与代码不一致即腐烂,过期的图比没有图危险。
-5. **捕获**:答案记入 issue/commit;验证过的逻辑模块提升进真代码(`legal()` 常常连带暴露产线里"准入条件散在 UI 条件渲染"的重构机会);mermaid 图(取自 .mmd 正本)内联进 spec 或作 ADR 来源;原型目录整体上一次性分支。
+5. **捕获(原型保留)**:答案记入 issue/commit;验证过的逻辑模块提升进真代码(`legal()` 常常连带暴露产线里"准入条件散在 UI 条件渲染"的重构机会);mermaid 图(取自 .mmd 正本)内联进 spec 或作 ADR 来源。**原型目录留在 `docs/prototypes/` 不清空**(持久资产);模型演化时同步改 `.mmd` 与 `logic.js` 并重跑 sync-mmd.mjs,做不到就在问题段标注失效——见 SKILL.md 的防腐烂条款。
 
 ## 反模式
 
