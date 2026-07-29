@@ -1,6 +1,6 @@
 ---
 name: grill-with-docs
-description: 开发新功能第 1 步(调研)入口:事实调研坐实 + 逼问式需求对齐(一次一问),边聊边落 CONTEXT.md 与 ADR。用户要过需求/对齐方案/说 grill 时激活。
+description: 开发新功能第 1 步(调研)入口:事实调研坐实 + 逼问式需求对齐(按依赖分批提问),边聊边落 CONTEXT.md 与 ADR。用户要过需求/对齐方案/说 grill 时激活。
 disable-model-invocation: true
 ---
 
@@ -19,7 +19,7 @@ disable-model-invocation: true
 
 ## ② 需求对齐(意图/决策归用户)
 
-运行 `/grilling` 会话(一次一问、每问附推荐答案、走决策树每个分支、共识前不动手),
+运行 `/grilling` 会话(独立决策并批、依赖决策分轮、每问附推荐答案、走决策树每个分支、共识前不动手),
 同时按 `/domain-modeling` 维护领域模型:术语一敲定即写 CONTEXT.md;决策定形且过三门槛时,当场 offer ADR(格式见 domain-modeling/ADR-FORMAT.md,含三态规则——证据未闭环的落"提议"态)。
 
 设计问题在对话里拍不了板(证据不在桌面上)时,**先 `/prototype` 拿证据再拍**,不硬拍:逻辑/状态模型 → 终端驾驶 + mermaid 图;界面长什么样 → 文字选型后单个 HTML。原型是一次性的,验证后决策落 ADR、载体即弃。
