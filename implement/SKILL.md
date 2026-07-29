@@ -1,7 +1,6 @@
 ---
 name: implement
 description: 按 spec/tickets 实施开发,编排第 4-7 步:分支→tasklist→/tdd 纵切→全量网关→/review-code→/review-tests→拆解归档→交付。用户说"实现/implement/开工做某 ticket"时激活。
-disable-model-invocation: true
 ---
 
 > Fork 自 mattpocock/skills(2026-07 快照)。修改:扩为第 4-7 步编排器(分支纪律、验证网关、双 review 门、Spec 终检、拆解归档)。

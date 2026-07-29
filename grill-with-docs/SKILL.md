@@ -1,7 +1,6 @@
 ---
 name: grill-with-docs
 description: 开发新功能第 1 步(调研)入口:事实调研坐实 + 逼问式需求对齐(按依赖分批提问),边聊边落 CONTEXT.md 与 ADR。用户要过需求/对齐方案/说 grill 时激活。
-disable-model-invocation: true
 ---
 
 > Fork 自 mattpocock/skills(2026-07 快照)。修改:前置"事实调研"纪律。

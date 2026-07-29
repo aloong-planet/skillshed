@@ -1,7 +1,6 @@
 ---
 name: to-spec
 description: 把当前对话合成为 spec 并发布到 tracker——不采访用户,纯合成已讨论内容。第 2-3 步;grilling 达成共识后、切 ticket/实现前使用。
-disable-model-invocation: true
 ---
 
 > Fork 自 mattpocock/skills(2026-07 快照)。修改:模板新增「失败模式与边界」节;流程并入发布前设计自审。
