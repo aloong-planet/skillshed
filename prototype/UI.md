@@ -22,6 +22,29 @@
 
 5. **捕获(原型保留)**:定稿方向**按产线标准重写**进真代码(原型约束下写的代码禁止直接晋升);答案(选了什么方向、为什么)记入 issue/commit。**HTML 留在 `docs/prototypes/` 不清空**(持久资产:界面结构方向的活样本)——界面大改时同步更新或标注失效,见 SKILL.md 的防腐烂条款。
 
+## 跨原型跳转
+
+功能上相互关联的 UI 原型(导航图标、列表行、tab 等指向的功能已有对应原型时)接线跳转;目标原型不存在的保持静态示意,不造死链。
+
+- 可跳转元素加两个属性:`data-goto="<module>/<id>"`(画廊 manifest 的路由键)与 `data-goto-href="../<module>/<文件>.html"`(独立打开时的相对路径回退)。两者缺一不可:独立打开没有 manifest 可查路径,画廊 hash 路由不认文件路径。
+- 页尾统一贴导航 helper(正本如下,自包含零依赖)。file:// 下 iframe 与画廊壳异源,子页改不了父 hash——画廊内走 postMessage 由壳改 hash,独立打开回退为文件导航:
+
+```html
+<script>
+  // 跨原型跳转:画廊内请求父页切换;独立打开时直接跳文件
+  document.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-goto]');
+    if (!el) return;
+    if (window.parent !== window) parent.postMessage({ type: 'proto-nav', target: el.dataset.goto }, '*');
+    else if (el.dataset.gotoHref) location.href = el.dataset.gotoHref;
+  });
+</script>
+```
+
+- 接收端在 gallery-template.html(`proto-nav` 消息 → 对 manifest 校验 → 改 hash);壳是复制实例,改行为改正本后重新复制。
+- 防腐烂(manifest 同步规则的姊妹条):删除原型时,同步撤掉其他原型里指向它的 `data-goto` 接线。
+- 带既有点击行为的元素接线时留意分工:跳转属性只放在"打开语义"的子元素上(如名称),别盖住行内按钮(隐藏/恢复等)。
+
 ## 反模式
 
 - **未经文字选型直接批量生成多个 UI 变体**——生成成本花在用户没选的方向上
