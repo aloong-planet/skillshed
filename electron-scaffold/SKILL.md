@@ -117,7 +117,7 @@ if (status === 'granted' || status === 'not-determined') return true   // 错
 探测后复查状态、仍未授权就弹自己的引导框 —— **两个框会同时出现**。用户点了你的,系统那个被晾着没答复,**TCC 不落记录,app 照样进不了列表**,死锁绕回原点。这不是难看,是功能性阻断。
 
 **❌ 用"探测是否超时"推断系统框在不在**
-判据从根上不成立 —— 见上面第 3 条,那些 API **从不阻塞**,`timeout` 分支永远走不到。
+判据从根上不成立 —— 授权框由另一进程异步绘制,`CGRequestScreenCaptureAccess` 与 `desktopCapturer.getSources` **从不阻塞**,`timeout` 分支永远走不到。
 
 **❌ 挂在窗口显示之前触发**
 app 尚未成为前台应用时,macOS **静默不弹框**,你会以为代码没生效。
