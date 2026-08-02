@@ -1,6 +1,6 @@
 ---
 name: electron-scaffold
-description: "初始化 Electron(electron-builder)新项目时该铺的一次性基础设施清单。当新建/搭建 Electron 桌面应用、配置 electron-builder 打包、接 macOS 系统权限(屏幕录制/摄像头/麦克风/本地网络),或用户提到'初始化 Electron 项目 / 建基础设施 / 打包脚手架 / 权限授权弹不出来'时激活。当前收录:打包产物版本保留、macOS TCC 权限的正确接法。"
+description: "初始化 Electron(electron-builder)新项目时该铺的一次性基础设施清单。当新建/搭建 Electron 桌面应用、配置 electron-builder 打包、接 macOS 系统权限(屏幕录制/摄像头/麦克风/本地网络)、配 macOS 公证与 staple,或用户提到'初始化 Electron 项目 / 建基础设施 / 打包脚手架 / 权限授权弹不出来 / 首次启动被 Gatekeeper 拦'时激活。当前收录:安全清单(官方 20 条,单独成篇 electron-security.md)、打包产物版本保留、macOS TCC 权限的正确接法、appId 双渠道命名、macOS 签名与公证(细则单独成篇 macos-signing.md:票据必须钉 app 与 DMG 两处、凭据变量、CI 分档、门禁断言、产物验收)。"
 when_to_use: "初始化一个新的 Electron + electron-builder 项目时(一次性铺基础设施)。不是每次打包/发版都用——发版规范见 github-ops。"
 ---
 
@@ -9,6 +9,22 @@ when_to_use: "初始化一个新的 Electron + electron-builder 项目时(一次
 初始化 Electron(electron-builder)新项目时**一次性**铺的基础设施。这些是"建项目时装一次、以后自动生效"的东西,不是日常操作。日常发版/打包规范另见 `github-ops` skill。
 
 > 用法:新建 Electron 项目做初始化时,过一遍下面的清单,把适用项装进去。每项都有:何时需要、装什么、怎么接、验证。
+
+---
+
+## 0. 安全清单(必过,单独成篇)
+
+**何时需要**:每个 Electron 项目都要;除初始化外,以下时机**重过一遍**——改主进程窗口/会话/协议/IPC 配置、升级 Electron 主版本、引入"渲染他人内容"的能力(markdown/HTML/外部数据)。
+
+**装什么**:两份配套文件——
+- **[electron-security.md](./electron-security.md)**:清单本体。20 条的判据与难度、哪些默认已安全、哪些必须主动做;**版本(#16)只检查不强制**,并列出"版本影响哪些检查项"供旧版项目按此降级台账。
+- **[electron-security-howto.md](./electron-security-howto.md)**:适配手册。每条**具体怎么改**——可抄的实现骨架、怎么验、踩过的坑;第 18 条(自定义协议,难度最高)给完整五步。
+
+**为什么单独一篇且必须人工过**:这类问题**没有可靠的自动化门禁**——官方运行时 Security Warnings 只覆盖 8 条,源码注释明标第 12~14 条(导航/新窗口/webview)"未实现";Electronegativity 已停止维护,且在"只写了 `setWindowOpenHandler`、没写 `will-navigate`"时静默放行,恰是最常见的漏法。
+
+**怎么接**:安全判定层写成**纯函数 + 单测**(导航放行、外链白名单、IPC sender、CSP 策略、协议路径解析),接线层做成 e2e 断言。清单文件末尾给了必测的绕过向量与参考实现位置。
+
+**验证**:单测覆盖全部绕过向量;e2e 断言打包版 URL 协议 + "文档内链接点击后窗口 URL 不变";打包后跑 fuses 校验脚本(读产物二进制——配置写对≠生效)。
 
 ---
 
@@ -157,7 +173,36 @@ TCC 按 bundle id 记账、**同时记录代码签名要求**。同一个 bundle
 
 **验证**:打包后 `/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" <App>.app/Contents/Info.plist` 应回显对应渠道的 id。
 
+---
+
+## 4. macOS 签名与公证(细则单独成篇)
+
+**何时需要**:任何以 DMG 直分发的 macOS 项目(渠道划分见第 3 节;MAS 线由商店分发,不走 Gatekeeper 的 ticket 路径,不适用本条)。从第一次配公证起就按这条接,事后补会经历一次线上事故。
+
+**一句话结论**:**公证票据必须钉两处——`.app` 与最外层 DMG,两次提交缺一不可。** 只钉 DMG 的话,用户把 app 拖进「应用程序」后票据随 DMG 被丢掉,首次启动断网即被 Gatekeeper 拦下;只钉 app 的话,打开 DMG 时就过不去。
+
+**装什么**:
+```yaml
+# electron-builder.yml
+mac:
+  hardenedRuntime: true        # 公证前提
+  notarize: true               # 签完 .app、打 DMG 之前提交并 staple 到 .app
+```
+DMG 侧另行提交并 staple 最终 DMG(自写脚本或打包器插件均可)。
+
+**完整细则见 [macos-signing.md](./macos-signing.md)** —— 按平台组织,建项目与发版两侧共用一份:
+
+| 节 | 内容 | 建项目时重点看 |
+|---|---|---|
+| 1–2 | 三个动作各解决什么、固定顺序与硬约束 | ● |
+| 3 | 凭据与证书:五个标准变量、`CSC_LINK` 空值坑、导出命令、本地前置 | ● |
+| 4 | CI 分档与 fail-closed、凭据注入位置 | ● |
+| 5 | 门禁脚本要断言什么(退出码不够) | ● |
+| 6–8 | 发版验收、上传顺序、验证边界 | 发版时看,见 `github-ops` |
+
+**配完把参数落进项目文档**:签名身份、凭据来源、CI 各档行为、踩过的 workflow 坑,写进项目的 macOS 签名/公证**运维手册**(通常在 `docs/ops/` 下,就地更新)。上面那份是**跨项目的通用细则**,项目手册记的是**本项目的实际取值与流程**,两者不重复。
+
 <!--
 扩展位:以后 Electron 新项目基础设施的其它一次性项(如无签名 CI 打包坑、多架构产物命名、
-graceful-quit 骨架等)可在此追加为 ## 4 / ## 5 ……。每项保持"何时需要 / 装什么 / 怎么接 / 验证"结构。
+graceful-quit 骨架等)可在此追加为 ## 5 / ## 6 ……。每项保持"何时需要 / 装什么 / 怎么接 / 验证"结构。
 -->
