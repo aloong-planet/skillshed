@@ -1,7 +1,7 @@
 ---
 name: github-ops
-description: "Rules and standards for ANY GitHub operation — git commit, push, PR, release, tag, issue, Actions, CI check gates, branch protection/rulesets, or anything that ends up on GitHub. Use whenever cutting a branch, committing, pushing, opening/reviewing a PR, cutting a release, creating/deleting tags, editing release notes, setting up or verifying CI gates and required status checks, or writing anything published to a GitHub repo. Enforces the no-AI-signature rule, the branch-from-master rule, and the release/tag conventions."
-when_to_use: "Activate for any git branch creation / commit / push / PR / release / tag / issue / GitHub Actions / CI gate / branch ruleset work, or any text that will appear on GitHub."
+description: "Rules and standards for ANY GitHub operation — git commit, push, PR, release, tag, issue, Actions, CI check gates, branch protection/rulesets, or anything that ends up on GitHub. Use whenever cutting a branch, committing, pushing, opening/reviewing a PR, cutting a release, creating/deleting tags, editing release notes, setting up or verifying CI gates and required status checks, or writing anything published to a GitHub repo. Enforces the no-AI-signature rule, the branch-from-master rule, and the release/tag conventions. **Watching CI: run this skill's own watch-ci.sh — never hand-roll a polling loop.**"
+when_to_use: "Activate for any git branch creation / commit / push / PR / release / tag / issue / GitHub Actions / CI gate / branch ruleset work, or any text that will appear on GitHub. Waiting on a CI run counts — use watch-ci.sh from this skill's directory."
 ---
 
 # GitHub 操作规范
@@ -113,6 +113,21 @@ git log --oneline origin/master..HEAD   # 本分支相对 master 到底带了哪
 
 ## 6. 盯 CI 的可靠方式
 
+**先看这条:用本 skill 自带的 `watch-ci.sh`,不要手写轮询循环。** 命令与用法在本节末尾。
+
+为什么值得单说(2026-08-03 手写三次错三次):当时机器上的 `gh` 是 2.17(2022 年),
+`gh pr checks` 还没有 `--json`。写进循环后每轮报 `unknown flag`、命令替换拿到空串、
+循环永不退出——**失败形态是静默空转,看起来跟"CI 还在跑"一模一样**,连着两次被当成
+"监视器正常超时"放过。(该机现已升到 2.97,这个 flag 可用了;但根因不是版本,是手搓。)
+
+由此提炼两条,与 gh 版本无关:
+- **轮询循环里的命令,先单独跑一次确认它有输出**。循环会把"命令报错"和"条件未成立"
+  压成同一种表现,而前者永远不会成立。
+- **版本相关的事实不要写进 frontmatter**。description 每轮都注入上下文,把会腐烂的
+  细节钉在那儿,等于每轮误导一次;而正文里的过期内容至少还有人读到时能发现。
+  frontmatter 只放机制无关的指向("用 watch-ci.sh"),版本细节留在正文。
+
+下面是脚本背后的原理(需要自己查一次状态时用):
 `gh run watch --exit-status` 的退出码在某些环境会误报成功/失败。**改用轮询 conclusion**:
 ```bash
 gh run view <run-id> --repo <owner/repo> --json status,conclusion --jq '"\(.status)|\(.conclusion)"'
@@ -121,10 +136,15 @@ gh run view <run-id> --repo <owner/repo> --json status,conclusion --jq '"\(.stat
 
 **用本 skill 自带的 `watch-ci.sh`**(本 skill 目录内),别每次手写轮询循环:
 ```bash
-~/.claude/skills/github-ops/watch-ci.sh            # 自动取最近一次 run
-~/.claude/skills/github-ops/watch-ci.sh <run-id>   # 指定 run
-INTERVAL=15 ~/.claude/skills/github-ops/watch-ci.sh # 自定义轮询间隔(秒,默认 30)
+~/.claude/skills/github-ops/watch-ci.sh             # 锚定当前 HEAD:等它的 run 出现再盯到完成
+~/.claude/skills/github-ops/watch-ci.sh <run-id>    # 指定 run
+INTERVAL=15 ~/.claude/skills/github-ops/watch-ci.sh # 轮询间隔(秒,默认 30)
+CREATE_WAIT=300 ~/.claude/skills/github-ops/watch-ci.sh # 等 run 出现的上限(秒,默认 120)
 ```
+无参时按 HEAD 的 commit 锚定(2026-08-04 改):旧的"取最近一次 run"在推送后立刻调用有
+竞态——新 run 未建出来时抓到的是上一轮旧 run,绿得毫无意义。HEAD 没有 run(没推送/不触发
+workflow)时明确报错退出,不退回"最近一次"。⚠️ `gh run list --commit` 只认**全长** SHA,
+短 SHA 静默返回空。
 在目标仓库目录下运行即可(repo 靠 `gh` 从当前目录自动推断,脚本无任何项目硬编码)。轮询 conclusion 到 completed,打印 conclusion+各 job;退出码 CI success→0 / 失败→1 / 脚本错误→2。可后台跑,完成自动通知。
 
 ## 7. CI 检查门禁与分支保护
@@ -140,3 +160,33 @@ INTERVAL=15 ~/.claude/skills/github-ops/watch-ci.sh # 自定义轮询间隔(秒,
 - **GitHub 侧三项缺一不生效**:Enforcement 改 Active(默认 Disabled)、Target branches 非空、添加 check 名(取 job 的 `name`,未设则取 job id)。**只选质量门禁那条**,别把 Cloudflare Pages / Vercel 这类部署检查设为必需——不触及该目录的 PR 会因它从不运行而永久卡住。
 - **UI 勾了不等于存成功**,用 `gh api repos/<owner>/<repo>/rulesets/<id>` 核验 enforcement / include / rules / checks 四项。
 - **门禁生效后直推默认分支会被拒**,发版的版本号变更改走 PR(见第 4 节第 3 步);tag 推送不受影响。
+
+## 8. Issue 操作
+
+`gh` 从**当前工作目录**推断仓库。因此在目标仓库的 clone 之外操作时,每条命令都必须显式带
+`-R <owner>/<repo>`——在 A 仓库的工作目录里往 B 仓库建票是常态,漏掉 `-R` 不会报错,票会静默
+建到当前仓库里去。判据:命令里出现 issue 编号或要新建票,而 `pwd` 不在该仓库的 clone 内,就必须有 `-R`。
+
+```bash
+gh issue create -R <owner>/<repo> --title "…" --body "$(cat <<'BODY'
+多行正文写在 heredoc 里
+BODY
+)"
+gh issue view   <n> -R <owner>/<repo> --comments
+gh issue comment <n> -R <owner>/<repo> --body "…"
+gh issue edit   <n> -R <owner>/<repo> --add-label "…"   # 或 --remove-label
+gh issue close  <n> -R <owner>/<repo> --comment "…"
+```
+
+**多行正文一律用 heredoc**,不要靠引号转义拼接:正文里的反引号、`$`、换行在双引号中会被 shell
+解释,拼出来的票在 GitHub 上与本地看到的不是同一份内容。
+
+一次取全字段(比逐票 `view` 少几轮往返):
+
+```bash
+gh issue list -R <owner>/<repo> --state open \
+  --json number,title,body,labels,comments \
+  --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'
+```
+
+票的标题、正文与评论同样受第 1 节约束:**无 AI 署名**。
