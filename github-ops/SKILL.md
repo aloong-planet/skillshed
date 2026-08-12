@@ -187,12 +187,14 @@ gh issue list -R <owner>/<repo> --state open \
 
 ## 9. 新建仓库与首次推送
 
-**首次推送前必须扫凭据,且必须扫全历史,不只工作区。** 两条判据都零命中才准推:
+**首次推送前必须扫凭据,且必须扫全历史,不只工作区。** 判据分两层——模式扫描是筛选器,不是判决:
 
 ```bash
-git log --all -S "<可疑串>" --oneline                            # 历史,对每个可疑串
-grep -rniE "(api[_-]?key|secret|token|password|-----BEGIN)" .    # 工作区
+grep -rniE "(api[_-]?key|secret|token|password|-----BEGIN)" . --exclude-dir=.git   # 筛出候选
+git log --all -S "<候选值>" --oneline                                              # 对每个真值查全历史
 ```
+
+`token`、`password` 这类词在正常文档里大量合法出现,「零命中」在文档型仓库不可达——拿它当判据,门禁永远红,教出来的唯一反射是无视门禁。真正的判据:**每一条命中都能当场说清是引用而非真值;说不清的按真值处理;真值零容忍**,并拿它的值跑全历史 `-S`,历史里也有就先清历史(见下)再谈推送。
 
 机制,三条都并入判断:
 

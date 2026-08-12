@@ -19,6 +19,12 @@
 import { readFileSync } from 'node:fs'
 import { execSync } from 'node:child_process'
 
+// Anchor to the repository root before anything else. `git ls-files` scopes itself to the current
+// directory, so running this from a subdirectory would silently scan a subset — measured: from inside a
+// skill directory the gate printed "✓ 0 skills checked, all clauses hold". A green over an empty scope is
+// the exact false-green shape this repository's own false-greens doc warns about.
+process.chdir(execSync('git rev-parse --show-toplevel', { encoding: 'utf8' }).trim())
+
 /** Scope: tracked markdown only. Symlinked third-party skills are link objects in git, so their content
  * is naturally out of scope — this repository only vouches for what it versions. */
 const tracked = execSync('git ls-files "*.md"', { encoding: 'utf8' }).trim().split('\n').filter(Boolean)
@@ -36,7 +42,7 @@ function selectorText(text) {
 }
 
 /** Trigger markers: the shapes "何时触发" takes in practice, zh and en. */
-const TRIGGER = /激活|使用|必经|跑一次|过一遍|调用|重跑|时用|Use when|use when|Activate|Run (it |once )/i
+const TRIGGER = /激活|使用|必经|跑一次|过一遍|调用|重跑|时用|use when|Activate|Run (it |once )/i
 /** A flow summary in a selector: an arrow chain (the measured shape of this violation). */
 const FLOW = /→[^→\n]*→/
 /** A dated incident narrative: an ISO date sharing a line with narrative markers. Dates alone are
@@ -94,4 +100,11 @@ if (problems.length) {
   console.error('\nFix the text, or — if the shape is genuinely required — widen an exemption predicate in scripts/check-skill-policy.mjs, stating why. Never a count.')
   process.exit(1)
 }
-console.log(`✓ skill-policy: ${tracked.filter((f) => f.endsWith('/SKILL.md')).length} skills checked, all clauses hold`)
+const checked = tracked.filter((f) => f.endsWith('/SKILL.md')).length
+if (checked === 0) {
+  // A universal claim over an empty set is not a pass. This is a skills repository — zero skills scanned
+  // means the invocation is broken, never that everything complies.
+  console.error('✗ skill-policy: scanned zero skills — the scope is broken, refusing to report green')
+  process.exit(1)
+}
+console.log(`✓ skill-policy: ${checked} skills checked, all clauses hold`)
