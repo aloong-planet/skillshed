@@ -19,7 +19,7 @@ docs/prototypes/<功能模块>/<原型名>/
 1. **写下问题 + 画出模型**:①问题段落写进 `index.html`(复制 [logic-page-template.html](./logic-page-template.html) 替换占位);②**mermaid 图写 `.mmd` 文件**(一图一文件,首行 `%% title: 标题`;状态机用 `stateDiagram-v2`:状态/迁移/触发动作;reducer 的 action 即迁移标签;纯函数集用 flowchart 画数据变换;预设与写法约定见 MMD-STYLES.md,init 块拷入文件首);③跑 `node docs/prototypes/sync-mmd.mjs` 生成 model.mmd.js;④预览走画廊(该页被 iframe 渲染;图为可交互画布——拖拽平移、捏合或 ⌘/Ctrl+滚轮平滑缩放、双击或 ⌂ 重置,普通滚轮归页面滚动,行为随模板自带)。
 2. **写逻辑模块**:复制 [logic-template.js](./logic-template.js) 填充 `initial`/`reduce`/`legal`/`ALL_ACTIONS`/`TERMINAL`。规则只写在 `reduce` 里,`legal` 是它的派生查询(见 STATE-MACHINE.md)。
 3. **接驾驶面板**:按钮从 `legal(state)` 派生置灰、回执栏三态、清空回空态——规范与两个实现约束(aria-disabled、不用 opacity)见 STATE-MACHINE.md。
-4. **交给用户驾驶**:有价值的时刻是"等等,这不该可能"——那是想法里的 bug,正是原型的意义。要加事件就加,原型会进化;**模型演化了,改 `.mmd` 并重跑 sync-mmd.mjs**——图与代码不一致即腐烂,过期的图比没有图危险。
+4. **交给用户驾驶**:有价值的时刻是"等等,这不该可能"——那是想法里的 bug,正是原型的意义。要加事件就加,原型会进化;**模型演化了,改 `.mmd` 并重跑 sync-mmd.mjs**——图与代码不一致即腐烂,过期的图比没有图危险。每轮写完/改完 Logic 页后,**回复里必须给出该页(及画廊深链,若已注册)的 `file://` 绝对预览链接**(SKILL.md 通用规则 9),用户才能直接在浏览器里驾驶。
 5. **捕获(原型保留)**:答案记入 issue/commit;验证过的逻辑模块提升进真代码(`legal()` 常常连带暴露产线里"准入条件散在 UI 条件渲染"的重构机会);mermaid 图(取自 .mmd 正本)内联进 spec 或作 ADR 来源。**原型目录留在 `docs/prototypes/` 不清空**(持久资产);模型演化时同步改 `.mmd` 与 `logic.js` 并重跑 sync-mmd.mjs,做不到就在问题段标注失效——见 SKILL.md 的防腐烂条款。
 
 ## 反模式
