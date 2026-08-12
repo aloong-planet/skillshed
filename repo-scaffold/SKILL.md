@@ -1,6 +1,6 @@
 ---
 name: repo-scaffold
-description: 把一个仓库配置成这套 skills 能在其上运作的样子——记录 issue tracker 的位置与用法、文档布局约定,写进 docs/agents/ 并在 CLAUDE.md 挂上索引。在某个仓库首次使用这套 skills 之前跑一次;更换 issue tracker、或要重铺约定时重跑。
+description: 把一个仓库配置成这套 skills 能在其上运作的样子——记录 issue tracker 的位置与用法、文档布局约定,写进 docs/agents/ 并在仓库的 agent 指令文件里挂上索引。在某个仓库首次使用这套 skills 之前跑一次;更换 issue tracker、或要重铺约定时重跑。
 disable-model-invocation: true
 ---
 
@@ -49,17 +49,28 @@ disable-model-invocation: true
 
 把要写的东西完整呈现给用户,**让其先改再写**:
 
-- 要插进 `CLAUDE.md` / `AGENTS.md` 的 `## Agent skills` 段
+- 要插进 `AGENTS.md` 的 `## Agent skills` 段(以及 Claude Code 在用时那行 `@AGENTS.md` 导入)
 - `docs/agents/issue-tracker.md` 与 `docs/agents/docs-layout.md` 的内容
 
 ## 4. 写入
 
-**选文件的规则,不得违反。** 机制:**Claude Code 只读 `CLAUDE.md`,不读 `AGENTS.md`**。把配置写进一个 Claude Code 不读的文件,不会报错——它只是永远不生效,而后续 skill 找不到配置时,人会以为本 skill 没跑过。
+### 内容一律写 `AGENTS.md`
 
-- `CLAUDE.md` 存在 → 改它。
-- **只有 `AGENTS.md` 存在** → 块写进 `AGENTS.md`,**并且必须建一个只含 `@AGENTS.md` 一行的 `CLAUDE.md`**。缺了这个 `CLAUDE.md`,Claude Code 读不到任何配置。不得只改 `AGENTS.md` 就收工。
-- 两个都不存在 → **问用户建哪个**,不得替他选。该仓库同时给读 `AGENTS.md` 的 agent(如 Codex)使用时,推荐上一条的组合:内容放 `AGENTS.md`,`CLAUDE.md` 只做导入。
-- **一律不得让两个文件各存一份内容。** 单一来源加导入,或只用 `CLAUDE.md`;两份并存必然漂移,且没有任何检查会发现。
+`AGENTS.md` 是跨 agent 的开放标准,三十余种 agent 原生读它;`CLAUDE.md` 只有 Claude Code 读。把内容放进 `CLAUDE.md`,其余 agent 一概读不到,**而反过来没有对称损失**——只读 `CLAUDE.md` 的那一个可以靠一行导入拿到 `AGENTS.md` 的全部内容。所以内容的位置不是二选一,只有一个正确答案。
+
+### `CLAUDE.md` 只是垫片
+
+**仅当 Claude Code 会用于本仓库时才建 `CLAUDE.md`,且它只含 `@AGENTS.md` 一行,不得存放任何内容。**
+
+判据:本 skill 在 Claude Code 中运行即视为在用,除非用户明确说明本仓库不给 Claude Code 使用。**这个条件在本 skill 的求值点上几乎恒为真**——写成条件不是因为它常常为假,而是为了让规则在别处仍然成立:**不得为不在场的 agent 创建指令文件**。同理,若将来在只读 `AGENTS.md` 的 agent 里执行同样的配置动作,不建 `CLAUDE.md`。
+
+Windows 上不得用 symlink 代替导入——创建 symlink 需要管理员权限或开发者模式,`@AGENTS.md` 导入没有这个前提。
+
+### 已有文件时
+
+- **已有 `AGENTS.md`** → 块写进去。若 Claude Code 在用而 `CLAUDE.md` 不存在,补上那行导入。
+- **已有 `CLAUDE.md` 且其中已有实质内容**(不止一行导入)→ 块写进 `CLAUDE.md`,**不得擅自把既有内容搬去 `AGENTS.md`**——那是一次跨文件迁移,超出本 skill 的授权。可以告知用户迁移的好处,由其决定。
+- **一律不得让两个文件各存一份内容。** 单一来源加导入;两份并存必然漂移,而没有任何检查会发现。
 
 **已有 `## Agent skills` 段时就地更新其内容,不得追加出第二段。** 不得改动该段之外的内容。
 
