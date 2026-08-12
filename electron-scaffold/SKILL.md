@@ -1,12 +1,12 @@
 ---
 name: electron-scaffold
-description: "初始化 Electron(electron-builder)新项目时该铺的一次性基础设施清单。当新建/搭建 Electron 桌面应用、配置 electron-builder 打包、接 macOS 系统权限(屏幕录制/摄像头/麦克风/本地网络)、配 macOS 公证与 staple,或用户提到'初始化 Electron 项目 / 建基础设施 / 打包脚手架 / 权限授权弹不出来 / 首次启动被 Gatekeeper 拦'时激活。当前收录:安全清单(官方 20 条,单独成篇 electron-security.md)、打包产物版本保留、macOS TCC 权限的正确接法、appId 双渠道命名、macOS 签名与公证(细则单独成篇 macos-signing.md:票据必须钉 app 与 DMG 两处、凭据变量、CI 分档、门禁断言、产物验收)。"
-when_to_use: "初始化一个新的 Electron + electron-builder 项目时(一次性铺基础设施)。不是每次打包/发版都用——发版规范见 github-ops。"
+description: "Electron(electron-builder)桌面项目该一次性铺好的基础设施清单,覆盖安全基线、打包产物治理、macOS 系统权限、分发渠道命名、签名与公证、本地自动化测试基建。装一次以后自动生效的东西,不是日常操作。"
+when_to_use: "初始化 Electron + electron-builder 项目时逐项过一遍。此外安全基线须在这些时刻重过:改动主进程的窗口/会话/协议/IPC 配置、升级 Electron 主版本、新增渲染外部内容的能力。macOS 权限弹不出来、app 不出现在系统隐私列表、首次启动被 Gatekeeper 拦下时也查本 skill。日常打包发版不走这里——见 /github-ops。"
 ---
 
 # Electron 新项目基础设施(scaffold)
 
-初始化 Electron(electron-builder)新项目时**一次性**铺的基础设施。这些是"建项目时装一次、以后自动生效"的东西,不是日常操作。日常发版/打包规范另见 `github-ops` skill。
+初始化 Electron(electron-builder)新项目时**一次性**铺的基础设施。这些是"建项目时装一次、以后自动生效"的东西,不是日常操作。日常发版/打包规范另见 `/github-ops` skill。
 
 > 用法:新建 Electron 项目做初始化时,过一遍下面的清单,把适用项装进去。每项都有:何时需要、装什么、怎么接、验证。
 
@@ -198,11 +198,34 @@ DMG 侧另行提交并 staple 最终 DMG(自写脚本或打包器插件均可)�
 | 3 | 凭据与证书:五个标准变量、`CSC_LINK` 空值坑、导出命令、本地前置 | ● |
 | 4 | CI 分档与 fail-closed、凭据注入位置 | ● |
 | 5 | 门禁脚本要断言什么(退出码不够) | ● |
-| 6–8 | 发版验收、上传顺序、验证边界 | 发版时看,见 `github-ops` |
+| 6–8 | 发版验收、上传顺序、验证边界 | 发版时看,见 `/github-ops` |
 
 **配完把参数落进项目文档**:签名身份、凭据来源、CI 各档行为、踩过的 workflow 坑,写进项目的 macOS 签名/公证**运维手册**(通常在 `docs/ops/` 下,就地更新)。上面那份是**跨项目的通用细则**,项目手册记的是**本项目的实际取值与流程**,两者不重复。
 
+## 5. 本地自动测试基建(macOS,细则单独成篇)
+
+**何时需要**:每个要跑本地自动化验证(e2e / 冒烟)的 Electron 项目。**初始化时装,
+不要等痛点爆发**——本节每一件都是在真实项目上痛点爆发→排查→误诊→返工之后回填的
+(agentshed,2026-08-03/04),其中仅"冒烟误红"一项就烧掉三轮排查。
+
+**装什么**:四件套,细则与依据统一见 **[electron-testing.md](./electron-testing.md)**——
+
+| 件 | 形式 | 解决什么 |
+|---|---|---|
+| 主进程测试 seam(静音 + 数据根注入 + 单实例锁 + 防孤儿) | 可抄骨架 ~20 行(文档第 1 节) | 测试可注入、不抢前台;e2e 结果不随开发机数据变 |
+| [assets/quiet-electron.sh](./assets/quiet-electron.sh) | 复制进项目 scripts/ | Dock 图标零闪现(图标在原生引导期按 plist 注册,JS 追不上) |
+| [assets/smoke.sh.template](./assets/smoke.sh.template) | 复制后填「项目填空」块(核心三处+命名,未填空会自报) | dev 冒烟:双隔离、失败留证、就绪产物判据 |
+| [assets/ci-electron.yml](./assets/ci-electron.yml) | 复制进 .github/workflows/ | ubuntu+xvfb 的 e2e 门禁,四个"抄错才知道"的坑已排 |
+
+**怎么接**:seam 写进 main;e2e 在 playwright globalSetup 跑 quiet-electron.sh 并设
+`ELECTRON_OVERRIDE_DIST_PATH`;smoke 模板自带接线(electron-vite 另需
+`ELECTRON_EXEC_PATH`,两个都给——依据见文档第 2 节);**e2e 目录与 playwright.config
+必须写进 tsconfig include**,否则整个 e2e 目录从未被 typecheck、类型守卫全是假的。
+
+**验证**(硬性,文档各节附具体方法):smoke 每条失败分支强制触发一遍;Dock/前台用
+lsappinfo 探针 A/B(探针先在"坏"状态自证非空过);换测试运行体制后重放已知可红的变异。
+
 <!--
 扩展位:以后 Electron 新项目基础设施的其它一次性项(如无签名 CI 打包坑、多架构产物命名、
-graceful-quit 骨架等)可在此追加为 ## 5 / ## 6 ……。每项保持"何时需要 / 装什么 / 怎么接 / 验证"结构。
+graceful-quit 骨架等)可在此追加为 ## 6 / ## 7 ……。每项保持"何时需要 / 装什么 / 怎么接 / 验证"结构。
 -->
