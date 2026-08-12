@@ -1,0 +1,11 @@
+#!/bin/sh
+# Local stand-in for a required status check: server-side branch protection is plan-gated on private
+# free-plan repositories, and every push to this repository originates from this machine — so the gate
+# runs here, before the network. Install (once per clone):
+#   ln -s ../../scripts/pre-push .git/hooks/pre-push
+# It checks the WORKING TREE, deliberately: a violation you haven't committed yet still blocks the push,
+# which is earlier than any server check could fire.
+node "$(git rev-parse --show-toplevel)/scripts/check-skill-policy.mjs" || {
+  echo "push blocked: the skill-policy gate is red (see above)" >&2
+  exit 1
+}

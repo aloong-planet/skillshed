@@ -39,7 +39,7 @@ when_to_use: "任何一次新建 skill、编辑 SKILL.md 或其引用文档/资�
 
 ## 门禁
 
-可机械判定的条款由 `scripts/check-skill-policy.mjs` 强制(本地直接跑,CI 在每次落地时跑):description 的第三人称、触发词、无流程链,正文的日期事故叙事。豁免一律写成谓词并附理由,不得用计数;不再挡任何东西的豁免由脚本自己报死。语义类条款(§1 的命令式与判据、§2 的例外形态)不可机判,仍归 review。
+可机械判定的条款由 `scripts/check-skill-policy.mjs` 强制:本地经 pre-push 钩子在推送前跑(`ln -s ../../scripts/pre-push .git/hooks/pre-push`,每个 clone 装一次;服务端 required check 在私有免费仓库不可用),CI 在每次落地时复跑:description 的第三人称、触发词、无流程链,正文的日期事故叙事。豁免一律写成谓词并附理由,不得用计数;不再挡任何东西的豁免由脚本自己报死。语义类条款(§1 的命令式与判据、§2 的例外形态)不可机判,仍归 review。
 
 ## 暂缓收编
 
