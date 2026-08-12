@@ -1,0 +1,16 @@
+# The skill-policy gate in CI. The gate is fully runnable locally (node, no dependencies), so mutation
+# verification is done locally per github-ops/checks-gate.md §2 — CI's job is to run it on every landing.
+name: checks
+on:
+  push:
+    branches: [master]
+  pull_request:
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/check-skill-policy.mjs

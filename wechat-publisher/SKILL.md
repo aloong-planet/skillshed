@@ -1,6 +1,6 @@
 ---
 name: wechat-publisher
-description: "Publish articles to WeChat Official Account (微信公众号). Use when user wants to: write/edit/preview/publish WeChat articles, generate cover images for WeChat articles, manage WeChat login sessions, or convert Markdown to WeChat-compatible HTML. Supports the full workflow: write article → generate cover → preview → login → publish to drafts."
+description: "Publish articles to WeChat Official Account (微信公众号). Use when user wants to: write/edit/preview/publish WeChat articles, generate cover images for WeChat articles, manage WeChat login sessions, or convert Markdown to WeChat-compatible HTML."
 ---
 
 # WeChat Publisher (微信公众号发布)
