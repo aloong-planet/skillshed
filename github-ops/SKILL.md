@@ -13,7 +13,7 @@ when_to_use: "Activate for any git branch creation / commit / push / PR / releas
 **任何面向 GitHub 的文本都不带 AI/co-author 痕迹。** 与默认习惯相反——默认会加 `Co-Authored-By` 和 `Generated with Claude Code`,这里**必须主动全部省略**。
 
 - **commit message**:标题+正文,不加 `Co-Authored-By: ...`、不加 `🤖 Generated with [Claude Code]` 之类尾注。
-- **committer / author**:不署 Claude/AI 身份,用仓库现有 git 用户(如 loong_zhou)。
+- **committer / author**:不署 Claude/AI 身份,用仓库现有 git 用户。
 - **PR 描述 / body**:不加 co-author、不加 Generated-with。
 - **Release notes / tag message / issue 评论**:同样不加。
 - 一句话:**GitHub 上的产出只写正常技术内容,零 AI 署名。**
@@ -50,9 +50,7 @@ git log --oneline origin/master..HEAD   # 本分支相对 master 到底带了哪
 - **分支还没推过** → 直接 `git rebase origin/master`,零风险。
 - **分支已经推过** → rebase 后必须 force push,那是破坏性操作,走第 5 节的流程(先备份、告知代价、经确认)。改基线的成本在推送那一刻就翻倍了,这也是为什么这条检查要放在**开 PR 前**。
 
-**为什么值得单列一节**(2026-08-02 实际踩过):在一条未合并的 feature 分支上顺手拉了配 CI 的分支,PR 描述只写 CI,实际带着整张 feature 票的改动。squash 合并后 master 上出现一个**标题只说 CI、内容却是整张票**的 commit;原来那几条写得很细的 commit message 也在 squash 里一起没了。
-
-后果不在代码——内容是对的、CI 全绿——而在**历史可读性**:后人 `git log` 或 bisect 追"某字段什么时候进来的",会被指到一个名不副实的 commit 上。而修它要 force push 默认分支,是破坏性操作(见第 5 节),代价远高于事前敲那两条命令。
+**机制:在未合并的分支上再拉分支,新 PR 会静默带上旧分支的全部 commit。** PR 描述只写新改动,squash 合并后 master 上落下一个标题只说小改动、内容却是整批的 commit。代码可以全对、CI 全绿,坏的是**历史可读性**——`git log` 与 bisect 追某个改动的来历时,会被指到名不副实的 commit 上;修复要 force push 默认分支(第 5 节的破坏性操作),代价远高于事前敲那两条命令。
 
 **合并之后**:下一个分支开工前再 `git checkout master && git pull` 一次,别拿合并前的本地 master 当基线。
 
@@ -90,7 +88,7 @@ git log --oneline origin/master..HEAD   # 本分支相对 master 到底带了哪
 2. **本地验证全绿**再发:typecheck + test + build(用项目实际脚本)。
 3. commit(**无 AI 署名**)+ push。**默认分支若配了 required status checks,直推会被拒**(见第 7 节),此时版本号变更也走 PR,合并后再打 tag。
 4. 打 tag + push tag(干净 tag=正式版触发公证;`-beta` 等=迭代版)。tag 推送不受分支规则影响。
-5. **盯 CI 到完成**(用轮询 conclusion,不用 `gh run watch --exit-status`——其退出码在部分环境误报)。
+5. **盯 CI 到完成**:跑本 skill 自带的 `watch-ci.sh`(用法与原理见第 6 节)。不得手写轮询循环。
 6. **下载 Release 产物独立验证**(不只信 CI 绿):
    - mac 签名与公证:`spctl --assess --type execute --verbose <app>` 应 `accepted / Notarized Developer ID`;签名身份 `codesign -dv`。
    - **mac 票据装订:`spctl` 与 `codesign` 都查不出,必须挂载 DMG 对里面的 `.app` 单独跑 `xcrun stapler validate`。**
@@ -115,14 +113,10 @@ git log --oneline origin/master..HEAD   # 本分支相对 master 到底带了哪
 
 **先看这条:用本 skill 自带的 `watch-ci.sh`,不要手写轮询循环。** 命令与用法在本节末尾。
 
-为什么值得单说(2026-08-03 手写三次错三次):当时机器上的 `gh` 是 2.17(2022 年),
-`gh pr checks` 还没有 `--json`。写进循环后每轮报 `unknown flag`、命令替换拿到空串、
-循环永不退出——**失败形态是静默空转,看起来跟"CI 还在跑"一模一样**,连着两次被当成
-"监视器正常超时"放过。(该机现已升到 2.97,这个 flag 可用了;但根因不是版本,是手搓。)
+**手写轮询的失败形态是静默空转**:循环把「命令报错」与「条件未成立」压成同一种表现——什么都不发生——而前者永远不会自行成立,看起来跟「CI 还在跑」一模一样,极易被当成"监视器正常超时"放过。典型诱因是版本相关的 flag:装机的 CLI 没有那个 flag 时,循环里每一轮都在报错,命令替换拿到空串,循环永不退出。
 
-由此提炼两条,与 gh 版本无关:
-- **轮询循环里的命令,先单独跑一次确认它有输出**。循环会把"命令报错"和"条件未成立"
-  压成同一种表现,而前者永远不会成立。
+两条要求,与 CLI 版本无关:
+- **轮询循环里的命令,先单独跑一次确认它有输出。**
 - **版本相关的事实不要写进 frontmatter**。description 每轮都注入上下文,把会腐烂的
   细节钉在那儿,等于每轮误导一次;而正文里的过期内容至少还有人读到时能发现。
   frontmatter 只放机制无关的指向("用 watch-ci.sh"),版本细节留在正文。
@@ -141,7 +135,7 @@ gh run view <run-id> --repo <owner/repo> --json status,conclusion --jq '"\(.stat
 INTERVAL=15 ~/.claude/skills/github-ops/watch-ci.sh # 轮询间隔(秒,默认 30)
 CREATE_WAIT=300 ~/.claude/skills/github-ops/watch-ci.sh # 等 run 出现的上限(秒,默认 120)
 ```
-无参时按 HEAD 的 commit 锚定(2026-08-04 改):旧的"取最近一次 run"在推送后立刻调用有
+无参时按 HEAD 的 commit 锚定:「取最近一次 run」在推送后立刻调用有
 竞态——新 run 未建出来时抓到的是上一轮旧 run,绿得毫无意义。HEAD 没有 run(没推送/不触发
 workflow)时明确报错退出,不退回"最近一次"。⚠️ `gh run list --commit` 只认**全长** SHA,
 短 SHA 静默返回空。
@@ -156,7 +150,7 @@ workflow)时明确报错退出,不退回"最近一次"。⚠️ `gh run list --c
 - **门禁 = 检查 workflow + 把它设为必需的分支规则**,缺一不可。发版 workflow 不算门禁——它只在打 tag 时触发。判据一条命令:`grep -nE "pnpm (run )?(test|typecheck)" .github/workflows/*.yml` 无输出即没有门禁。
 - **门禁 workflow 至少跑 typecheck + test + build**,子包全覆盖;子包有独立 lockfile 的要单独 install。
 - **Node 版本不能照抄打包 workflow**:打包时产物跑的是运行时自带的 node,检查时测试跑在 runner 的 node 上,`node:sqlite` 这类版本敏感的内置模块由后者提供。
-- **门禁必须证明「能红」**:一道从未失败过的门禁与没有门禁在证据上等价。用一次性 PR 做变异验证,变异要打不同步骤并预写预期失败步骤,验完关闭删分支、绝不合并。
+- **门禁必须证明「能红」**:一道从未失败过的门禁与没有门禁在证据上等价。本地能完整跑通的门禁先本地变异(改—跑—直接捕获退出码—还原);只有依赖 CI 环境才能复现的才开一次性 PR,变异要打不同步骤并预写预期失败步骤,验完关闭删分支、绝不合并。
 - **GitHub 侧三项缺一不生效**:Enforcement 改 Active(默认 Disabled)、Target branches 非空、添加 check 名(取 job 的 `name`,未设则取 job id)。**只选质量门禁那条**,别把 Cloudflare Pages / Vercel 这类部署检查设为必需——不触及该目录的 PR 会因它从不运行而永久卡住。
 - **UI 勾了不等于存成功**,用 `gh api repos/<owner>/<repo>/rulesets/<id>` 核验 enforcement / include / rules / checks 四项。
 - **门禁生效后直推默认分支会被拒**,发版的版本号变更改走 PR(见第 4 节第 3 步);tag 推送不受影响。
@@ -190,3 +184,33 @@ gh issue list -R <owner>/<repo> --state open \
 ```
 
 票的标题、正文与评论同样受第 1 节约束:**无 AI 署名**。
+
+## 9. 新建仓库与首次推送
+
+**首次推送前必须扫凭据,且必须扫全历史,不只工作区。** 两条判据都零命中才准推:
+
+```bash
+git log --all -S "<可疑串>" --oneline                            # 历史,对每个可疑串
+grep -rniE "(api[_-]?key|secret|token|password|-----BEGIN)" .    # 工作区
+```
+
+机制,三条都并入判断:
+
+- **私有是当下的可见性,不是属性**——转公开、加协作者、fork、CI 缓存、克隆散落,任何一环都会把内容带出去。每一次推送按"终将可见"处理。
+- **凭据风险在历史里,不在工作区**。把工作区的值改掉不解决问题,`git log -S` 才是判据。
+- **一旦推送过,清理历史不能替代轮换**——旧值已经存在过,必须假定不再可信。
+
+两条路径的风险位置不同,都要覆盖:
+
+| 路径 | 凭据风险在哪 |
+|---|---|
+| 建空仓库,内容后推 | 将要提交的**工作区** |
+| 已有本地 git 历史的目录接 remote | **历史**——工作区可能早已干净,这正是最容易漏的一种 |
+
+**无 remote 是重写历史的零代价窗口**:改历史的成本在推送那一刻翻倍(第 5 节)。已有本地历史的目录接 remote 前,该清的必须现在清(`git filter-repo --replace-text`),清完用上面两条判据复验。
+
+其余首推检查:
+
+- `.gitignore` 先于首个 commit 就位——否则第一个提交就把不该带的固化进历史。
+- 可见性按内容定:含个人工作习惯、内部约定、真实项目细节的默认私有;要公开,先过上面的凭据扫描并复核内容。
+- **仓库同时是运行时目录时**(如 agent 的配置目录本身就是仓库),破坏性 git 操作会当场改变运行中的行为——`filter-repo` / `reset --hard` 会吃掉未提交改动、把文件退回 HEAD。操作前先全量备份(含未跟踪文件),并确认没有会话正依赖该目录。
