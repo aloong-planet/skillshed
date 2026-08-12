@@ -49,14 +49,14 @@ disable-model-invocation: true
 
 把要写的东西完整呈现给用户,**让其先改再写**:
 
-- 要插进 `AGENTS.md` 的 `## Agent skills` 段(以及 Claude Code 在用时那行 `@AGENTS.md` 导入)
+- 要插进目标指令文件的 `## Agent skills` 段(以及 Claude Code 在用时那行 `@AGENTS.md` 导入)。目标文件按第 4 节的规则定;既有 `CLAUDE.md` 含实质内容时,**第 4 节的迁移之问先于出草稿**——答案决定块写进哪个文件
 - `docs/agents/issue-tracker.md` 与 `docs/agents/docs-layout.md` 的内容
 
 ## 4. 写入
 
-### 内容一律写 `AGENTS.md`
+### 内容写 `AGENTS.md`
 
-`AGENTS.md` 是跨 agent 的开放标准,三十余种 agent 原生读它;`CLAUDE.md` 只有 Claude Code 读。把内容放进 `CLAUDE.md`,其余 agent 一概读不到,**而反过来没有对称损失**——只读 `CLAUDE.md` 的那一个可以靠一行导入拿到 `AGENTS.md` 的全部内容。所以内容的位置不是二选一,只有一个正确答案。
+`AGENTS.md` 是跨 agent 的开放标准,三十余种 agent 原生读它;`CLAUDE.md` 只有 Claude Code 读。把内容放进 `CLAUDE.md`,其余 agent 一概读不到,**而反过来没有对称损失**——只读 `CLAUDE.md` 的那一个可以靠一行导入拿到 `AGENTS.md` 的全部内容。**唯一例外**:用户在下面的迁移之问上明确拒绝时,内容留在 `CLAUDE.md`。
 
 ### `CLAUDE.md` 只是垫片
 
@@ -66,9 +66,12 @@ Windows 上不得用 symlink 代替导入——创建 symlink 需要管理员权
 
 ### 已有文件时
 
-- **已有 `AGENTS.md`** → 块写进去。Claude Code 在用而 `CLAUDE.md` 缺失时,补上那行导入。
-- **已有 `CLAUDE.md` 且其中已有实质内容**(不止一行导入)→ **先问用户:是否把内容迁往 `AGENTS.md`、`CLAUDE.md` 改为一行导入?** 推荐迁移——单一来源,其余 agent 也读得到。同意 → 迁移后块写进 `AGENTS.md`;拒绝 → 块写进 `CLAUDE.md`,不建、不改 `AGENTS.md`。迁移是内容搬家,**必须逐字搬运,不得顺手改写**。
-- **一律不得让两个文件各存一份内容。** 单一来源加导入;两份并存必然漂移,而没有任何检查会发现。
+按 `CLAUDE.md` 是否含实质内容分派,两种情形**互斥**:
+
+- **`CLAUDE.md` 不存在,或只是一行导入** → 块写进 `AGENTS.md`(不存在就建)。Claude Code 在用而垫片缺失时,补上那行导入。
+- **`CLAUDE.md` 含实质内容**(不止一行导入;**无论 `AGENTS.md` 是否存在**)→ **先问用户:是否把内容迁往 `AGENTS.md`、`CLAUDE.md` 改为一行导入?** 推荐迁移——单一来源,其余 agent 也读得到;两个文件各有内容时漂移已经发生,这一问正是收敛的机会。同意 → 迁移后块写进 `AGENTS.md`;拒绝 → 块写进 `CLAUDE.md`,`AGENTS.md` 保持原样(存在不动、不存在不建)。迁移是内容搬家,**必须逐字搬运,不得顺手改写**。
+
+**不得让两个文件各存一份相同内容。** 单一来源加导入;两份并存必然漂移,而没有任何检查会发现。
 
 **已有 `## Agent skills` 段时就地更新其内容,不得追加出第二段。** 不得改动该段之外的内容。
 
