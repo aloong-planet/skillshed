@@ -1,6 +1,6 @@
 ---
 name: domain-modeling
-description: 建立并磨利项目领域模型:钉术语、维护 CONTEXT.md、按规范落 ADR。当用户要澄清领域术语/记录架构决策,或其他 skill(grilling、to-spec、triage)需要维护领域模型时激活。
+description: 主动建立并磨利项目的领域模型——质疑与敲定术语、写入 CONTEXT.md、把架构决策落成 ADR。用户要澄清领域词汇、消解同义混用、记录架构决策时激活;/grill-with-docs 与 /triage 在需求对齐过程中也会调用它。只是读 CONTEXT.md 取词汇不算本 skill,那是任何 skill 都该有的习惯——本 skill 用于改变模型,不是消费它。
 ---
 
 > Fork 自 mattpocock/skills(2026-07 快照)。修改:ADR-FORMAT 换 MADR minimal(五段+必填备选+三态);CONTEXT-FORMAT 加可选节;新增 docs/adr/README 生成与维护。

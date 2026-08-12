@@ -1,12 +1,12 @@
 ---
 name: to-spec
-description: 把当前对话合成为 spec 并发布到 tracker——不采访用户,纯合成已讨论内容。第 2-3 步;grilling 达成共识后、切 ticket/实现前使用。
+description: 把已经讨论清楚的需求合成为一份 spec,写进 docs/specs/ 长期维护。需求达成共识之后、切 ticket 或动手实现之前使用。它只合成当前对话里已有的内容、不另做采访,因此须与需求讨论处在同一个上下文窗口;需求尚未谈清时该用 /grill-with-docs,不是这个。
 ---
 
 > Fork 自 mattpocock/skills(2026-07 快照)。修改:模板新增「失败模式与边界」节;流程并入发布前设计自审;**spec 改为持久产物**(2026-08-01)。
 
-本 skill 把**当前对话上下文** + 代码库理解合成为一份 spec(即 PRD)。**不采访用户**——只合成已知内容;对话里没有的东西合成不出来,所以必须与 grilling 同一个上下文窗口。
-tracker 与标签约定读 `docs/agents/issue-tracker.md`(没有就先跑 `/setup-matt-pocock-skills`)。
+本 skill 把**当前对话上下文** + 代码库理解合成为一份 spec(即 PRD)。**不采访用户**——只合成已知内容;对话里没有的东西合成不出来,所以必须与 `/grill-with-docs` 的需求对齐处在同一个上下文窗口。
+tracker 与标签约定读 `docs/agents/issue-tracker.md`(没有就先跑 `/repo-scaffold`)。
 
 ## spec 是持久产物(2026-08-01 定案)
 
