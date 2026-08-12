@@ -60,16 +60,14 @@ disable-model-invocation: true
 
 ### `CLAUDE.md` 只是垫片
 
-**仅当 Claude Code 会用于本仓库时才建 `CLAUDE.md`,且它只含 `@AGENTS.md` 一行,不得存放任何内容。**
-
-判据:本 skill 在 Claude Code 中运行即视为在用,除非用户明确说明本仓库不给 Claude Code 使用。**这个条件在本 skill 的求值点上几乎恒为真**——写成条件不是因为它常常为假,而是为了让规则在别处仍然成立:**不得为不在场的 agent 创建指令文件**。同理,若将来在只读 `AGENTS.md` 的 agent 里执行同样的配置动作,不建 `CLAUDE.md`。
+**仅当 Claude Code 会用于本仓库时才建 `CLAUDE.md`,且它只含 `@AGENTS.md` 一行,不得存放任何内容**(本 skill 在 Claude Code 中运行即视为在用;用户明确说明本仓库不给 Claude Code 使用时不建)。
 
 Windows 上不得用 symlink 代替导入——创建 symlink 需要管理员权限或开发者模式,`@AGENTS.md` 导入没有这个前提。
 
 ### 已有文件时
 
-- **已有 `AGENTS.md`** → 块写进去。若 Claude Code 在用而 `CLAUDE.md` 不存在,补上那行导入。
-- **已有 `CLAUDE.md` 且其中已有实质内容**(不止一行导入)→ 块写进 `CLAUDE.md`,**不得擅自把既有内容搬去 `AGENTS.md`**——那是一次跨文件迁移,超出本 skill 的授权。可以告知用户迁移的好处,由其决定。
+- **已有 `AGENTS.md`** → 块写进去。Claude Code 在用而 `CLAUDE.md` 缺失时,补上那行导入。
+- **已有 `CLAUDE.md` 且其中已有实质内容**(不止一行导入)→ **先问用户:是否把内容迁往 `AGENTS.md`、`CLAUDE.md` 改为一行导入?** 推荐迁移——单一来源,其余 agent 也读得到。同意 → 迁移后块写进 `AGENTS.md`;拒绝 → 块写进 `CLAUDE.md`,不建、不改 `AGENTS.md`。迁移是内容搬家,**必须逐字搬运,不得顺手改写**。
 - **一律不得让两个文件各存一份内容。** 单一来源加导入;两份并存必然漂移,而没有任何检查会发现。
 
 **已有 `## Agent skills` 段时就地更新其内容,不得追加出第二段。** 不得改动该段之外的内容。
