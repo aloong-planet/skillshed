@@ -54,12 +54,12 @@ disable-model-invocation: true
 
 ## 4. 写入
 
-**选文件的规则,不得违反**:
+**选文件的规则,不得违反。** 机制:**Claude Code 只读 `CLAUDE.md`,不读 `AGENTS.md`**。把配置写进一个 Claude Code 不读的文件,不会报错——它只是永远不生效,而后续 skill 找不到配置时,人会以为本 skill 没跑过。
 
 - `CLAUDE.md` 存在 → 改它。
-- 否则 `AGENTS.md` 存在 → 改它。
-- 两个都不存在 → **问用户建哪个**,不得替他选。
-- **`CLAUDE.md` 已存在时一律不得新建 `AGENTS.md`**,反之亦然;始终改已经在那儿的那个。
+- **只有 `AGENTS.md` 存在** → 块写进 `AGENTS.md`,**并且必须建一个只含 `@AGENTS.md` 一行的 `CLAUDE.md`**。缺了这个 `CLAUDE.md`,Claude Code 读不到任何配置。不得只改 `AGENTS.md` 就收工。
+- 两个都不存在 → **问用户建哪个**,不得替他选。该仓库同时给读 `AGENTS.md` 的 agent(如 Codex)使用时,推荐上一条的组合:内容放 `AGENTS.md`,`CLAUDE.md` 只做导入。
+- **一律不得让两个文件各存一份内容。** 单一来源加导入,或只用 `CLAUDE.md`;两份并存必然漂移,且没有任何检查会发现。
 
 **已有 `## Agent skills` 段时就地更新其内容,不得追加出第二段。** 不得改动该段之外的内容。
 
