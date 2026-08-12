@@ -166,8 +166,10 @@ wepub preview articles/<slug>/article.md
 
 使用 nano-banana-pro skill，**固定风格**：
 
+密钥从环境变量读取，**不得把真实值写进本文件或任何命令示例**——写进来就会进 git 历史，而历史里的凭据靠改工作区是清不掉的。在 shell 配置或 `.env` 里导出 `GEMINI_API_KEY` 后再执行下面的命令。
+
 ```bash
-GEMINI_API_KEY="***REMOVED***" uv run {nano-banana-pro-baseDir}/scripts/generate_image.py \
+uv run {nano-banana-pro-baseDir}/scripts/generate_image.py \
   --prompt "Sketch illustration, white background. [主体描述]. Colorful watercolor icons floating around: [图标列表]. Pencil sketch outlines with vibrant watercolor splashes on each icon. Simple, warm, hand-drawn style." \
   --filename "~/wechat-publisher/articles/<slug>/images/cover.png" \
   --resolution 1K
