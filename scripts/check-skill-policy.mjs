@@ -18,12 +18,17 @@
 
 import { readFileSync } from 'node:fs'
 import { execSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
+import { dirname, join } from 'node:path'
 
-// Anchor to the repository root before anything else. `git ls-files` scopes itself to the current
-// directory, so running this from a subdirectory would silently scan a subset — measured: from inside a
-// skill directory the gate printed "✓ 0 skills checked, all clauses hold". A green over an empty scope is
-// the exact false-green shape this repository's own false-greens doc warns about.
-process.chdir(execSync('git rev-parse --show-toplevel', { encoding: 'utf8' }).trim())
+// Anchor to the repository THIS SCRIPT LIVES IN, before anything else — derived from the script's own
+// path, never from the caller's cwd. Both wrong anchors were measured, not assumed:
+//   - cwd as-is: `git ls-files` scopes to the current directory, so a run from inside a skill directory
+//     printed "✓ 0 skills checked, all clauses hold" — a green over an empty scope;
+//   - cwd's git toplevel: a run from any *other* repository that happens to contain a SKILL.md audits
+//     that repository and reports green about it, while claiming to be this repository's gate.
+// The gate polices the repo it ships in; the caller's location must not be able to change the subject.
+process.chdir(join(dirname(fileURLToPath(import.meta.url)), '..'))
 
 /** Scope: tracked markdown only. Symlinked third-party skills are link objects in git, so their content
  * is naturally out of scope — this repository only vouches for what it versions. */

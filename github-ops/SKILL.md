@@ -190,9 +190,12 @@ gh issue list -R <owner>/<repo> --state open \
 **首次推送前必须扫凭据,且必须扫全历史,不只工作区。** 判据分两层——模式扫描是筛选器,不是判决:
 
 ```bash
-grep -rniE "(api[_-]?key|secret|token|password|-----BEGIN)" . --exclude-dir=.git   # 筛出候选
-git log --all -S "<候选值>" --oneline                                              # 对每个真值查全历史
+grep -rniE "(api[_-]?key|secret|token|password|-----BEGIN)" . --exclude-dir=.git             # 按名筛
+grep -rnoE "(AIza[0-9A-Za-z_-]{35}|ghp_[A-Za-z0-9]{36}|sk-[A-Za-z0-9]{32,}|AKIA[0-9A-Z]{16}|xox[baprs]-[A-Za-z0-9-]{10,})" . --exclude-dir=.git   # 按值形态筛
+git log --all -S "<真值>" --oneline                                                          # 对每个真值查全历史
 ```
+
+按名与按值两道筛都要跑:凭据未必挂着名字,一个裸值粘贴在示例里,按名的筛选器根本看不见它,后面的历史检查就无米下锅。
 
 `token`、`password` 这类词在正常文档里大量合法出现,「零命中」在文档型仓库不可达——拿它当判据,门禁永远红,教出来的唯一反射是无视门禁。真正的判据:**每一条命中都能当场说清是引用而非真值;说不清的按真值处理;真值零容忍**,并拿它的值跑全历史 `-S`,历史里也有就先清历史(见下)再谈推送。
 
