@@ -89,6 +89,26 @@ Naming the guarantee also exposes design gaps in reverse: when a criterion turns
 
 When the same criterion recurs across several tickets, back it with **one mechanism** and have those tickets reference it, rather than confirming it by hand in each. Once the mechanism exists, verify separately that it can actually fail — a check that has never failed is, on the evidence, indistinguishable from no check.
 
+## The feature checklist
+
+Once the criteria are written, produce one **feature checklist** covering the whole feature, saved beside the tickets at `docs/.workings/<feature-slug>/checklist.md`.
+
+Its rows come from the spec — every entry under 「失败模式与边界」 and every User Story, one row each. Against each row, name **which ticket, and which of that ticket's acceptance criteria, delivers it**. A requirement no ticket answers for is a slicing gap: add or widen a ticket, then re-check.
+
+This mapping is what makes "every ticket is closed, therefore the feature is done" checkable rather than assumed. Step 3's enumeration runs along the change surface and proves no *code* was left unowned; until the requirements are mapped too, a requirement dropped between tickets is invisible from inside any one of them — each ticket meets its own criteria and none of them is the one that failed.
+
+<checklist-template>
+
+# <功能名> — 验收清单
+
+来源:`docs/specs/<slug>.md`
+
+| # | 需求(spec 原文) | 承兑票 | 该票的验收标准 |
+|---|---|---|---|
+| 1 | {「失败模式与边界」或 User Stories 的一条} | {NN} | {criterion} — gate / test / evidence |
+
+</checklist-template>
+
 <local-ticket-template>
 
 # <NN> — <Ticket title>
