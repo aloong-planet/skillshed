@@ -9,7 +9,10 @@
 //   §3 "不得概括正文的规则、流程或步骤"                        → desc-no-flow(箭头链是该违规的实测形态)
 //   §2 "skill 内不得保留「某日发生过某事」式内容"              → body-date-narrative
 //
-// What it cannot check: §1 的「命令式且自带判据」、§2 的「例外须写成触发条件」——语义判断,归 review。
+// What it cannot check: everything not listed above — derive it by inverting this list rather than
+// enumerating clauses here, since an enumeration rots as the body grows and the omitted clause never
+// announces itself. Note also that each check catches a *shape*, not the whole clause: a flow summary
+// written without arrows still lands. Those remaining shapes stay with review.
 //
 // ── Exemptions are predicates, never counts ──
 // Same rule as every gate in this toolset (see review-code/false-greens.md, form seven): an exemption
@@ -51,9 +54,11 @@ const TRIGGER = /激活|使用|必经|跑一次|过一遍|调用|重跑|时用|u
 /** A flow summary in a selector: an arrow chain (the measured shape of this violation). */
 const FLOW = /→[^→\n]*→/
 /** A dated incident narrative: an ISO date sharing a line with narrative markers. Dates alone are
- * provenance ("2026-08-01 定案") and stay legal — narrative words are what turn them into storytelling. */
+ * provenance ("2026-08-01 定案") and stay legal — narrative words are what turn them into storytelling.
+ * Keep the markers generic: a phrase lifted verbatim from one incident ("错三次") only ever matches that
+ * incident's own retelling, so it reads as coverage while detecting nothing. */
 const DATE = /\d{4}-\d{2}-\d{2}/
-const NARRATIVE = /踩过|当时的|后来|连错|错三次|事故经过/
+const NARRATIVE = /踩过|当时的|当初|那次|后来|连错|事故经过/
 
 /** Empty today: the policy quotes forbidden shapes without ISO dates, so nothing needs shielding. An
  * entry added later must state what shape is permitted and why — and it dies (reported below) the moment
