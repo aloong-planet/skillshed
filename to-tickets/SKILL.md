@@ -44,6 +44,12 @@ Give each ticket its **blocking edges** — the other tickets that must complete
 
 Pick the enumeration technique to fit the change (repo-wide search, exhausting a type, walking a directory, listing call sites). One criterion decides whether it counts: **the result must be a reproducible listing, not a recollection.**
 
+**A feature cut into more than one ticket ends with a dedicated closeout ticket** — numbered last, blocked by every other ticket in the feature, and named so nobody has to infer it: the file is `<NN>-feature-closeout.md`, or on a tracker the title opens with `收口:`. **Like wide refactors below, it is an exception to vertical slicing**: it carries the full-feature closeout (see `/features-catalog`) and delivers no product behaviour of its own, so it is verifiable but not demoable.
+
+**Never let "the last ticket" be inferred from numbering.** Blocking edges form a graph, not a line: a feature can have several leaf tickets, and which one finishes last depends on execution order rather than slicing order. A step that runs exactly once, at the end, needs a ticket that declares itself — counting cannot identify one, and whoever guesses wrong skips the step in silence.
+
+A feature cut into a single ticket gets no closeout ticket: with one ticket there is no cross-ticket combination to check, and that ticket's own step 8 already spans its whole range.
+
 **Wide refactors are the exception to vertical slicing.** A **wide refactor** is one mechanical change — rename a column, retype a shared symbol — whose **blast radius** fans across the whole codebase, so a single edit breaks thousands of call sites at once and no vertical slice can land green. Don't force it into a tracer bullet; sequence it as **expand–contract**. First expand: add the new form beside the old so nothing breaks. Then migrate the call sites over in batches sized by blast radius (per package, per directory), each batch its own ticket blocked by the expand, keeping CI green batch to batch because the old form still exists. Finally contract: delete the old form once no caller remains, in a ticket blocked by every migrate batch. When even the batches can't stay green alone, keep the sequence but let them share an integration branch that all block a final integrate-and-verify ticket — green is promised only there.
 
 ### 4. Quiz the user
@@ -123,6 +129,22 @@ This mapping is what makes "every ticket is closed, therefore the feature is don
 - [ ] {criterion} — **gate | test | evidence**: {what guarantees it}
 
 </local-ticket-template>
+
+<closeout-ticket-template>
+
+# <NN> — 收口:全 feature 验收与文档回归
+
+**这是收口票。** 本 feature 的最后一张,承担全 feature 收口,不交付产品行为。
+
+**Blocked by:** 本 feature 的全部其它票(逐一列出编号)。
+
+**Status:** ready-for-agent
+
+- [ ] `checklist.md` 全部条目核销通过 — **evidence**: 逐条写出承兑票与兑现处
+- [ ] `/features-catalog` 的全 feature 收口通过 — **evidence**: 该节各项的结论
+- [ ] {本 feature 特有的跨票组合行为} — **test**: {用例名}
+
+</closeout-ticket-template>
 
 <issue-template>
 
