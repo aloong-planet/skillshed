@@ -72,7 +72,7 @@ Iterate until the user approves the breakdown.
 
 Publish the approved tickets. **How** depends on the tracker `/repo-scaffold` configured — the tickets are the same either way, only the shape of the blocking edges changes:
 
-- **Local files** → write one file per ticket under `docs/.workings/<feature-slug>/issues/<NN>-<slug>.md`, numbered from `01` in dependency order (blockers first). Each file's "Blocked by" lists the numbers/titles it depends on. Use the per-ticket file template below — one ticket per file, never a single combined file.
+- **Local files** → write one file per ticket under `docs/.workings/<slug>/issues/<NN>-<ticket-slug>.md`, numbered from `01` in dependency order (blockers first). Each file's "Blocked by" lists the numbers/titles it depends on. Use the per-ticket file template below — one ticket per file, never a single combined file.
 - **A real issue tracker (GitHub, Linear, …)** → publish one issue per ticket in dependency order (blockers first) so each ticket's blocking edges can reference real identifiers. Use the platform's native blocking / sub-issue relationship where it has one; otherwise set each ticket's "Blocked by" to the blocking issues. Apply the `ready-for-agent` triage label unless instructed otherwise — the tickets are agent-grabbable by construction.
 
 Work the **frontier**: any ticket whose blockers are all done. For a purely linear chain that means top to bottom.
@@ -97,7 +97,7 @@ When the same criterion recurs across several tickets, back it with **one mechan
 
 ## The feature checklist
 
-Once the criteria are written, produce one **feature checklist** covering the whole feature, saved beside the tickets at `docs/.workings/<feature-slug>/checklist.md`.
+Once the criteria are written, produce one **feature checklist** covering the whole feature, saved beside the tickets at `docs/.workings/<slug>/checklist.md`.
 
 Its rows come from the spec — every entry under 「失败模式与边界」 and every User Story, one row each. Against each row, name **which ticket, and which of that ticket's acceptance criteria, delivers it**. A requirement no ticket answers for is a slicing gap: add or widen a ticket, then re-check.
 
@@ -140,7 +140,6 @@ This mapping is what makes "every ticket is closed, therefore the feature is don
 
 **Status:** ready-for-agent
 
-- [ ] `checklist.md` 全部条目核销通过 — **evidence**: 逐条写出承兑票与兑现处
 - [ ] `/features-catalog` 的全 feature 收口通过 — **evidence**: 该节各项的结论
 - [ ] {本 feature 特有的跨票组合行为} — **test**: {用例名}
 
