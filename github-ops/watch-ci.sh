@@ -1,72 +1,151 @@
 #!/usr/bin/env bash
-# 轮询一次 GitHub Actions run 到完成,打印 conclusion + 各 job 结果。
+# Poll GitHub Actions runs until they finish; print each run's conclusion and job results.
 #
-# 为什么用轮询而非 `gh run watch --exit-status`:后者退出码在部分环境会误报成功/失败,
-# 故只信 `gh run view --json status,conclusion`(实测可靠)。
+# Why poll instead of `gh run watch --exit-status`: that command's exit code misreports success or
+# failure in some environments, so this script trusts only `gh run view/list --json status,conclusion`.
 #
-# 无参时**锚定当前 HEAD 的 commit**,等它对应的 run 出现再盯。
-# 机制:"取最近一次 run"在推送后立刻调用有竞态——新 run 还没建出来,抓到的是
-# 上一轮已完成的旧 run,绿得毫无意义。锚定 commit 让"还没有 run"成为可分辨的状态。
+# With no run id the script anchors to the current HEAD commit and covers EVERY run for it — a commit
+# that triggers several workflows is green only when all of them are. Taking "the latest run", or the
+# first run found for the commit, gives a green that does not cover what it appears to cover: right
+# after a push the new run may not exist yet (an old run gets reported), and when several workflows
+# trigger, a short one can finish while a long one is still running.
 #
-# 用法:
-#   watch-ci.sh                     # 锚定 HEAD:等它的 run 出现,盯到完成
-#   watch-ci.sh <run-id>            # 指定 run(跳过锚定)
-#   INTERVAL=15 watch-ci.sh         # 轮询间隔(秒,默认 30)
-#   CREATE_WAIT=300 watch-ci.sh     # 等 run 出现的上限(秒,默认 120)
+# Knowing that all runs exist: runs for one commit are created seconds apart, and workflows chained
+# with `workflow_run` are created only after their trigger finishes. So the run list is re-read on
+# every poll, and the script finishes only after every listed run has completed AND the list stayed
+# unchanged through one further quiet window (SETTLE). A run created later than that window after
+# everything else completed is not covered.
 #
-# 退出码:CI success → 0;失败/取消 → 1;脚本自身错误/等不到 run → 2。
+# Usage:
+#   watch-ci.sh                          # every run for HEAD's commit
+#   watch-ci.sh --workflow <name>        # only that workflow's runs for HEAD's commit
+#   watch-ci.sh <run-id>                 # one specific run (no anchoring)
+#   INTERVAL=15 watch-ci.sh              # poll interval in seconds (default 30)
+#   CREATE_WAIT=300 watch-ci.sh          # how long to wait for the first run to appear (default 120)
+#   SETTLE=60 watch-ci.sh                # quiet window after all runs complete (default 20)
+#   TIMEOUT=3600 watch-ci.sh             # overall limit in seconds (default 2400; notarization is slow)
+#
+# Exit codes: every run concluded success → 0; any other conclusion (failure, cancelled, skipped,
+# timed_out, ...) → 1; script error, no run appearing, or timeout → 2.
 set -uo pipefail
 
+usage() {
+  cat >&2 <<'USAGE'
+Usage: watch-ci.sh [--workflow <name>] | watch-ci.sh <run-id>
+Environment: INTERVAL (30) CREATE_WAIT (120) SETTLE (20) TIMEOUT (2400), all in seconds.
+USAGE
+  exit 2
+}
+
+WORKFLOW=""
+RUN_ID=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --workflow) [ $# -ge 2 ] || usage; WORKFLOW="$2"; shift 2 ;;
+    -h|--help) usage ;;
+    -*) echo "Unknown option: $1" >&2; usage ;;
+    *) [ -z "$RUN_ID" ] || usage; RUN_ID="$1"; shift ;;
+  esac
+done
+if [ -n "$RUN_ID" ] && [ -n "$WORKFLOW" ]; then
+  echo "--workflow applies only when anchoring to HEAD; drop it when passing a run id." >&2; exit 2
+fi
+
 REPO="$(gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null)" || {
-  echo "取 repo 失败(gh 未登录或不在仓库内?)" >&2; exit 2; }
+  echo "Could not resolve the repository (is gh logged in, and is this inside a clone?)" >&2; exit 2; }
 
 INTERVAL="${INTERVAL:-30}"
 CREATE_WAIT="${CREATE_WAIT:-120}"
+SETTLE="${SETTLE:-20}"
+TIMEOUT="${TIMEOUT:-2400}"
+START=$(date +%s)
 
-RUN_ID="${1:-}"
-if [ -z "$RUN_ID" ]; then
-  # ⚠️ --commit 只认**全长** SHA:传短 SHA 不报错、静默返回空(gh 2.97 实测)
-  SHA="$(git rev-parse HEAD 2>/dev/null || true)"
-  if [ -n "$SHA" ]; then
-    DEADLINE=$(( $(date +%s) + CREATE_WAIT ))
-    while :; do
-      RUN_ID="$(gh run list --repo "$REPO" --commit "$SHA" --limit 1 \
-        --json databaseId --jq '.[0].databaseId // empty' 2>/dev/null || true)"
-      [ -n "$RUN_ID" ] && break
-      if [ "$(date +%s)" -ge "$DEADLINE" ]; then
-        echo "HEAD($(git rev-parse --short HEAD))的 run 在 ${CREATE_WAIT}s 内未出现。" >&2
-        echo "可能:还没 push / 该分支不触发 workflow。要盯别的 run 用 watch-ci.sh <run-id>。" >&2
-        exit 2
-      fi
-      sleep 5
-    done
-    echo "锚定 HEAD $(git rev-parse --short HEAD) → run $RUN_ID"
-  else
-    # 兜底(gh 认得 repo 但 git rev-parse 失败,罕见):退回旧行为,但把风险说出来
-    RUN_ID="$(gh run list --repo "$REPO" --limit 1 --json databaseId --jq '.[0].databaseId')" || {
-      echo "取最近 run 失败" >&2; exit 2; }
-    echo "⚠️ 未能锚定 commit(git rev-parse 失败),取最近一次 run——可能是旧的" >&2
-  fi
+# One line per run: id, workflow, event, status, conclusion (tab-separated).
+FIELDS='.[] | [(.databaseId|tostring), .workflowName, .event, .status, (.conclusion // "")] | @tsv'
+
+print_jobs() {
+  # Some gh versions do not support `--json jobs`; the text view's job lines are reliable.
+  gh run view "$1" --repo "$REPO" 2>/dev/null | grep -E "^\s*[✓X✗].*(in [0-9])" || true
+}
+
+report() {
+  # $1: run lines as produced by FIELDS. Prints every run with its jobs; returns 0 only if all succeeded.
+  local ok=0 id wf ev st concl
+  echo ""
+  while IFS="$(printf '\t')" read -r id wf ev st concl; do
+    [ -n "$id" ] || continue
+    echo "== $wf ($ev) run $id: conclusion=$concl"
+    print_jobs "$id"
+    [ "$concl" = "success" ] || ok=1
+  done <<EOF
+$1
+EOF
+  return $ok
+}
+
+if [ -n "$RUN_ID" ]; then
+  echo "Polling run $RUN_ID (repo=$REPO, every ${INTERVAL}s)..."
+  while :; do
+    LINE="$(gh run view "$RUN_ID" --repo "$REPO" --json databaseId,workflowName,event,status,conclusion \
+      --jq "[.] | $FIELDS")" || { echo "Querying the run failed" >&2; exit 2; }
+    [ -n "$LINE" ] || { echo "Querying the run returned nothing" >&2; exit 2; }
+    if [ "$(printf '%s\n' "$LINE" | cut -f4)" = "completed" ]; then
+      report "$LINE" && exit 0 || exit 1
+    fi
+    [ $(( $(date +%s) - START )) -lt "$TIMEOUT" ] || { echo "Timed out: the run has not completed" >&2; exit 2; }
+    sleep "$INTERVAL"
+  done
 fi
 
-echo "轮询 CI run $RUN_ID (repo=$REPO, 每 ${INTERVAL}s)..."
+# `gh run list --commit` accepts only a FULL sha: a short one returns an empty list without an error.
+SHA="$(git rev-parse HEAD 2>/dev/null)" || { echo "Not inside a git checkout; pass a run id instead." >&2; exit 2; }
+SHORT="$(git rev-parse --short HEAD)"
+echo "Anchored to HEAD $SHORT${WORKFLOW:+, workflow \"$WORKFLOW\"} (repo=$REPO, every ${INTERVAL}s)..."
 
-# 最多轮询 ~40min(mac 公证档最慢),防脚本卡死。
-for _ in $(seq 1 80); do
-  RES="$(gh run view "$RUN_ID" --repo "$REPO" --json status,conclusion --jq '.status + "|" + (.conclusion // "")')" || {
-    echo "查询 run 状态失败" >&2; exit 2; }
-  STATUS="${RES%%|*}"
-  CONCL="${RES##*|}"
-  if [ "$STATUS" = "completed" ]; then
-    echo ""
-    echo "完成: conclusion=$CONCL"
-    echo "--- 各 job ---"
-    # gh 部分版本不支持 --json jobs;用文本视图 grep job 行(实测可靠)。
-    gh run view "$RUN_ID" --repo "$REPO" 2>/dev/null | grep -E "^\s*[✓X✗].*(in [0-9])" || true
-    [ "$CONCL" = "success" ] && exit 0 || exit 1
+PREV_IDS=""
+SETTLED=0
+while :; do
+  if [ -n "$WORKFLOW" ]; then
+    RUNS="$(gh run list --repo "$REPO" --commit "$SHA" --workflow "$WORKFLOW" --limit 100 \
+      --json databaseId,workflowName,event,status,conclusion --jq "$FIELDS")" || {
+      echo "Listing runs failed (does the workflow \"$WORKFLOW\" exist?)" >&2; exit 2; }
+  else
+    RUNS="$(gh run list --repo "$REPO" --commit "$SHA" --limit 100 \
+      --json databaseId,workflowName,event,status,conclusion --jq "$FIELDS")" || {
+      echo "Listing runs failed" >&2; exit 2; }
   fi
+  ELAPSED=$(( $(date +%s) - START ))
+
+  if [ -z "$RUNS" ]; then
+    if [ "$ELAPSED" -ge "$CREATE_WAIT" ]; then
+      echo "No run for HEAD $SHORT appeared within ${CREATE_WAIT}s." >&2
+      echo "Possibly not pushed yet, or no workflow triggers for this ref. To watch another run: watch-ci.sh <run-id>." >&2
+      exit 2
+    fi
+    sleep 5
+    continue
+  fi
+
+  IDS="$(printf '%s\n' "$RUNS" | cut -f1 | sort | tr '\n' ' ')"
+  if [ "$IDS" != "$PREV_IDS" ]; then
+    PREV_IDS="$IDS"
+    SETTLED=0
+    echo "Runs for $SHORT:"
+    printf '%s\n' "$RUNS" | awk -F'\t' '{ printf "  %s  %s (%s)\n", $1, $2, $3 }'
+  fi
+
+  PENDING="$(printf '%s\n' "$RUNS" | awk -F'\t' '$4 != "completed"' | wc -l | tr -d ' ')"
+  if [ "$PENDING" -eq 0 ]; then
+    # Done only if the run set is still unchanged after one quiet window.
+    if [ "$SETTLED" -eq 1 ]; then
+      report "$RUNS" && exit 0 || exit 1
+    fi
+    SETTLED=1
+    sleep "$SETTLE"
+    continue
+  fi
+  SETTLED=0
+
+  [ "$ELAPSED" -lt "$TIMEOUT" ] || { echo "Timed out: $PENDING run(s) still not completed" >&2; exit 2; }
   sleep "$INTERVAL"
 done
-
-echo "超时:run 仍未完成(已轮询上限)" >&2
-exit 2
