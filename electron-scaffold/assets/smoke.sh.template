@@ -74,10 +74,17 @@ die() {
 
 # 已有实例只提示不拦截——隔离后共存是特性。按 comm 过滤,pgrep -f 会被
 # 别人 argv 里的路径字符串误报(如某个 pkill 命令行),路径匹配不等于进程本体。
-OTHERS=$(pgrep -f "$PAT|$PACKAGED_PAT" 2>/dev/null | while read -r p; do
-  case "$(ps -o comm= -p "$p" 2>/dev/null)" in
-    *Electron | *"${PACKAGED_PAT##*/}") echo "$p" ;;
+# case 一律留在命令替换外面(此处提成函数):bash 3.2 解析不了嵌在 $( ) 里的
+# case,而 macOS 的 /bin/bash 正是 3.2,整脚本会在语法阶段就失败。语法验证必须用
+# `/bin/bash -n`——PATH 上的 bash 通常是 5.x,它解析得了,于是给出相反结论。
+is_our_electron() {
+  case "$(ps -o comm= -p "$1" 2>/dev/null)" in
+    *Electron | *"${PACKAGED_PAT##*/}") return 0 ;;
   esac
+  return 1
+}
+OTHERS=$(pgrep -f "$PAT|$PACKAGED_PAT" 2>/dev/null | while read -r p; do
+  is_our_electron "$p" && echo "$p"
 done | tr '\n' ' ')
 [ -n "$OTHERS" ] && echo "(检测到已有实例 pid=$OTHERS —— userData 已隔离,互不影响,不会误杀)"
 
