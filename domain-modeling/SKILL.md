@@ -3,7 +3,7 @@ name: domain-modeling
 description: 主动建立并磨利项目的领域模型——质疑与敲定术语、写入 CONTEXT.md、把架构决策落成 ADR。用户要澄清领域词汇、消解同义混用、记录架构决策时激活;/grill-with-docs 与 /triage 在需求对齐过程中也会调用它。只是读 CONTEXT.md 取词汇不算本 skill,那是任何 skill 都该有的习惯——本 skill 用于改变模型,不是消费它。
 ---
 
-> Fork 自 mattpocock/skills(2026-07 快照)。修改:ADR-FORMAT 换 MADR minimal(五段+必填备选+三态);CONTEXT-FORMAT 加可选节;新增 docs/adr/README 生成与维护。
+> Fork 自 mattpocock/skills(2026-07 快照)。与上游的差异:ADR 格式为 MADR minimal 定制版(五段体、备选项必填、三态);CONTEXT 格式带可选节;`docs/adr/README.md` 由本 skill 生成与维护。
 
 # Domain Modeling
 
@@ -23,8 +23,6 @@ description: 主动建立并磨利项目的领域模型——质疑与敲定术�
 - **磨利模糊词**:用户用含糊/多义词时,提议精确的规范词——"你说『账号』,指 Customer 还是 User?这是两个东西。"
 - **拿具体场景压测**:讨论领域关系时发明边界场景,逼出概念之间的精确边界。
 - **与代码互证**:用户陈述某事如何工作时,查代码是否同意;发现矛盾当场摆出——"代码是整单取消,你刚说可以部分取消——哪个对?"
+- **词汇表自身也会腐烂**:CONTEXT.md 里的条目记的是写它那天的裁定。凡本轮要引用某条作为依据的,先核它与当前代码是否仍一致;不一致时当场提出并重新裁定,不得默默按旧条推理——**一条过期的词汇表条目比没有条目更坏**,它带着"已经定过了"的权威。
 - **即时更新 CONTEXT.md**:术语一敲定马上写入,格式见 [CONTEXT-FORMAT.md](./CONTEXT-FORMAT.md)。CONTEXT.md 是**纯词汇表,零实现细节**——不是 spec、不是便签、不是实现决策存放处。
-- **稀疏地 offer ADR**:三门槛**同时满足**才提议(缺一即跳过),经用户确认后按 [ADR-FORMAT.md](./ADR-FORMAT.md) 落盘:
-  1. **难逆转**——之后改主意的代价可观
-  2. **无上下文会费解**——未来读者会问"当年为什么这么搞"
-  3. **真实 trade-off 的产物**——存在真备选,因具体理由选了其一
+- **稀疏地 offer ADR**:门槛**同时满足**才提议(缺一即跳过),经用户确认后按 [ADR-FORMAT.md](./ADR-FORMAT.md) 落盘。门槛清单、收录边界与典型例子都在那里,此处不复述——它是唯一正本。

@@ -1,17 +1,19 @@
 ---
 name: repo-scaffold
-description: 把一个仓库配置成这套 skills 能在其上运作的样子——记录 issue tracker 的位置与用法、文档布局约定,写进 docs/agents/ 并在仓库的 agent 指令文件里挂上索引。在某个仓库首次使用这套 skills 之前跑一次;更换 issue tracker、或要重铺约定时重跑。
+description: 把一个仓库配置成这套 skills 能在其上运作的样子——记录 issue tracker 的位置与用法、文档布局约定,写进 docs/agents/ 并在仓库的 agent 指令文件里挂上索引;建立项目能力声明 capabilities.toml;为仓库接入 lint。在某个仓库首次使用这套 skills 之前跑一次;更换 issue tracker、或要重铺约定时重跑。
 disable-model-invocation: true
 ---
 
 # Repo Scaffold
 
-给仓库铺一次性配置。铺完之后其余 skills 才知道:票往哪里发、文档往哪里放、术语从哪里取。
+给仓库铺一次性配置。铺完之后其余 skills 才知道:票往哪里发、文档往哪里放、术语从哪里取、项目有哪些跨 skill 生效的能力。
 
-**两类配置**:
+**四件事**:
 
 - **Issue tracker** —— 票存在哪、怎么读写。`to-tickets` 与 `to-spec` 读它。
 - **文档布局** —— 哪个目录放什么、哪些是结论、哪些只是过程记录。几乎所有 skill 都读它。
+- **项目能力声明** —— 仓库根的 `capabilities.toml`。允许出现的 ID 及其类型由本 skill 的 [capabilities-registry.md](./capabilities-registry.md) 定义;读写规则以全局指令的「项目能力声明」节为准,本 skill 不重复定义。
+- **Lint** —— 为仓库接入 linter,并在 `capabilities.toml` 里声明。
 
 这是提问驱动的 skill,不是确定性脚本。**必须先探查、再呈现、经用户确认后才写**;不得凭默认值直接落盘。
 
@@ -20,10 +22,12 @@ disable-model-invocation: true
 读当前仓库的实际状态,**不得假设**:
 
 - `git remote -v` —— 是不是 GitHub 仓库、哪一个
-- 仓库根的 `CLAUDE.md` 与 `AGENTS.md` —— 哪个存在、里面是否已有 `## Agent skills` 段
+- 仓库根的 `CLAUDE.md` 与 `AGENTS.md` —— 哪个存在、里面是否已有 `## Agent skills` 段、`AGENTS.md` 是否已有指向 `capabilities.toml` 的引用行
+- 仓库根的 `capabilities.toml` 是否存在
 - 仓库根的 `CONTEXT.md` 与 `CONTEXT-MAP.md`
 - `docs/` 下已有哪些目录(`adr` `specs` `features` `prototypes` `postmortems` `ops` `.workings`)
 - `docs/agents/` —— 本 skill 上次的产出是否已存在
+- 技术栈与包管理器,既有的 linter 配置与 `lint` 脚本,项目的全量验证脚本,`.github/workflows/` 下的检查 workflow
 
 ## 2. 逐节确认
 
@@ -35,7 +39,7 @@ disable-model-invocation: true
 
 `git remote` 指向 GitHub 就推荐 GitHub。否则提供:
 
-- **GitHub** —— 票是仓库的 GitHub Issues,操作规范见 `/github-ops` 第 8 节
+- **GitHub** —— 票是仓库的 GitHub Issues,操作规范见 `/github-ops` 的「Issue 操作」节
 - **本地文件** —— 票是 `docs/.workings/<slug>/issues/` 下的文件,适合无远程或纯个人的仓库
 - **其他**(Jira、Linear 等)—— 请用户用一段话描述工作流,原样记录
 
@@ -45,12 +49,34 @@ disable-model-invocation: true
 
 仅当探查发现 monorepo 迹象(`pnpm-workspace.yaml`、`package.json` 的 `workspaces`、`packages/*` 各自带 `src/`)时,才提供**多上下文**选项。多上下文的格式与推断规则由 `/domain-modeling` 定义,见其 `CONTEXT-FORMAT.md`——**本 skill 不重复定义,只记录选了哪种**。
 
+**C 节 —— 项目能力声明.** 按登记表逐个 ID 处理,`lint` 除外(它由 D 节决定):
+
+- **`capabilities.toml` 已存在** → 不重写它;只核对登记表里的必填配置型项,缺哪项问用户补哪项。
+- **不存在** → 新建:
+  - **配置型项**:逐项问,必须由用户给出值,不得代填,也不得取默认值;推荐答案以登记表为准,用户一个词就能接受。
+  - **开关型项**:逐项问,**推荐答案一律是「未启用」**(`enabled = false`);**不得凭目录或文件推断哪些能力已启用**——接线未完成的仓库,现象与声明给出相反答案。用户答启用的,按登记表填 `source` 与 `enforced-by`。
+
+`AGENTS.md` 里没有指向 `capabilities.toml` 的引用行时,补一行。引用行按 `working-language` 书写,只说「跨 skill 生效的项目事实见仓库根的 `capabilities.toml`」这一个意思,不复述文件内容。
+
+**D 节 —— Lint.** **本节会安装依赖、改动构建脚本与 CI 配置,必须在草稿里单列,经用户确认后才执行。** 按探查结果分派,三种情形**互斥**:
+
+- **已有 linter**(linter 配置与 `lint` 脚本至少有其一) → 不重装、不改已有配置;把现状列给用户确认,缺的那部分(脚本、配置或下文的接线)按下列各条补齐,再写 `lint` 段。
+- **没有 linter,用户同意接入** → 推荐该技术栈公认的 linter,用户确认后安装:TS/JS 推荐 ESLint(flat config)加 typescript-eslint;Rust 用 clippy;Python 用 ruff;其他技术栈先问用户。按下列各条接线。
+- **没有 linter,用户不接入** → `capabilities.toml` 写 `[lint]` 段 `enabled = false`,本节结束。
+
+接入或补齐时:
+
+- 不顺带安装格式化工具——格式是风格偏好,不是对错,要装另外问用户。
+- 规则集、存量报错的处置、接线、`lint` 段的写法与门禁能红的证明,一律按 [lint-adoption.md](./lint-adoption.md) 执行,本节不复述。
+
 ## 3. 出草稿
 
 把要写的东西完整呈现给用户,**让其先改再写**:
 
 - 要插进目标指令文件的 `## Agent skills` 段(以及 Claude Code 在用时那行 `@AGENTS.md` 导入)。目标文件按第 4 节的规则定;既有 `CLAUDE.md` 含实质内容时,**第 4 节的迁移之问先于出草稿**——答案决定块写进哪个文件
 - `docs/agents/issue-tracker.md` 与 `docs/agents/docs-layout.md` 的内容
+- `capabilities.toml` 的新建或补写内容,以及 `AGENTS.md` 的引用行(C 节无需改动任何文件时不列)
+- D 节的接线清单:要安装的依赖、要新建或改动的配置与脚本、CI 步骤,以及存量报错按 lint-adoption.md 第 3 节的分类结果——要修的、按文件范围关闭的(各附约束与退役条件)、逐行豁免并建票的(D 节无需安装或改动任何文件时不列)
 
 ## 4. 写入
 
@@ -69,11 +95,13 @@ Windows 上不得用 symlink 代替导入——创建 symlink 需要管理员权
 按 `CLAUDE.md` 是否含实质内容分派,两种情形**互斥**:
 
 - **`CLAUDE.md` 不存在,或只是一行导入** → 块写进 `AGENTS.md`(不存在就建)。Claude Code 在用而垫片缺失时,补上那行导入。
-- **`CLAUDE.md` 含实质内容**(不止一行导入;**无论 `AGENTS.md` 是否存在**)→ **先问用户:是否把内容迁往 `AGENTS.md`、`CLAUDE.md` 改为一行导入?** 推荐迁移——单一来源,其余 agent 也读得到;两个文件各有内容时漂移已经发生,这一问正是收敛的机会。同意 → 迁移后块写进 `AGENTS.md`;拒绝 → 块写进 `CLAUDE.md`,`AGENTS.md` 保持原样(存在不动、不存在不建;既有 `## Agent skills` 段的就地更新除外,见下)。迁移是内容搬家,**必须逐字搬运,不得顺手改写**。
+- **`CLAUDE.md` 含实质内容**(不止一行导入;**无论 `AGENTS.md` 是否存在**)→ **先问用户:是否把内容迁往 `AGENTS.md`、`CLAUDE.md` 改为一行导入?** 推荐迁移——单一来源,其余 agent 也读得到;两个文件各有内容时漂移已经发生,这一问正是收敛的机会。同意 → 迁移后块写进 `AGENTS.md`;拒绝 → 块写进 `CLAUDE.md`,`AGENTS.md` 除 C 节的引用行外保持原样(存在不动;不存在时只为引用行新建;既有 `## Agent skills` 段的就地更新除外,见下)。迁移是内容搬家,**必须逐字搬运,不得顺手改写**。
+
+**`capabilities.toml` 的引用行一律写在 `AGENTS.md`,不随 `## Agent skills` 段的去向走**——全局指令要求没载入任何 skill 的 agent 也能从 `AGENTS.md` 找到它。
 
 **不得让两个文件各存一份相同内容。** 单一来源加导入;两份并存必然漂移,而没有任何检查会发现。
 
-**`## Agent skills` 段全仓库只许有一段。** 已有段时在它所在的那个文件里就地更新,不得在另一个文件另写一段——**段的既有位置优先于上面的分派**;仅当用户同意迁移时,段随内容一并迁入 `AGENTS.md`。没有段时才按分派新写。不得改动该段之外的内容。
+**`## Agent skills` 段全仓库只许有一段。** 已有段时在它所在的那个文件里就地更新,不得在另一个文件另写一段——**段的既有位置优先于上面的分派**;仅当用户同意迁移时,段随内容一并迁入 `AGENTS.md`。没有段时才按分派新写。除迁移与 C 节的引用行外,不得改动该段之外的内容。
 
 段落形态:
 
@@ -99,10 +127,10 @@ Windows 上不得用 symlink 代替导入——创建 symlink 需要管理员权
 
 ## 5. 不创建目录
 
-**只写上面那几个文件,不得预先创建 `docs/specs/`、`docs/features/`、`docs/prototypes/` 等空目录。** 各目录由拥有它的 skill 在首次真正产出时创建——空目录进不了 git,而提前铺出来会让人以为里面本该有东西。
+**除 D 节经用户确认的 lint 接线外,只写上面那几个文件,不得预先创建 `docs/specs/`、`docs/features/`、`docs/prototypes/` 等空目录。** 各目录由拥有它的 skill 在首次真正产出时创建——空目录进不了 git,而提前铺出来会让人以为里面本该有东西。
 
 同理:探查发现 `CONTEXT.md`、`docs/adr/` 不存在时**静默继续**,不得提示缺失、不得建议提前创建。它们由 `/domain-modeling` 在术语或决策真正敲定时懒创建。
 
 ## 6. 收尾
 
-告诉用户配置已写好、哪些 skill 会读它,以及 `docs/agents/*.md` 可以直接手改——只有换 tracker 或要重铺时才需要重跑本 skill。
+告诉用户配置已写好、哪些 skill 会读它,以及 `docs/agents/*.md` 与 `capabilities.toml` 可以直接手改——只有换 tracker 或要重铺时才需要重跑本 skill;`capabilities.toml` 的更新时机按全局指令的「项目能力声明」节,不经本 skill。

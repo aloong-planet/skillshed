@@ -10,10 +10,10 @@ when_to_use: "Activate for any git branch creation / commit / push / PR / releas
 
 ## 1. 绝不加 AI 署名(硬性,覆盖所有产出)
 
-**任何面向 GitHub 的文本都不带 AI/co-author 痕迹。** 与默认习惯相反——默认会加 `Co-Authored-By` 和 `Generated with Claude Code`,这里**必须主动全部省略**。
+**任何面向 GitHub 的文本都不带 AI/co-author 痕迹。** 与默认习惯相反——默认会加 `Co-Authored-By` 和 `Generated with <工具名>`(Claude Code、Codex 等),这里**必须主动全部省略**。
 
-- **commit message**:标题+正文,不加 `Co-Authored-By: ...`、不加 `🤖 Generated with [Claude Code]` 之类尾注。
-- **committer / author**:不署 Claude/AI 身份,用仓库现有 git 用户。
+- **commit message**:标题+正文,不加 `Co-Authored-By: ...`、不加 `🤖 Generated with [Claude Code]`、`Generated with Codex` 之类尾注。
+- **committer / author**:不署任何 AI 工具的身份,用仓库现有 git 用户。
 - **PR 描述 / body**:不加 co-author、不加 Generated-with。
 - **Release notes / tag message / issue 评论**:同样不加。
 - 一句话:**GitHub 上的产出只写正常技术内容,零 AI 署名。**
@@ -27,6 +27,8 @@ git log origin/master..HEAD --format=%B | grep -inE "co-authored|generated with"
 
 这里不必先 `fetch`:`origin/master` 陈旧只会让范围**变大**(多查几条),不会漏查——与第 2 节的基线自检方向相反,那边陈旧会导致误判。
 
+**这条命令只覆盖 commit message。** PR 描述、release note、issue 与评论不在 git 历史里,自检查不到——它们在**提交给平台之前**逐份自查:正文里不得出现 co-author 行、`Generated with` 尾注、或任何指向 AI 工具的署名。判据:每份将要发到平台的文本,发出前都能说出"已看过、无署名"。
+
 ## 2. 分支永远从最新 master 拉(硬性)
 
 `git checkout -b` 之前**必须**先把基线摆正:
@@ -37,6 +39,7 @@ git checkout -b <type>/<slug>          # 再拉新分支
 ```
 
 **这条对一切分支生效**——feature 分支、配 CI、修工具链、改文档、hotfix,全都算。不要因为"这次只是顺手配个 CI"就在当前分支上直接 `-b`。
+**本节一律以 `master` 指代该仓库的默认分支**;实际叫别的名字时(`main`、`trunk`),把命令里的 `master` 换成它——先查清默认分支名再执行,别照抄。
 
 **开 PR 前自检基线**(比事后补救便宜得多):
 
@@ -48,25 +51,37 @@ git log --oneline origin/master..HEAD   # 本分支相对 master 到底带了哪
 这个列表必须与 PR 描述**一一对应**。数量对不上就是基线错了,**别直接开 PR**:
 
 - **分支还没推过** → 直接 `git rebase origin/master`,零风险。
-- **分支已经推过** → rebase 后必须 force push,那是破坏性操作,走第 5 节的流程(先备份、告知代价、经确认)。改基线的成本在推送那一刻就翻倍了,这也是为什么这条检查要放在**开 PR 前**。
+- **分支已经推过** → rebase 后必须 force push,那是破坏性操作,走第 6 节的流程(先备份、告知代价、经确认)。改基线的成本在推送那一刻就翻倍了,这也是为什么这条检查要放在**开 PR 前**。
 
-**机制:在未合并的分支上再拉分支,新 PR 会静默带上旧分支的全部 commit。** PR 描述只写新改动,squash 合并后 master 上落下一个标题只说小改动、内容却是整批的 commit。代码可以全对、CI 全绿,坏的是**历史可读性**——`git log` 与 bisect 追某个改动的来历时,会被指到名不副实的 commit 上;修复要 force push 默认分支(第 5 节的破坏性操作),代价远高于事前敲那两条命令。
+**机制:在未合并的分支上再拉分支,新 PR 会静默带上旧分支的全部 commit。** PR 描述只写新改动,squash 合并后 master 上落下一个标题只说小改动、内容却是整批的 commit。代码可以全对、CI 全绿,坏的是**历史可读性**——`git log` 与 bisect 追某个改动的来历时,会被指到名不副实的 commit 上;修复要 force push 默认分支(第 6 节的破坏性操作),代价远高于事前敲那两条命令。
 
 **合并之后**:下一个分支开工前再 `git checkout master && git pull` 一次,别拿合并前的本地 master 当基线。
 
-## 3. 发版 / Release 标准
+**提交前核对暂存区的实际内容,不只看文件名**:同一工作区可能有另一个会话或另一件事在并行改动,按文件 `add` 会把不属于本次的改动一并带走,而 commit 只显示文件名、看不出里面混了什么。判据:提交前逐处过一遍暂存的改动内容,每一处都能说出它属于本次的哪条需求;说不出的先撤出暂存区。
+
+## 3. 合并需要人明确授权(硬性)
+
+**开 PR 不构成合并授权。** 开完 PR 就停下,等用户明确说合并再执行——CI 全绿、检查全过、"看起来没问题"都不是授权,它们是合并的**前置条件**而非**批准**。
+
+- 授权只认用户当轮的明确表态;此前某一轮说过"合了吧"不覆盖这一轮的新 PR。
+- 未获授权时不得执行合并动作,也不得为"顺便"而合并任何其它已开 PR。
+- 获授权后:默认 squash 合并保持默认分支线性、合并后删远程分支;合并方式有特殊需要用户会说明。
+
+判据:执行合并前说得出用户是在哪一句话里批准了**这一个** PR。
+
+## 4. 发版 / Release 标准
 
 版本号语义化(`vMAJOR.MINOR.PATCH`);先改 `package.json` version,再打同名 tag。**tag 名决定 CI 行为**:
 
 | tag 形态 | 含义 | CI 产出 | GitHub 标记 |
 |---|---|---|---|
-| **干净 tag**(如 `v0.6.0`) | 正式版 | mac 签名+**公证**(首次打开确认一次) | **Latest** |
+| **干净 tag**(如 `v0.6.0`) | 正式版 | mac 签名+**公证**,必须通过公证门禁才可发布(首次打开确认一次) | **Latest** |
 | **预发布后缀**(`-beta`/`-rc`/`-alpha`/`-dev`) | 迭代版 | mac 只签名(右键打开) | **Pre-release** |
 
 - 公证慢(等 Apple 2–30min)→ 只有干净 tag(正式版)才公证;快速迭代用预发布后缀。
-- **mac 产出多个架构 DMG**(项目若配了 `arch: [universal, arm64, x64]`):正式版每个架构都是独立 `.app`,**公证按包各跑一次**(等待 ×产物数,正式版 CI 更久)。CI 产物 glob 用 `*.dmg` 通配,自动兼容,无需改。发 note 时下载表要按架构列全(见模板)。
+- **mac 产出多个架构 DMG**(项目若配了 `arch: [universal, arm64, x64]`):正式版每个架构都是独立 `.app`,**公证按包各跑一次**(等待 ×产物数,正式版 CI 更久)。每个最终 DMG 都是独立交付物,**必须分别通过签名、公证、staple 与外层 Gatekeeper 评估;任一必需产物未通过,不得宣称整版已公证**。CI 产物 glob 用 `*.dmg` 通配,自动兼容,无需改。发 note 时下载表要按架构列全(见模板)。
 - Windows 不涉及公证,照常打包。
-- **通用细则**(三档与 fail-closed、凭据变量、门禁断言、产物验收、上传顺序)见 `electron-scaffold` 的 [macos-signing.md](../electron-scaffold/macos-signing.md)。
+- **通用细则**(CI 分档与 fail-closed、凭据变量、门禁断言、产物验收、上传顺序)见 `electron-scaffold` 的 [macos-signing.md](../electron-scaffold/macos-signing.md)。
 - **本项目的实际取值与流程**(签名身份、secret 名、脚本名、产物命名)以项目自己的 macOS 签名/公证**运维手册**为准(通常在 `docs/ops/` 下)。**按类别找,不要记文件名**——项目重组文档时路径会变,写死的指针必然腐烂。
 
 ### Release note 必填(不留空)
@@ -77,24 +92,25 @@ git log --oneline origin/master..HEAD   # 本分支相对 master 到底带了哪
 - **不用任何 emoji / 图标**,正文纯文字。开头"版本说明"1–3 句概括,再分组(新功能/优化/修复/破坏性变更,按需删)。
 - **Release Title 只写「版本号-类型」,不带亮点说明**:正式版(干净 tag)= `<tag>-release`(如 `v1.2.0-release`);预发布(`-beta`/`-rc`/`-alpha`/`-dev` 后缀 tag)= 直接用带后缀的 tag 名(如 `v1.2.0-beta`)。亮点/变更/下载全部放正文,标题不重复。
 - **桌面 app 必写"下载与安装"**:各平台产物文件名 + 安装版/免安装版区别 + 首次安装提示。
-- **macOS 公证/非公证二选一**——判断依据是本次 **tag 形态**:干净 tag=已公证(首次打开确认一次)用公证版那段;预发布后缀 tag=未公证用非公证版那段(含 `xattr -dr com.apple.quarantine` 去隔离命令)。删掉不适用的整段。
+- **macOS 公证/非公证二选一**——**tag 形态只决定期望**,不证明结果:干净 tag 仅当公证门禁与第 5 节第 6 步的下载产物验收都通过,才用公证版那段(首次打开确认一次);**不得仅凭 tag 名宣称已公证**。预发布后缀 tag=未公证,用非公证版那段(含 `xattr -dr com.apple.quarantine` 去隔离命令)。删掉不适用的整段。
 - 结尾放 `Full Changelog: .../compare/<上一版>...<本次>` 对比链接。
 - note/title/tag message 同样**无 AI 署名**(第 1 节)。
 - **顶部"版本说明"(1–3 句人话摘要:本版最大变化 + 用户好处)由用户提供或确认**——这是收益叙事,不要自己编;其余模板部分(下载表/安装提示/公证段/changelog 链接)自动填好。
 
-## 4. 标准发版流程(每步验证,不跳步)
+## 5. 标准发版流程(每步验证,不跳步)
 
 1. 改 `package.json` version。
 2. **本地验证全绿**再发:typecheck + test + build(用项目实际脚本)。
-3. commit(**无 AI 署名**)+ push。**默认分支若配了 required status checks,直推会被拒**(见第 7 节),此时版本号变更也走 PR,合并后再打 tag。
+3. commit(**无 AI 署名**)+ push。**默认分支若配了 required status checks,直推会被拒**(见第 8 节),此时版本号变更也走 PR,合并后再打 tag。
 4. 打 tag + push tag(干净 tag=正式版触发公证;`-beta` 等=迭代版)。tag 推送不受分支规则影响。
-5. **盯 CI 到完成**:跑本 skill 自带的 `watch-ci.sh`(用法与原理见第 6 节)。不得手写轮询循环。
+5. **盯 CI 到完成**:跑本 skill 自带的 `watch-ci.sh`(用法与原理见第 7 节)。不得手写轮询循环。
 6. **下载 Release 产物独立验证**(不只信 CI 绿):
    - mac 签名与公证:`spctl --assess --type execute --verbose <app>` 应 `accepted / Notarized Developer ID`;签名身份 `codesign -dv`。
    - **mac 票据装订:`spctl` 与 `codesign` 都查不出,必须挂载 DMG 对里面的 `.app` 单独跑 `xcrun stapler validate`。**
      `spctl --assess` 在联网时会通过在线查票而成功,分辨不出票据有没有装订上;票据只钉在 DMG 上的话,用户拖出 app 后首次启动断网即被拦下。
    - **装上后看到"是从互联网下载的 App,确定要打开吗"是正常的,不是验收失败**——判据是措辞,不是有没有弹框。
    - 以上三条的命令、原理与对照定位法,连同凭据配置、CI 分档、门禁断言,统一见 **`electron-scaffold` 的 [macos-signing.md](../electron-scaffold/macos-signing.md)**(第 6 节是发版验收,第 4 节是 CI 分档,第 7 节是上传顺序)。**该文档是单一出处,此处只留判据、不复制命令。**
+   - **外层 DMG 本身也要验**(签名、DMG 自身的票据、Gatekeeper 对打开 DMG 的评估、镜像完整性),**只验挂载后的内层 App 不足以证明 DMG 可安全分发**——DMG 自身没票据时,双击打开即被判 rejected(机制见 macos-signing.md 第 1 节)。
 7. **写 Release note(约定:CI 验证通过后主动做,不等用户开口)**:
    - CI `conclusion=success` 且第 6 步产物验证通过后,**主动提醒用户**"该更新 release note 了"。
    - 照 `release-note-template.md` 拟稿:按本次 tag 形态选公证/非公证段,自动填好下载表/安装提示/changelog 链接等固定部分。
@@ -102,14 +118,14 @@ git log --oneline origin/master..HEAD   # 本分支相对 master 到底带了哪
    - 用户确认后用 `gh release edit <tag> --title "<tag>-release" --notes-file <文件>` 更新(预发布 tag 标题直接用带后缀的 tag 名)。note/title **无 AI 署名**。
 8. 需要时清理测试 tag/Release/Actions 记录,保持版本列表干净。
 
-## 5. 改历史 / 破坏性操作(force push、删 tag/Release、rewrite)
+## 6. 改历史 / 破坏性操作(force push、删 tag/Release、rewrite)
 
 破坏性,必须:
 1. **先备份**(备份分支推到远程)。
 2. 明确告知用户代价(SHA 全变、tag/Release 受影响、不可逆),得到确认再做。
 3. 每步验证,完成并验证 OK 后才删备份。
 
-## 6. 盯 CI 的可靠方式
+## 7. 盯 CI 的可靠方式
 
 **先看这条:用本 skill 自带的 `watch-ci.sh`,不要手写轮询循环。** 命令与用法在本节末尾。
 
@@ -128,20 +144,21 @@ gh run view <run-id> --repo <owner/repo> --json status,conclusion --jq '"\(.stat
 ```
 `status=completed` 且 `conclusion=success` 才算成功。
 
-**用本 skill 自带的 `watch-ci.sh`**(本 skill 目录内),别每次手写轮询循环:
+**用本 skill 自带的 `watch-ci.sh`**(本 skill 目录内,下文以 `<skill-dir>` 代指该目录;调用时换成本 skill 实际所在的目录),别每次手写轮询循环:
 ```bash
-~/.claude/skills/github-ops/watch-ci.sh             # 锚定当前 HEAD:等它的 run 出现再盯到完成
-~/.claude/skills/github-ops/watch-ci.sh <run-id>    # 指定 run
-INTERVAL=15 ~/.claude/skills/github-ops/watch-ci.sh # 轮询间隔(秒,默认 30)
-CREATE_WAIT=300 ~/.claude/skills/github-ops/watch-ci.sh # 等 run 出现的上限(秒,默认 120)
+<skill-dir>/watch-ci.sh             # 锚定当前 HEAD:等它的 run 出现再盯到完成
+<skill-dir>/watch-ci.sh <run-id>    # 指定 run
+INTERVAL=15 <skill-dir>/watch-ci.sh # 轮询间隔(秒,默认 30)
+CREATE_WAIT=300 <skill-dir>/watch-ci.sh # 等 run 出现的上限(秒,默认 120)
 ```
 无参时按 HEAD 的 commit 锚定:「取最近一次 run」在推送后立刻调用有
 竞态——新 run 未建出来时抓到的是上一轮旧 run,绿得毫无意义。HEAD 没有 run(没推送/不触发
 workflow)时明确报错退出,不退回"最近一次"。⚠️ `gh run list --commit` 只认**全长** SHA,
 短 SHA 静默返回空。
 在目标仓库目录下运行即可(repo 靠 `gh` 从当前目录自动推断,脚本无任何项目硬编码)。轮询 conclusion 到 completed,打印 conclusion+各 job;退出码 CI success→0 / 失败→1 / 脚本错误→2。可后台跑,完成自动通知。
+**不得把它接进管道**:判据是调用行里 `watch-ci.sh` 之后不出现 `|`——管道把整条命令的退出码换成末段命令的,上面那三个码当场丢失,而合并要靠它们挡住。要截断输出就先重定向到文件,取到退出码之后再读文件(机制与「用退出码数组补救」的二次陷阱见 review-code/false-greens.md 形态六)。
 
-## 7. CI 检查门禁与分支保护
+## 8. CI 检查门禁与分支保护
 
 **细则见 [checks-gate.md](./checks-gate.md)。**
 
@@ -153,9 +170,9 @@ workflow)时明确报错退出,不退回"最近一次"。⚠️ `gh run list --c
 - **门禁必须证明「能红」**:一道从未失败过的门禁与没有门禁在证据上等价。本地能完整跑通的门禁先本地变异(改—跑—直接捕获退出码—还原);只有依赖 CI 环境才能复现的才开一次性 PR,变异要打不同步骤并预写预期失败步骤,验完关闭删分支、绝不合并。
 - **GitHub 侧三项缺一不生效**:Enforcement 改 Active(默认 Disabled)、Target branches 非空、添加 check 名(取 job 的 `name`,未设则取 job id)。**只选质量门禁那条**,别把 Cloudflare Pages / Vercel 这类部署检查设为必需——不触及该目录的 PR 会因它从不运行而永久卡住。
 - **UI 勾了不等于存成功**,用 `gh api repos/<owner>/<repo>/rulesets/<id>` 核验 enforcement / include / rules / checks 四项。
-- **门禁生效后直推默认分支会被拒**,发版的版本号变更改走 PR(见第 4 节第 3 步);tag 推送不受影响。
+- **门禁生效后直推默认分支会被拒**,发版的版本号变更改走 PR(见第 5 节第 3 步);tag 推送不受影响。
 
-## 8. Issue 操作
+## 9. Issue 操作
 
 `gh` 从**当前工作目录**推断仓库。因此在目标仓库的 clone 之外操作时,每条命令都必须显式带
 `-R <owner>/<repo>`——在 A 仓库的工作目录里往 B 仓库建票是常态,漏掉 `-R` 不会报错,票会静默
@@ -185,7 +202,7 @@ gh issue list -R <owner>/<repo> --state open \
 
 票的标题、正文与评论同样受第 1 节约束:**无 AI 署名**。
 
-## 9. 新建仓库与首次推送
+## 10. 新建仓库与首次推送
 
 **首次推送前必须扫凭据,发现环节本身就要覆盖全历史**——凭据风险在历史里,只扫工作区的发现流程与这条机制自相矛盾:加了又删的值恰好只存在于历史 blob 中,工作区扫描对它双目失明。
 
@@ -220,10 +237,17 @@ grep -rniE "(api[_-]?key|secret|token|password|-----BEGIN)" . --exclude-dir=.git
 | 建空仓库,内容后推 | 将要提交的**工作区** |
 | 已有本地 git 历史的目录接 remote | **历史**——工作区可能早已干净,这正是最容易漏的一种 |
 
-**无 remote 是重写历史的零代价窗口**:改历史的成本在推送那一刻翻倍(第 5 节)。已有本地历史的目录接 remote 前,该清的必须现在清(`git filter-repo --replace-text`),清完用上面两条判据复验。
+**无 remote 是重写历史的零代价窗口**:改历史的成本在推送那一刻翻倍(第 6 节)。已有本地历史的目录接 remote 前,该清的必须现在清(`git filter-repo --replace-text`),清完用上面两条判据复验。
 
 其余首推检查:
 
 - `.gitignore` 先于首个 commit 就位——否则第一个提交就把不该带的固化进历史。
 - 可见性按内容定:含个人工作习惯、内部约定、真实项目细节的默认私有;要公开,先过上面的凭据扫描并复核内容。
 - **仓库同时是运行时目录时**(如 agent 的配置目录本身就是仓库),破坏性 git 操作会当场改变运行中的行为——`filter-repo` / `reset --hard` 会吃掉未提交改动、把文件退回 HEAD。操作前先全量备份(含未跟踪文件),并确认没有会话正依赖该目录。
+
+
+## 11. 面向 GitHub 的文字用仓库工作语言
+
+**commit message、PR 标题与正文、issue 及其评论,凡在 `working-language` 管辖范围内的,一律用该语言书写**——值与管辖范围以 `capabilities.toml` 及 `/repo-scaffold` 的能力登记表为准,读写规则见全局指令的「项目能力声明」节,本节不复述。该项未声明时按全局指令停下问用户,不得自行选语言。引用的标识符、命令、文件路径与报错原文按原样保留,不翻译。
+
+判据:每份将要提交或发到平台的文字,发出前都能说出「已核对,语言与 `working-language` 一致」。
