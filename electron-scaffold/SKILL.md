@@ -1,7 +1,7 @@
 ---
 name: electron-scaffold
 description: "Electron(electron-builder)桌面项目该一次性铺好的基础设施清单,覆盖安全基线、打包产物治理、macOS 系统权限、分发渠道命名、签名与公证、本地自动化测试基建。装一次以后自动生效的东西,不是日常操作。"
-when_to_use: "初始化 Electron + electron-builder 项目时逐项过一遍。此外安全基线须在这些时刻重过:改动主进程的窗口/会话/协议/IPC 配置、升级 Electron 主版本、新增渲染外部内容的能力。macOS 权限弹不出来、app 不出现在系统隐私列表、首次启动被 Gatekeeper 拦下时也查本 skill。日常打包发版不走这里——见 /github-ops。"
+when_to_use: "初始化 Electron + electron-builder 项目时逐项过一遍。此外安全基线须在这些时刻重过:改动主进程的窗口/会话/协议/IPC 配置、升级 Electron 主版本、新增渲染外部内容的能力。macOS 权限弹不出来、app 不出现在系统隐私列表、首次启动被 Gatekeeper 拦下,或签名公证失败(DMG 被拒、提示「已损坏」「无法验证开发者」、`no usable signature`、票据缺失)时也查本 skill。日常打包发版不走这里——见 /github-ops。"
 ---
 
 # Electron 新项目基础设施(scaffold)
@@ -194,6 +194,7 @@ DMG 侧另行提交并 staple 最终 DMG(自写脚本或打包器插件均可)�
 
 | 节 | 内容 | 建项目时重点看 |
 |---|---|---|
+| 0 | 动手前先坐实:已装版本、workflow 全程、产物全集、真实产物 | ● |
 | 1–2 | 三个动作各解决什么、固定顺序与硬约束 | ● |
 | 3 | 凭据与证书:五个标准变量、`CSC_LINK` 空值坑、导出命令、本地前置 | ● |
 | 4 | CI 分档与 fail-closed、凭据注入位置 | ● |
