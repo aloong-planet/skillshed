@@ -1,10 +1,12 @@
 # 项目能力登记表
 
-`capabilities.toml` 里允许出现的全部 ID,以及每个 ID 的类型、取值格式与含义。本文是 ID 定义的唯一正本;读写规则(必须先读、缺失怎么处理、不得转述来源)以全局指令的「项目能力声明」节为准,此处不复述。
+`capabilities.toml` 里允许出现的全部 ID,以及每个 ID 的形态、字段、取值类型、默认值与含义。本文是 ID 定义的唯一正本;读写规则(必须先读、缺失即未确认、不得转述来源)以全局指令的「项目能力声明」节为准,此处不复述。
 
-## 两种类型
+## 两种形态
 
-**开关型**:写成以 ID 命名的段,只允许下列三个字段,不得增加其他字段。
+**顶层值**:写成顶层键值 `ID = 值`,写在所有段之前;值的取值类型按下方各 ID 的定义。
+
+**段**:写成以 ID 命名的段,基础字段只有下列三个;**除基础字段外,只允许该 ID 的定义里列出的字段与子表**,不得增加其他字段。
 
 ```toml
 [lint]
@@ -14,21 +16,62 @@ enforced-by = ["pnpm lint"]
 ```
 
 - `enabled`:布尔,必填。
-- `source`:该能力权威定义所在的仓库相对路径,字符串或字符串数组;`enabled = true` 时必填。
-- `enforced-by`:守住它的命令,字符串数组,skill 执行验证时照它跑;`enabled = true` 时必填。没有任何命令守它时写 `[]`,表示它靠人守。
+- `source`:该能力权威定义所在的仓库相对路径,路径或路径数组;`enabled = true` 时必填。
+- `enforced-by`:守住它的命令,命令数组,skill 执行验证时照它跑;`enabled = true` 时必填。没有任何命令守它时写 `[]`,表示它靠人守。
 
-**配置型**:写成顶层键值 `ID = 值`,写在所有段之前;值的格式按下表各 ID 的定义。
+## 取值类型
+
+| 类型 | TOML 写法 | 约束 |
+|---|---|---|
+| 布尔 | `true` / `false` | — |
+| 路径 | 字符串 | 仓库相对路径 |
+| 命令 | 字符串 | 在仓库根执行的完整命令 |
+| 命令数组 | 字符串数组 | 每项是一条命令 |
+| 语言标签 | 字符串 | BCP 47 语言标签(如 `"en"`、`"zh-Hans"`) |
+| 字符串表 | 内联表 | 键与值都是字符串 |
+
+## 默认值
+
+下表每个 ID 都有一个默认值,它是 `/repo-scaffold` 询问时给出的推荐答案(问法见 `/repo-scaffold` 的 C 节)。文件里缺失的 ID 如何处理,以全局指令的「项目能力声明」节为准。
+
+段形态的默认值一律是 `enabled = false`。
 
 ## ID 一览
 
-| ID | 类型 | 取值,或 `enabled = true` 的含义 | 必填 |
+| ID | 形态 | 取值类型,或 `enabled = true` 的含义 | 默认值 |
 |---|---|---|---|
-| `working-language` | 配置型 | 仓库工作语言的 BCP 47 语言标签(如 `"en"`、`"zh-Hans"`)。**询问时的推荐答案是 `"en"`**。管辖源码注释、工程文档、测试名、终端输出、commit message、PR 标题与正文、issue;不管辖面向用户的产品文案与 release note | 是 |
-| `i18n` | 开关型 | 产品界面支持多种语言,用户可见文案集中在字典里;`source` 指字典目录 | 否 |
-| `enumeration-wording-gate` | 开关型 | 有门禁检查文案不把可枚举维度的成员当全集列出;覆盖哪些维度以门禁脚本里的规则为准,`source` 指门禁脚本 | 否 |
-| `lint` | 开关型 | 有 linter 且已接入验证网关;`source` 指 linter 配置文件 | 否 |
-| `e2e-suite` | 开关型 | 有端到端测试且已接入验证网关;`source` 指端到端测试的配置文件 | 否 |
-| `theming` | 开关型 | 界面颜色由主题变量驱动,且至少有一个主题维度(明暗、多套配色、对比度等);有哪些维度以主题样式文件为准,`source` 指主题样式文件 | 否 |
+| `working-language` | 顶层值 | 语言标签:仓库工作语言。管辖源码注释、工程文档、测试名、终端输出、commit message、PR 标题与正文、issue;不管辖面向用户的产品文案与 release note | `"en"` |
+| `i18n` | 段 | 产品界面支持多种语言,用户可见文案集中在字典里;`source` 指字典目录 | `enabled = false` |
+| `enumeration-wording-gate` | 段 | 有门禁检查文案不把可枚举维度的成员当全集列出;覆盖哪些维度以门禁脚本里的规则为准,`source` 指门禁脚本 | `enabled = false` |
+| `lint` | 段 | 有 linter 且已接入验证网关;`source` 指 linter 配置文件 | `enabled = false` |
+| `e2e-suite` | 段 | 有端到端测试且已接入验证网关;`source` 指端到端测试的配置文件 | `enabled = false` |
+| `theming` | 段 | 界面颜色由主题变量驱动,且至少有一个主题维度(明暗、多套配色、对比度等);有哪些维度以主题样式文件为准,`source` 指主题样式文件 | `enabled = false` |
+| `macos-distribution` | 段 | 项目对外分发 macOS 安装包,签名与公证要求按 electron-scaffold 的 [macos-signing.md](../electron-scaffold/macos-signing.md) 的分发政策;`source` 指项目的签名与公证运维手册,`enforced-by` 填发布门禁命令。专属子表见下 | `enabled = false` |
+
+### `macos-distribution` 的专属子表
+
+`enabled = true` 时必须写下列两个子表,子表名固定,不得增删:
+
+| 子表 | 用途 | 字段 |
+|---|---|---|
+| `[macos-distribution.profiles.local]` | 本地打包 | `command`(命令,必填)、`env`(字符串表,可选:执行该命令时附加的环境变量) |
+| `[macos-distribution.profiles.release]` | 发布打包,正式版与预发布版共用 | 同上 |
+
+- 每个子表的命令要达到的签名与公证程度,由 macos-signing.md 的分发政策规定,本表不写。
+- 什么样的 tag 是正式版、什么样的是预发布版,由 `/github-ops` 第 4 节定义,本表不写。
+
+```toml
+[macos-distribution]
+enabled = true
+source = "docs/ops/mac-signing.md"
+enforced-by = ["pnpm dist:mac:release"]
+
+[macos-distribution.profiles.local]
+command = "pnpm dist:mac:local"
+
+[macos-distribution.profiles.release]
+command = "pnpm dist:mac:release"
+```
 
 ## 增删 ID
 

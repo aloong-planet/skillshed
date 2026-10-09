@@ -1,9 +1,9 @@
 # macOS 签名、公证与发布验收
 
-macOS 桌面应用(Developer ID / DMG 直分发)从配置到发版验收的完整链条。
+macOS 桌面应用(Developer ID / DMG 直分发)从分发政策、配置到发版验收的完整链条,是 macOS 分发的唯一来源。
 按**平台**组织而非按时机——建项目时配的东西和发版时验的东西是同一条因果链,拆开看会各缺一半。
 
-引用方:`electron-scaffold` 第 4 节(配置侧)、`github-ops` 第 3/4 节(发版侧)。各取所需的节即可。
+**仅当项目能力声明 `macos-distribution` 已启用时读取本文**。入口:`electron-scaffold` 第 4 节(建项目)、`github-ops` 第 4 节(发版)。
 
 本文按 DMG 直分发写。以 ZIP、PKG 或 Mac App Store 分发时,必须按该形态重新推导最外层的提交与验收边界,不得照搬下面的 DMG 流程。
 
@@ -20,7 +20,21 @@ macOS 桌面应用(Developer ID / DMG 直分发)从配置到发版验收的完�
 
 随版本变化的行为(如 electron-builder 内置公证何时触发),只有被已安装版本的代码与类型、或一次真实构建证实,才可当作事实。读不到 Apple 或 electron-builder 的现行文档时必须如实说明,不得把记忆当作刚查过的文档。
 
-## 1. 三个动作各解决什么
+## 1. 分发政策
+
+| 构建 | 何时 | 签名 | 公证 |
+|---|---|---|---|
+| 发布:正式版 | 正式版 tag | Developer ID | `.app` 与 DMG 各自公证、各自 staple |
+| 发布:预发布版 | 预发布 tag | Developer ID | `.app` 与 DMG 各自公证、各自 staple |
+| 本地打包 | 开发者本机;CI 上不发布的手动打包 | Developer ID | 不公证,且必须显式关闭 |
+| 开发模式 | 不打包(如 `pnpm dev`) | 不签名 | 不公证 |
+
+- 正式版与预发布版的打包要求完全相同;两种 tag 的形态与它们在 GitHub 上的标记(Latest / Pre-release)由 `github-ops` 第 4 节定义。
+- **没有 Developer ID 证书时,任何打包命令都必须失败**,并提示安装证书(本机)或配置 `CSC_LINK`(CI);不得产出未签名或 ad-hoc 签名的包。
+- 每种打包实际执行的命令,由项目在 `capabilities.toml` 的 `macos-distribution.profiles` 里声明(`local` 对应本地打包,`release` 对应发布);项目运维手册指向它,不得另抄一份。
+- **命令名必须写环境名,不得写机制**:`dist:mac:local`、`dist:mac:release`。名字写了机制(如 `:sign`),机制一增一减名字就成了谎——一个实际签名加公证的命令叫 `:sign`,读的人会当它只签名。
+
+## 2. 三个动作各解决什么
 
 - **签名**(`Developer ID Application`):标识开发者、保护完整性。Electron 应用同时要启用 Hardened Runtime 与所需 entitlements——**这是公证的前提**,没有它公证直接被拒。entitlements 只给 App 实际需要的;嵌套的可执行文件与框架必须由内向外逐层签名,最后签 App。
 - **公证**:把交付物提交 Apple 扫描恶意软件。**`.app` 与最外层 DMG 都要提交,两次缺一不可。**
@@ -35,14 +49,28 @@ macOS 桌面应用(Developer ID / DMG 直分发)从配置到发版验收的完�
 
 **app 的票据管「拖出来之后」,DMG 的票据管「打开 DMG 时」**,不能互相替代。
 
-## 2. 固定顺序与硬约束
+## 3. 固定顺序、步骤脚本与硬约束
+
+签名与公证必须拆成独立的步骤脚本,第 1 节的两个入口命令只负责组合它们:
+
+| 步骤脚本 | 做什么 |
+|---|---|
+| `mac:sign` | 检查 Developer ID 证书(没有就报错退出);按架构构建并签名 `.app`,不打 DMG(`electron-builder --mac dir --<arch>`) |
+| `mac:notarize-app` | 用 `notarytool` 公证每个 `.app` 并 staple;公证状态与日志按第 6 节断言 |
+| `mac:dmg` | 每个架构从已签名的 `.app` 打 DMG 并签名(`electron-builder --mac dmg --<arch> --prepackaged <app>`) |
+| `mac:notarize-dmg` | 对每个 DMG 做提交前检查、公证、staple 与门禁(第 6、7 节) |
+
+- `dist:mac:local` = `mac:sign` → `mac:dmg`
+- `dist:mac:release` = `mac:sign` → `mac:notarize-app` → `mac:dmg` → `mac:notarize-dmg`
+
+发布的顺序是固定的,不得把发布做成「本地打包之后追加一步公证」——本地打包出来的 DMG 里 `.app` 没有票据,而 DMG 打好后已补不进去:
 
 ```text
 签名 .app
 → 提交 .app 公证 → staple 到 .app          ← 必须在打 DMG 之前
 → 生成各架构 DMG(内部 app 已自带票据)
 → 签名每个 DMG
-→ 提交前检查每个 DMG(第 5 节)
+→ 提交前检查每个 DMG(第 6 节)
 → 提交每个 DMG 公证 → staple DMG
 → 验证:DMG 自身 + 断言 DMG 内 app 自带票据
 → 上传
@@ -54,9 +82,14 @@ macOS 桌面应用(Developer ID / DMG 直分发)从配置到发版验收的完�
 - **staple 之后不得再改动字节**——改了票据与签名同时作废;
 - 打包完成后**没有可行的补钉途径**:DMG 只读挂载,虽可 `hdiutil convert` 成可写再改,但改动内容会作废它自身的签名与票据,等于整套重做。**唯一时机是打 DMG 之前。**
 
-electron-builder 侧:`mac.notarize: true` 的内置公证正是跑在"签完 .app、生成 target 之前"这个位置(`macPackager` 的 `sign()` → `notarizeIfProvided` → `@electron/notarize` 的 `stapleApp()`)。**正式版打包脚本不要传 `-c.mac.notarize=false`**,预发布/仅签名档才传。
+electron-builder 侧(以下行为实测于 electron-builder / app-builder-lib 26.15.3;版本变化时按第 0 节重新坐实):
 
-## 3. 凭据与证书(一次性)
+- **`electron-builder.yml` 必须写 `mac.notarize: false`**:`.app` 由 `mac:notarize-app` 公证,而内置公证只要环境里有 Apple 凭据就会自动执行,能关掉它的只有显式的 `notarize: false`。不关,本地打包会在加载了凭据的机器上悄悄提交公证。本地入口命令另传 `-c.mac.notarize=false` 作双保险。
+- **`--prepackaged` 不重签 `.app`**:它跳过打包与签名(内置公证也在其中),只把现成的 `.app` 做成 DMG。实测用已 staple 的 `.app` 打出的 DMG,arm64、x64、universal 三个架构里的 `.app` 文件逐一不变,cdhash 与票据都在。
+- **DMG 签名(`dmg.sign: true`)不输出任何日志**:必须对 DMG 跑 `codesign` 核对,不得凭构建日志判断它签没签。
+- **`--dir` 的输出目录随架构不同**:x64 输出到 `mac/`,arm64 与 universal 输出到 `mac-<arch>/`。打 DMG 时必须从构建产物里定位 `.app`,不得按名字规律拼路径。
+
+## 4. 凭据与证书(一次性)
 
 五个标准环境变量(electron-builder + notarytool 的事实标准,不要自定义命名):
 
@@ -70,7 +103,7 @@ electron-builder 侧:`mac.notarize: true` 的内置公证正是跑在"签完 .ap
 
 公证凭据也可以用 App Store Connect API key(或 notarytool 的 keychain profile)代替上表三个 Apple 变量,按项目策略二选一。任何日志与命令输出都不得打印凭据。
 
-**坑:空的 `CSC_LINK` 会被 electron-builder 当成"证书路径"**,于是无证书构建反而失败。无证书分支必须**根本不设置**这个变量,而不是设成空字符串。
+**坑:空的 `CSC_LINK` 会被 electron-builder 当成"证书路径"**,报出与证书无关的错误。不得把空字符串传给 `CSC_LINK`;secret 缺失时按第 1 节直接失败,并提示配置它。
 
 导出证书为 base64(一次性):
 
@@ -80,7 +113,7 @@ base64 -i /tmp/cert.p12 | pbcopy
 rm /tmp/cert.p12
 ```
 
-本地跑签名构建的三项前置:
+本地打包只需要第一项前置;在本机跑发布打包另需后两项:
 
 ```bash
 security find-identity -v            # 钥匙串里有 Developer ID Application
@@ -91,32 +124,32 @@ xcrun --find notarytool              # Xcode CLT 提供 notarytool
 
 > `security find-identity` **不要加 `-p codesigning`**:那样只列**有效**身份,会把 `CSSMERR_TP_NOT_TRUSTED` 的证书整条藏掉(典型成因是缺 WWDR 中间证书),排查签名问题时会误以为证书根本不存在。
 
-## 4. CI 分档与 fail-closed
+## 5. CI 分档与 fail-closed
 
-发布至少分下列几档,由**触发方式**(tag 形态或手动触发)决定:
+CI 的 macOS 打包按**触发方式**分档:
 
 | 档 | 触发 | 行为 |
 |---|---|---|
-| 正式版 | 干净 tag | 签名 + 公证 + staple + 完整验收,发 Latest |
-| 预发布 | `-beta`/`-rc`/`-alpha`/`-dev` 后缀 tag | 只签名不公证,发 Pre-release |
-| 手动验证 | 手动触发 + 显式开关 | 要求真实证书与凭据、走完整门禁,但**只产出 Actions 临时产物**:不创建 Release,不动镜像与 latest 指针 |
-| 普通手动触发 | 手动触发、不开验证开关 | 按项目策略产出已签名或未签名的诊断产物,只作 Actions 产物 |
+| 正式版 | 正式版 tag | `release` 命令 + 完整验收,发 Latest |
+| 预发布 | 预发布 tag | `release` 命令 + 完整验收,发 Pre-release |
+| 手动验证 | 手动触发 + 显式验证开关 | `release` 命令、完整门禁,但**只产出 Actions 临时产物**:不创建 Release,不动镜像与 latest 指针 |
+| 手动打包 | 手动触发、不开验证开关 | 不是发布:`local` 命令,只作 Actions 临时产物 |
 
-**fail-closed 是硬要求**:正式版缺任一凭据 → 直接失败,**绝不降级**成"仅签名"或"未签名"档。降级发布出去的产物用户装不上,而 CI 是绿的。
+**fail-closed 是硬要求**:发布缺任一凭据 → 直接失败,**绝不降级**成"仅签名"档;任何一档缺证书都直接失败(第 1 节)。降级发布出去的产物用户装不上,而 CI 是绿的。
 
 **构建策略与发布权限必须分开**:
 
-- 发布类 job 的 `if` 必须基于真实的事件与 ref(正式版 tag),不得拿一个宽泛的 `IS_RELEASE` 或"正式验证"布尔值当发布许可——手动验证档会借这个布尔值误获发布权。
+- 发布类 job 的 `if` 必须基于真实的事件与 ref(正式版或预发布 tag),不得拿一个宽泛的 `IS_RELEASE` 或"正式验证"布尔值当发布许可——手动验证档会借这个布尔值误获发布权。
 - 镜像同步、latest 指针等下游 job 必须依赖各平台的门禁 job,且只在正式版事件上运行;不得让下游同步绕过失败的 macOS 门禁。
-- 产物集必须原子发布:任一必需产物未过第 5、6 节的门禁,整组都不发布;仅当项目明确定义了部分发布的语义时例外。
+- 产物集必须原子发布:任一必需产物未过第 6、7 节的门禁,整组都不发布;仅当项目明确定义了部分发布的语义时例外。
 
 两个 GitHub Actions 的具体约束:
 
 - **Secrets 不能直接写进 step 的 `if` 表达式**,要先在 job 层转成布尔 env(如 `HAS_CSC`、`HAS_APPLE`),再用它做分支判断。
-- **内置公证跑在打包步骤内部**,所以公证凭据必须注入**打包那一步**的 env;只给后面的公证步骤等于没配。而 electron-builder 在凭据缺失时**只 warn 后静默跳过、不报错**,CI 照样绿而产出的 app 没票据——兜底靠第 5 节的断言。
+- **证书与公证凭据必须注入执行 `release` 命令的那一步**;`mac:notarize-app` 与 `mac:notarize-dmg` 缺凭据时必须报错退出,不得跳过。
 - **门禁位置**:公证与验收必须卡在**打包与上传之间**。任一步失败都要阻断 Release 上传,而不是先传了再说。
 
-## 5. 门禁脚本要断言什么
+## 6. 门禁脚本要断言什么
 
 只看命令退出码不够,以下每条都要显式断言:
 
@@ -125,10 +158,10 @@ xcrun --find notarytool              # Xcode CLT 提供 notarytool
 - **签名内容**:`codesign --display --verbose=4` 的输出里断言**签名身份是 Developer ID Application**、**Team ID 匹配**、**Timestamp 非 `none`**(缺安全时间戳的签名会在证书过期后失效)。
 - **解析必须结构化**:签名字段取完整字段比对,不做子串匹配;notarytool 的输出按 JSON 解析;stdout 与 stderr 都要捕获——Apple 的命令行工具常把诊断写进 stderr。
 - **公证状态**:`notarytool submit --wait --output-format json` 的 `status` 必须是 `Accepted` 且带有效 submission id。**但 submit 的状态不够**——还要用 `notarytool log <id>` 拉回日志,断言 **jobId 与本次 submission id 一致、状态仍是 Accepted、没有 severity 为 error 的问题**(比较不区分大小写),并把日志**原样(未改动的 JSON)随构建产物留档**,如与产物同级的 `<产物>.notary-log.json`;CI 上随临时产物一并上传。
-- **票据装订**:见第 6 节。
+- **票据装订**:见第 7 节。
 - **失败诊断不能掩盖原始错误**:Apple 返回 `Invalid` 时尽力去读日志做诊断,但**日志查询本身失败不得覆盖原始的拒绝错误**——否则真正的原因会被一个次生错误顶掉。
 
-## 6. 发版产物验收
+## 7. 发版产物验收
 
 **外层 DMG 与内部 App 是两个独立的验收对象,两边都要验。** staple 之后对每个 DMG:
 
@@ -163,7 +196,7 @@ hdiutil detach "$MP"
 
 **用户侧的正常提示别误判为故障**:浏览器下载的 app 一定带隔离属性,首次从访达启动必弹一次"是从互联网下载的 App,确定要打开吗",与公证无关,点一次即消。**判据是措辞**——带"Apple 已检查,未发现恶意软件"→ 公证生效;"无法验证开发者 / 可能包含恶意软件"→ 才是故障。别因为看到前者就回头去改公证配置。
 
-## 7. 多产物发布的上传顺序
+## 8. 多产物发布的上传顺序
 
 **先传产物,最后才覆盖"最新版指针"**(`latest.json`、站点上的版本常量等)。
 
@@ -171,11 +204,22 @@ hdiutil detach "$MP"
 
 改指针之前**逐条实测目标 URL 可达**(每个文件 × 每个下载源),不要只验一条就推断其余。
 
-## 8. 验证边界(诚实声明)
+## 9. 验证边界(诚实声明)
 
 - 用 fake command runner 做的单测,验的是**命令序列、失败传播、清理逻辑**,**不等于验过 Apple**——它一次也没访问过 Apple 服务。测试文件里要写明这一点,不能让绿色被读成"公证通过"。
-- 真实端到端只能由**正式版 tag** 或**专门的手动验证档**产生。
-- 下列信号单独成立时都不得据以宣称"已公证":tag 形态、打包步骤成功、`notarytool submit` 返回 Accepted、只有内部 App 的检查通过(包括 `spctl --type execute`——它说明不了打开 DMG 时 Gatekeeper 怎么判)。必须以第 5、6 节的全部断言为准。
-- 注入命令执行器的单测至少覆盖:产物全集发现与版本、架构错配;签名身份、Team ID 精确匹配、时间戳缺失或为 `none`;submit 的 JSON 畸形、缺 submission id、状态非 Accepted;日志 jobId 不符、状态不符、含 error 级问题;第 2 节的命令顺序;含空格的路径;挂载失败、内部 App 验收失败、正常卸载、强制卸载兜底、原始错误不被覆盖;workflow 条件能证明手动验证档无法发布或改动镜像。
+- 真实端到端只能由**发布 tag**(正式版或预发布)或**专门的手动验证档**产生。
+- 下列信号单独成立时都不得据以宣称"已公证":tag 形态、打包步骤成功、`notarytool submit` 返回 Accepted、只有内部 App 的检查通过(包括 `spctl --type execute`——它说明不了打开 DMG 时 Gatekeeper 怎么判)。必须以第 6、7 节的全部断言为准。
+- 注入命令执行器的单测至少覆盖:产物全集发现与版本、架构错配;签名身份、Team ID 精确匹配、时间戳缺失或为 `none`;submit 的 JSON 畸形、缺 submission id、状态非 Accepted;日志 jobId 不符、状态不符、含 error 级问题;第 3 节的命令顺序;含空格的路径;挂载失败、内部 App 验收失败、正常卸载、强制卸载兜底、原始错误不被覆盖;workflow 条件能证明手动验证档无法发布或改动镜像。
 - 对 workflow 文本做静态测试只是回归护栏,不能替代真跑一次手动验证档。
 - 这几条属于「验证会假绿」的通用形态,判据见 [review-code/false-greens.md](../review-code/false-greens.md)。
+
+## 10. 发版时的 macOS 步骤
+
+由 `github-ops` 第 4、5 节在 `macos-distribution` 启用时引入;本节只写 macOS 特有的部分,发版的通用流程仍以 `github-ops` 为准。
+
+- **正式版与预发布 tag 都执行 `release` 命令**(第 1 节),GitHub 上的标记按 tag 形态定。公证要等 Apple 2–30 分钟,发版前按这个时长预期 CI。
+- **每个架构的 DMG 都是独立交付物**:每个架构的 `.app` 与 DMG 各自公证,等待随产物数成倍增长;**每个最终 DMG 都必须分别通过签名、公证、staple 与外层 Gatekeeper 评估,任一必需产物未通过,不得宣称整版已公证**。CI 产物 glob 用 `*.dmg` 通配;release note 的下载表必须按架构列全。
+- Windows 不涉及公证,照常打包。
+- **本项目的实际取值**:命令看 `capabilities.toml` 的 `macos-distribution.profiles`;签名身份、secret 名、产物命名看该项 `source` 指向的项目运维手册。
+- **下载产物独立验证**(`github-ops` 第 5 节第 6 步):对每个 DMG 跑第 7 节的全部检查,不只信 CI 绿。
+- **release note 的 macOS 段**:用 `release-note-template.md` 的 macOS 段,仅当本次发布的门禁与上一条下载验收都通过时才可写「已通过 Apple 公证」;**不得仅凭 tag 名宣称已公证**。门禁不过就不发布(第 5 节),所以不存在「已发布但未公证」的版本。

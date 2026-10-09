@@ -73,16 +73,15 @@ git log --oneline origin/master..HEAD   # 本分支相对 master 到底带了哪
 
 版本号语义化(`vMAJOR.MINOR.PATCH`);先改 `package.json` version,再打同名 tag。**tag 名决定 CI 行为**:
 
-| tag 形态 | 含义 | CI 产出 | GitHub 标记 |
-|---|---|---|---|
-| **干净 tag**(如 `v0.6.0`) | 正式版 | mac 签名+**公证**,必须通过公证门禁才可发布(首次打开确认一次) | **Latest** |
-| **预发布后缀**(`-beta`/`-rc`/`-alpha`/`-dev`) | 迭代版 | mac 只签名(右键打开) | **Pre-release** |
+| tag 形态 | 含义 | GitHub 标记 |
+|---|---|---|
+| **正式版 tag**:干净 tag(如 `v0.6.0`) | 正式版 | **Latest** |
+| **预发布 tag**:带预发布后缀(`-alpha`/`-beta`/`-rc`/`-dev`) | 迭代版 | **Pre-release** |
 
-- 公证慢(等 Apple 2–30min)→ 只有干净 tag(正式版)才公证;快速迭代用预发布后缀。
-- **mac 产出多个架构 DMG**(项目若配了 `arch: [universal, arm64, x64]`):正式版每个架构都是独立 `.app`,**公证按包各跑一次**(等待 ×产物数,正式版 CI 更久)。每个最终 DMG 都是独立交付物,**必须分别通过签名、公证、staple 与外层 Gatekeeper 评估;任一必需产物未通过,不得宣称整版已公证**。CI 产物 glob 用 `*.dmg` 通配,自动兼容,无需改。发 note 时下载表要按架构列全(见模板)。
-- Windows 不涉及公证,照常打包。
-- **通用细则**(CI 分档与 fail-closed、凭据变量、门禁断言、产物验收、上传顺序)见 `electron-scaffold` 的 [macos-signing.md](../electron-scaffold/macos-signing.md)。
-- **本项目的实际取值与流程**(签名身份、secret 名、脚本名、产物命名)以项目自己的 macOS 签名/公证**运维手册**为准(通常在 `docs/ops/` 下)。**按类别找,不要记文件名**——项目重组文档时路径会变,写死的指针必然腐烂。
+- **macOS 安装包先看项目能力声明**:读 `capabilities.toml` 的 `macos-distribution`(读写规则见全局指令的「项目能力声明」节)——
+  - `enabled = true` → 必须完整读取 `electron-scaffold` 的 [macos-signing.md](../electron-scaffold/macos-signing.md),按其第 10 节执行;该文档的条文与本文件同等生效。
+  - `enabled = false` → 产出里写明「按项目能力声明,macos-distribution 未启用,该项跳过」,本文件里凡涉及 macOS 安装包的步骤一并跳过。
+  - 缺失 → 未确认,按全局指令停下来问。
 
 ### Release note 必填(不留空)
 
@@ -92,28 +91,22 @@ git log --oneline origin/master..HEAD   # 本分支相对 master 到底带了哪
 - **不用任何 emoji / 图标**,正文纯文字。开头"版本说明"1–3 句概括,再分组(新功能/优化/修复/破坏性变更,按需删)。
 - **Release Title 只写「版本号-类型」,不带亮点说明**:正式版(干净 tag)= `<tag>-release`(如 `v1.2.0-release`);预发布(`-beta`/`-rc`/`-alpha`/`-dev` 后缀 tag)= 直接用带后缀的 tag 名(如 `v1.2.0-beta`)。亮点/变更/下载全部放正文,标题不重复。
 - **桌面 app 必写"下载与安装"**:各平台产物文件名 + 安装版/免安装版区别 + 首次安装提示。
-- **macOS 公证/非公证二选一**——**tag 形态只决定期望**,不证明结果:干净 tag 仅当公证门禁与第 5 节第 6 步的下载产物验收都通过,才用公证版那段(首次打开确认一次);**不得仅凭 tag 名宣称已公证**。预发布后缀 tag=未公证,用非公证版那段(含 `xattr -dr com.apple.quarantine` 去隔离命令)。删掉不适用的整段。
+- **macOS 段按本节开头的能力开关处理**:启用时写法按 macos-signing.md 第 10 节;未启用时删掉模板里的整段 macOS 内容。
 - 结尾放 `Full Changelog: .../compare/<上一版>...<本次>` 对比链接。
 - note/title/tag message 同样**无 AI 署名**(第 1 节)。
-- **顶部"版本说明"(1–3 句人话摘要:本版最大变化 + 用户好处)由用户提供或确认**——这是收益叙事,不要自己编;其余模板部分(下载表/安装提示/公证段/changelog 链接)自动填好。
+- **顶部"版本说明"(1–3 句人话摘要:本版最大变化 + 用户好处)由用户提供或确认**——这是收益叙事,不要自己编;其余模板部分(下载表/安装提示/macOS 段/changelog 链接)自动填好。
 
 ## 5. 标准发版流程(每步验证,不跳步)
 
 1. 改 `package.json` version。
 2. **本地验证全绿**再发:typecheck + test + build(用项目实际脚本)。
 3. commit(**无 AI 署名**)+ push。**默认分支若配了 required status checks,直推会被拒**(见第 8 节),此时版本号变更也走 PR,合并后再打 tag。
-4. 打 tag + push tag(干净 tag=正式版触发公证;`-beta` 等=迭代版)。tag 推送不受分支规则影响。
+4. 打 tag + push tag(正式版 tag 或预发布 tag,见第 4 节)。tag 推送不受分支规则影响。
 5. **盯 CI 到完成**:跑本 skill 自带的 `watch-ci.sh`(用法与原理见第 7 节)。不得手写轮询循环。
-6. **下载 Release 产物独立验证**(不只信 CI 绿):
-   - mac 签名与公证:`spctl --assess --type execute --verbose <app>` 应 `accepted / Notarized Developer ID`;签名身份 `codesign -dv`。
-   - **mac 票据装订:`spctl` 与 `codesign` 都查不出,必须挂载 DMG 对里面的 `.app` 单独跑 `xcrun stapler validate`。**
-     `spctl --assess` 在联网时会通过在线查票而成功,分辨不出票据有没有装订上;票据只钉在 DMG 上的话,用户拖出 app 后首次启动断网即被拦下。
-   - **装上后看到"是从互联网下载的 App,确定要打开吗"是正常的,不是验收失败**——判据是措辞,不是有没有弹框。
-   - 以上三条的命令、原理与对照定位法,连同凭据配置、CI 分档、门禁断言,统一见 **`electron-scaffold` 的 [macos-signing.md](../electron-scaffold/macos-signing.md)**(第 6 节是发版验收,第 4 节是 CI 分档,第 7 节是上传顺序)。**该文档是单一出处,此处只留判据、不复制命令。**
-   - **外层 DMG 本身也要验**(签名、DMG 自身的票据、Gatekeeper 对打开 DMG 的评估、镜像完整性),**只验挂载后的内层 App 不足以证明 DMG 可安全分发**——DMG 自身没票据时,双击打开即被判 rejected(机制见 macos-signing.md 第 1 节)。
+6. **下载 Release 产物独立验证**(不只信 CI 绿):逐个平台的产物下载下来实际检查。macOS 安装包按第 4 节开头的能力开关处理——启用时按 macos-signing.md 第 10 节验。
 7. **写 Release note(约定:CI 验证通过后主动做,不等用户开口)**:
    - CI `conclusion=success` 且第 6 步产物验证通过后,**主动提醒用户**"该更新 release note 了"。
-   - 照 `release-note-template.md` 拟稿:按本次 tag 形态选公证/非公证段,自动填好下载表/安装提示/changelog 链接等固定部分。
+   - 照 `release-note-template.md` 拟稿,自动填好下载表/安装提示/changelog 链接等固定部分;macOS 段按第 4 节开头的能力开关处理。
    - **顶部"版本说明"人话摘要向用户要或让其确认**(不自己编收益叙事)。
    - 用户确认后用 `gh release edit <tag> --title "<tag>-release" --notes-file <文件>` 更新(预发布 tag 标题直接用带后缀的 tag 名)。note/title **无 AI 署名**。
 8. 需要时清理测试 tag/Release/Actions 记录,保持版本列表干净。
@@ -255,6 +248,6 @@ grep -rniE "(api[_-]?key|secret|token|password|-----BEGIN)" . --exclude-dir=.git
 
 ## 11. 面向 GitHub 的文字用仓库工作语言
 
-**commit message、PR 标题与正文、issue 及其评论,凡在 `working-language` 管辖范围内的,一律用该语言书写**——值与管辖范围以 `capabilities.toml` 及 `/repo-scaffold` 的能力登记表为准,读写规则见全局指令的「项目能力声明」节,本节不复述。该项未声明时按全局指令停下问用户,不得自行选语言。引用的标识符、命令、文件路径与报错原文按原样保留,不翻译。
+**commit message、PR 标题与正文、issue 及其评论,凡在 `working-language` 管辖范围内的,一律用该语言书写**——值与管辖范围以 `capabilities.toml` 及 `/repo-scaffold` 的能力登记表为准,读写规则见全局指令的「项目能力声明」节,本节不复述。该项未确认时按全局指令停下问用户,不得自行选语言。引用的标识符、命令、文件路径与报错原文按原样保留,不翻译。
 
 判据:每份将要提交或发到平台的文字,发出前都能说出「已核对,语言与 `working-language` 一致」。

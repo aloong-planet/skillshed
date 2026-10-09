@@ -12,7 +12,7 @@ disable-model-invocation: true
 
 - **Issue tracker** —— 票存在哪、怎么读写。`to-tickets` 与 `to-spec` 读它。
 - **文档布局** —— 哪个目录放什么、哪些是结论、哪些只是过程记录。几乎所有 skill 都读它。
-- **项目能力声明** —— 仓库根的 `capabilities.toml`。允许出现的 ID 及其类型由本 skill 的 [capabilities-registry.md](./capabilities-registry.md) 定义;读写规则以全局指令的「项目能力声明」节为准,本 skill 不重复定义。
+- **项目能力声明** —— 仓库根的 `capabilities.toml`。允许出现的 ID 及其形态、字段与默认值由本 skill 的 [capabilities-registry.md](./capabilities-registry.md) 定义;读写规则以全局指令的「项目能力声明」节为准,本 skill 不重复定义。
 - **Lint** —— 为仓库接入 linter,并在 `capabilities.toml` 里声明。
 
 这是提问驱动的 skill,不是确定性脚本。**必须先探查、再呈现、经用户确认后才写**;不得凭默认值直接落盘。
@@ -49,12 +49,15 @@ disable-model-invocation: true
 
 仅当探查发现 monorepo 迹象(`pnpm-workspace.yaml`、`package.json` 的 `workspaces`、`packages/*` 各自带 `src/`)时,才提供**多上下文**选项。多上下文的格式与推断规则由 `/domain-modeling` 定义,见其 `CONTEXT-FORMAT.md`——**本 skill 不重复定义,只记录选了哪种**。
 
-**C 节 —— 项目能力声明.** 按登记表逐个 ID 处理,`lint` 除外(它由 D 节决定):
+**C 节 —— 项目能力声明.** 按登记表逐个 ID 处理,`lint` 除外(它由 D 节决定)。**登记表里的每个 ID 都必须写进 `capabilities.toml`**——文件里缺失的 ID 是未确认(全局指令「项目能力声明」节):
 
-- **`capabilities.toml` 已存在** → 不重写它;只核对登记表里的必填配置型项,缺哪项问用户补哪项。
-- **不存在** → 新建:
-  - **配置型项**:逐项问,必须由用户给出值,不得代填,也不得取默认值;推荐答案以登记表为准,用户一个词就能接受。
-  - **开关型项**:逐项问,**推荐答案一律是「未启用」**(`enabled = false`);**不得凭目录或文件推断哪些能力已启用**——接线未完成的仓库,现象与声明给出相反答案。用户答启用的,按登记表填 `source` 与 `enforced-by`。
+- **`capabilities.toml` 不存在** → 新建:草稿里给登记表的每个 ID 先填上默认值,再按下面的问法逐项问。
+- **已存在** → 不重写已有的项;逐个核对登记表里的**全部** ID,缺哪项就在草稿里补哪项,按下面的问法问。已有项的形态、字段或取值类型与登记表不符的,作为一条发现列进草稿。
+
+问法:
+
+- **顶层值**:问取什么值,推荐答案是登记表里的默认值,用户一个词就能接受;未经用户确认不得写入。
+- **段**:问是否启用,推荐答案是默认值 `enabled = false`;**不得凭目录或文件推断哪些能力已启用**——接线未完成的仓库,现象与声明给出相反答案。用户答启用的,按登记表填 `source`、`enforced-by` 以及该 ID 的专属字段与子表。
 
 `AGENTS.md` 里没有指向 `capabilities.toml` 的引用行时,补一行。引用行按 `working-language` 书写,只说「跨 skill 生效的项目事实见仓库根的 `capabilities.toml`」这一个意思,不复述文件内容。
 

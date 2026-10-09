@@ -177,31 +177,15 @@ TCC 按 bundle id 记账、**同时记录代码签名要求**。同一个 bundle
 
 ## 4. macOS 签名与公证(细则单独成篇)
 
-**何时需要**:任何以 DMG 直分发的 macOS 项目(渠道划分见第 3 节;MAS 线由商店分发,不走 Gatekeeper 的 ticket 路径,不适用本条)。从第一次配公证起就按这条接,事后补会经历一次线上事故。
+**先看项目能力声明**:读 `capabilities.toml` 的 `macos-distribution`(读写规则见全局指令的「项目能力声明」节)——
 
-**一句话结论**:**公证票据必须钉两处——`.app` 与最外层 DMG,两次提交缺一不可。** 只钉 DMG 的话,用户把 app 拖进「应用程序」后票据随 DMG 被丢掉,首次启动断网即被 Gatekeeper 拦下;只钉 app 的话,打开 DMG 时就过不去。
+- `enabled = true` → 必须完整读取 [macos-signing.md](./macos-signing.md),该文档的条文与本文件同等生效。建项目时按它装:第 1 节的分发政策定两条打包命令要达到什么,第 3 节的步骤脚本搭出 `dist:mac:local` 与 `dist:mac:release`,第 4 节配证书与凭据,第 5 节配 CI 各档,第 6、7 节写门禁与验收。两条命令写进 `macos-distribution.profiles`。
+- `enabled = false` → 产出里写明「按项目能力声明,macos-distribution 未启用,该项跳过」。
+- 缺失 → 未确认,按全局指令停下来问。初始化时这一项由 `/repo-scaffold` 询问,本节不另问。
 
-**装什么**:
-```yaml
-# electron-builder.yml
-mac:
-  hardenedRuntime: true        # 公证前提
-  notarize: true               # 签完 .app、打 DMG 之前提交并 staple 到 .app
-```
-DMG 侧另行提交并 staple 最终 DMG(自写脚本或打包器插件均可)。
+Mac App Store 线由商店分发,不走 Gatekeeper 的票据路径,不适用本节(渠道划分见第 3 节)。
 
-**完整细则见 [macos-signing.md](./macos-signing.md)** —— 按平台组织,建项目与发版两侧共用一份:
-
-| 节 | 内容 | 建项目时重点看 |
-|---|---|---|
-| 0 | 动手前先坐实:已装版本、workflow 全程、产物全集、真实产物 | ● |
-| 1–2 | 三个动作各解决什么、固定顺序与硬约束 | ● |
-| 3 | 凭据与证书:五个标准变量、`CSC_LINK` 空值坑、导出命令、本地前置 | ● |
-| 4 | CI 分档与 fail-closed、凭据注入位置 | ● |
-| 5 | 门禁脚本要断言什么(退出码不够) | ● |
-| 6–8 | 发版验收、上传顺序、验证边界 | 发版时看,见 `/github-ops` |
-
-**配完把参数落进项目文档**:签名身份、凭据来源、CI 各档行为、踩过的 workflow 坑,写进项目的 macOS 签名/公证**运维手册**(通常在 `docs/ops/` 下,就地更新)。上面那份是**跨项目的通用细则**,项目手册记的是**本项目的实际取值与流程**,两者不重复。
+**配完把参数落进项目文档**:签名身份、凭据来源、CI 各档行为、踩过的 workflow 坑,写进项目的 macOS 签名/公证**运维手册**(通常在 `docs/ops/` 下,就地更新),并让 `macos-distribution` 的 `source` 指向它;打包命令记在哪里按 macos-signing.md 第 1 节。macos-signing.md 是**跨项目的通用细则**,项目手册记的是**本项目的实际取值与流程**,两者不重复。
 
 ## 5. 本地自动测试基建(macOS,细则单独成篇)
 
