@@ -1,0 +1,27 @@
+# Skills installed and updated by the skills package manager (~/.agents/.skill-lock.json).
+# They are not authored here; forks of package skills are committed as real directories and
+# removed from the lock file so an update cannot overwrite them.
+/codebase-design
+/diagnosing-bugs
+/grill-me
+/handoff
+/improve-codebase-architecture
+/microsoft-foundry
+/research
+/resolving-merge-conflicts
+/setup-matt-pocock-skills
+/triage
+/ubiquitous-language
+/wayfinder
+
+# Symlinks into the content-studio repository, which owns these skills.
+/decision-form
+/medium-publisher
+/wechat-publisher
+/xiaohongshu-publisher
+/zhihu-publisher
+
+# Local backups.
+/.content-studio-backup-*/
+
+.DS_Store
