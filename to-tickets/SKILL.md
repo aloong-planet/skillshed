@@ -84,6 +84,8 @@ Publish the approved tickets. **How** depends on the tracker `/repo-scaffold` co
 - **Local files** → write one file per ticket under `docs/.workings/<slug>/issues/<NN>-<ticket-slug>.md`, numbered from `01` in dependency order (blockers first). Each file's "Blocked by" lists the numbers/titles it depends on. Use the per-ticket file template below — one ticket per file, never a single combined file.
 - **A real issue tracker (GitHub, Linear, …)** → publish one issue per ticket in dependency order (blockers first) so each ticket's blocking edges can reference real identifiers. Use the platform's native blocking / sub-issue relationship where it has one; otherwise set each ticket's "Blocked by" to the blocking issues. Apply the `ready-for-agent` triage label unless instructed otherwise — the tickets are agent-grabbable by construction.
 
+**Write each ticket's prose — title and body, in either tracker shape — in the repository's working language**: the `working-language` value in `capabilities.toml` (field format in `/repo-scaffold`'s capability registry; read and write rules in the global instructions' 「项目能力声明」 section). If it is undeclared, stop and ask the user; never pick a language yourself. Template headings stay exactly as written, because other skills look sections up by those headings.
+
 Work the **frontier**: any ticket whose blockers are all done. For a purely linear chain that means top to bottom.
 
 发布 tickets 时，必须按 [Ticket 产物与文档同步清单](ticket-artifacts.md) 创建已确认的同步清单并填入各票的产物声明；tracker 标识只有发布后才可取得时，必须取得真实标识后再补齐对应路径，不得猜号。

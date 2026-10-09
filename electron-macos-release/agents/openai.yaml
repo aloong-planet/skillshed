@@ -1,0 +1,4 @@
+interface:
+  display_name: "Electron macOS Release"
+  short_description: "Sign, notarize, staple, and verify Electron DMGs"
+  default_prompt: "Use $electron-macos-release to design and verify a fail-closed macOS DMG release pipeline."

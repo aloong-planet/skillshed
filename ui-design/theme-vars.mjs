@@ -4,12 +4,13 @@
 // 用法:
 //   node theme-vars.mjs <主题CSS路径> [--dim 名称=选择器模板:取值,取值,…] [--dark-media]
 //
-// 例(三套配色 × 明暗,配色经 html[data-scheme=…],明暗经 prefers-color-scheme):
-//   node theme-vars.mjs src/renderer/src/theme.css \
-//        --dim theme='html[data-scheme="{v}"]':purple,blue,amber --dark-media
+// 例(三套配色 × 明暗,配色经 html 上的属性选择器,明暗经 prefers-color-scheme):
+//   node theme-vars.mjs <主题CSS> \
+//        --dim theme='html[data-theme="{v}"]':purple,blue,amber --dark-media
 //
-//   其中默认取值(上例的 purple)若在 CSS 里是靠 :root 而非属性选择器给出的,写成 `-` 即可:
-//        --dim theme='html[data-scheme="{v}"]':-,blue,amber
+//   属性名与取值照项目实际写(上面的 data-theme / purple 只是示例)。默认取值若在 CSS 里靠
+//   :root 而非属性选择器给出,写成 `-` 即可:
+//        --dim theme='html[data-theme="{v}"]':-,blue,amber
 //
 // **为什么必须用浏览器**:判据要的是「某个主题态下这个变量最终解析成什么」。这牵涉级联、
 // 特异性、继承与 media query 求值。手写解析器能对付受限子集,但一旦 CSS 里出现选择器组、
