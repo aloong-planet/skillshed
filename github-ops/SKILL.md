@@ -164,7 +164,7 @@ workflow)时明确报错退出,不退回"最近一次"。⚠️ `gh run list --c
 
 要点(展开与命令都在子文档):
 
-- **门禁 = 检查 workflow + 把它设为必需的分支规则**,缺一不可。发版 workflow 不算门禁——它只在打 tag 时触发。判据一条命令:`grep -nE "pnpm (run )?(test|typecheck)" .github/workflows/*.yml` 无输出即没有门禁。
+- **门禁 = 检查 workflow + 把它设为必需的分支规则**,缺一不可。发版 workflow 不算门禁——它只在打 tag 时触发。判据是 checks-gate.md 第 1 节「存在性判据」那条检索,无输出即没有门禁。
 - **门禁 workflow 至少跑 typecheck + test + build**,子包全覆盖;子包有独立 lockfile 的要单独 install。
 - **Node 版本不能照抄打包 workflow**:打包时产物跑的是运行时自带的 node,检查时测试跑在 runner 的 node 上,`node:sqlite` 这类版本敏感的内置模块由后者提供。
 - **门禁必须证明「能红」**:一道从未失败过的门禁与没有门禁在证据上等价。本地能完整跑通的门禁先本地变异(改—跑—直接捕获退出码—还原);只有依赖 CI 环境才能复现的才开一次性 PR,变异要打不同步骤并预写预期失败步骤,验完关闭删分支、绝不合并。
