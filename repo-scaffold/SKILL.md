@@ -120,7 +120,7 @@ Windows 上不得用 symlink 代替导入——创建 symlink 需要管理员权
 [一句话说单上下文还是多上下文]。见 `docs/agents/docs-layout.md`。
 ```
 
-再用本 skill 目录内的种子模板写两个文件:
+`## Agent skills` 段与下列种子模板写进项目时,必须按 [artifact-names.md](./artifact-names.md) 的「种子文本」节书写。再用本 skill 目录内的种子模板写两个文件:
 
 - [issue-tracker-github.md](./issue-tracker-github.md)
 - [issue-tracker-local.md](./issue-tracker-local.md)

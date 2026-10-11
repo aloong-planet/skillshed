@@ -14,11 +14,12 @@
 
 **`legal(state)` 派生查询(核心)**:暴露"当前哪些事件合法 + 非法者原因",供面板派生置灰。**不重写规则**——对每个事件试跑 `reduce`,被拒(illegal 非空)即非法:
 
+<!-- asset -->
 ```js
 function legal(s) {
   const out = {};
   for (const a of ALL_ACTIONS) {
-    if (s === null) { out[a.type] = { legal:false, why:'空态:先入场' }; continue; }
+    if (s === null) { out[a.type] = { legal:false, why:'empty state: enter first' }; continue; }
     const next = reduce(s, a);
     out[a.type] = next.illegal ? { legal:false, why:strip(next.illegal) } : { legal:true, why:null };
   }
@@ -39,7 +40,7 @@ function legal(s) {
 - **状态卡**:status 徽标(按状态着色,终态与进行态可辨)+ 进度条 + 关键字段。**空态显 `—`,有实体但字段为空显 `null`**——两者语义不同,不可混用。
 - **事件按钮**按语义分组(入场 / 用户与超时 / 传输…);**可用性从 `legal(state)` 派生**,不在 UI 判断。置灰即"当前状态不可达",是模型的可视化——看一眼亮暗就知道准入边界。
 - **悬停置灰按钮给原因**(取自 `legal()` 的 why),不必撞上去才知道。
-- **回执栏三态**:`尚未派发事件`(idle 淡显)/ `已派发 X → Y`(合法,事件名高亮)/ `⚠ X 被忽略:原因`(非法,红字)。**不要写"上一事件合法"这类零信息占位**。
+- **回执栏三态**:`No event dispatched yet`(idle 淡显)/ `Dispatched X → Y`(合法,事件名高亮)/ `⚠ X ignored: <原因>`(非法,红字)。**不要写"上一事件合法"这类零信息占位**。
 - **清空按钮**:回到空态(`state = null`),入场每次重选;进度/字段/回执一并归零。
 - **压测开关**(可选):解除置灰、允许强行派发非法事件,用于验证 `reduce` 防线真的挡得住。把"验证防线"这个小众需求降级为显式开关,不污染默认交互。
 - **图上高亮当前状态节点**(按节点文本匹配 status);空态不高亮。

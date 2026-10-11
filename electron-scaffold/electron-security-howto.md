@@ -18,11 +18,12 @@
 
 **改哪里**:主进程,一个 `security.ts` + 一处 `app.on('web-contents-created')`。
 
+<!-- asset -->
 ```ts
-// ── 判定层:纯函数,可单测 ──
+// ── Decision layer: pure functions, unit-testable ──
 export function isAppUrl(url: string, appBase: string | undefined): boolean {
   let u: URL
-  try { u = new URL(url) } catch { return false }   // 不可解析一律不放行
+  try { u = new URL(url) } catch { return false }   // anything unparsable is never allowed
   if (appBase === undefined) return u.protocol === 'app:' || u.protocol === 'file:'  // prod
   try { return u.origin === new URL(appBase).origin } catch { return false }         // dev
 }
@@ -30,10 +31,10 @@ export function isAppUrl(url: string, appBase: string | undefined): boolean {
 export function externalOpenTarget(raw: string): string | null {
   let u: URL
   try { u = new URL(raw) } catch { return null }
-  return u.protocol === 'http:' || u.protocol === 'https:' ? u.href : null  // 白名单
+  return u.protocol === 'http:' || u.protocol === 'https:' ? u.href : null  // allow-list
 }
 
-// ── 接线层 ──
+// ── Wiring layer ──
 export function installNavigationGuards(contents: WebContents, appBase: string | undefined): void {
   const guard = (e: { preventDefault: () => void }, url: string): void => {
     if (isAppUrl(url, appBase)) return
@@ -42,13 +43,13 @@ export function installNavigationGuards(contents: WebContents, appBase: string |
     if (ext) void shell.openExternal(ext)
   }
   contents.on('will-navigate', guard)
-  contents.on('will-frame-navigate', (details) => guard(details, details.url))  // 签名不同!
+  contents.on('will-frame-navigate', (details) => guard(details, details.url))  // different signature!
   contents.setWindowOpenHandler(({ url }) => {
     const ext = externalOpenTarget(url)
     if (ext) setImmediate(() => void shell.openExternal(ext))
-    return { action: 'deny' }        // 无条件 deny 放在所有分支之后
+    return { action: 'deny' }        // the unconditional deny comes after every branch
   })
-  contents.on('will-attach-webview', (e, webPreferences) => {   // #12 预防性
+  contents.on('will-attach-webview', (e, webPreferences) => {   // #12, preventive
     delete webPreferences.preload
     webPreferences.nodeIntegration = false
     e.preventDefault()
@@ -70,10 +71,11 @@ export function installNavigationGuards(contents: WebContents, appBase: string |
 
 **改哪里**:IPC 注册处,收成一个包装器。
 
+<!-- asset -->
 ```ts
 export function assertTrustedSender(senderUrl: string | undefined, appBase: string | undefined): void {
-  if (senderUrl === undefined || !isAppUrl(senderUrl, appBase)) {   // 复用同一判据
-    throw new Error(`IPC 调用方不可信:${senderUrl ?? '(无 sender)'}`)
+  if (senderUrl === undefined || !isAppUrl(senderUrl, appBase)) {   // reuse the same criterion
+    throw new Error(`untrusted IPC caller: ${senderUrl ?? '(no sender)'}`)
   }
 }
 
@@ -83,7 +85,7 @@ function handle<T>(channel: string, fn: (e: IpcMainInvokeEvent, arg: unknown) =>
     return fn(e, arg)
   })
 }
-// 之后全部用 handle(...) 注册,不再直接用 ipcMain.handle
+// From here on register everything with handle(...), never ipcMain.handle directly
 ```
 
 **怎么验**:单测三例(本 app 页面放行 / 外部页面抛错 / 无 sender 视为不可信);e2e 跑通全部真实 IPC 链路确认没误伤。
@@ -109,11 +111,12 @@ session.defaultSession.setPermissionCheckHandler(() => false)
 
 **改哪里**:`session.webRequest.onHeadersReceived` 注入(比 `<meta>` 可靠,meta 对部分指令无效)。
 
+<!-- asset -->
 ```ts
 export function cspFor(isDev: boolean): string {
   const base = [
     "default-src 'self'",
-    "img-src 'self' data:",      // 不含 http(s):文档里的外部追踪图不外联
+    "img-src 'self' data:",      // no http(s): external tracking images in documents never call out
     "font-src 'self' data:",
     "object-src 'none'", "frame-src 'none'", "base-uri 'none'", "form-action 'none'"
   ]
@@ -136,28 +139,30 @@ export function cspFor(isDev: boolean): string {
 
 **改哪里**:打包配置(electron-builder 用 `electronFuses` 段)。
 
+<!-- asset -->
 ```yaml
 electronFuses:
-  runAsNode: false                          # 禁 ELECTRON_RUN_AS_NODE
-  enableNodeCliInspectArguments: false      # 禁 --inspect 注入
+  runAsNode: false                          # forbid ELECTRON_RUN_AS_NODE
+  enableNodeCliInspectArguments: false      # forbid --inspect injection
   enableNodeOptionsEnvironmentVariable: false
   onlyLoadAppFromAsar: true
   enableCookieEncryption: true
   enableEmbeddedAsarIntegrityValidation: true
-  grantFileProtocolExtraPrivileges: false   # 前提:代码内无 file:// 页面加载(见 #18)
+  grantFileProtocolExtraPrivileges: false   # precondition: the code loads no file:// page (see #18)
 ```
 
 **怎么验**——**这条的判据是读产物,不是看配置**。配置写对不代表生效(版本/平台/配置段位置错都会静默跳过)。写个脚本读二进制的 fuse wire:
 
+<!-- asset -->
 ```js
-const SENTINEL = Buffer.from('dL7pKGdnNz796PbbjQWNKmHXBZaB9tsX', 'utf8')  // @electron/fuses 哨兵
+const SENTINEL = Buffer.from('dL7pKGdnNz796PbbjQWNKmHXBZaB9tsX', 'utf8')  // @electron/fuses sentinel
 const NAMES = ['runAsNode','cookieEncryption','nodeOptions','nodeCliInspect',
                'asarIntegrity','onlyLoadAppFromAsar','v8Snapshot','fileProtocolPrivileges',
-               'wasmTrapHandlers']            // index 8 自 E41 起存在
+               'wasmTrapHandlers']            // index 8 exists since Electron 41
 const buf = readFileSync('<app>/Contents/Frameworks/Electron Framework.framework/Versions/A/Electron Framework')
 const i = buf.indexOf(SENTINEL) + SENTINEL.length
 const count = buf[i + 1]
-// buf[i+2+k]:0x31=ENABLED,0x30=DISABLED,其余=REMOVED
+// buf[i+2+k]: 0x31=ENABLED, 0x30=DISABLED, anything else=REMOVED
 ```
 
 **踩过的坑**
@@ -173,19 +178,21 @@ const count = buf[i + 1]
 
 ### 第 1 步:注册特权(必须在 app ready **之前**,模块顶层)
 
+<!-- asset -->
 ```ts
 protocol.registerSchemesAsPrivileged([{
   scheme: 'app',
   privileges: {
-    standard: true,          // 非 opaque origin —— 核心开关(安全上下文 + storage 快路径)
-    secure: true,            // 等价 https
-    supportFetchAPI: true    // modulepreload / fetch 需要
+    standard: true,          // not an opaque origin — the core switch (secure context + storage fast path)
+    secure: true,            // equivalent to https
+    supportFetchAPI: true    // needed by modulepreload / fetch
   }
 }])
 ```
 
 ### 第 2 步:路径解析(纯函数,含穿越防护)
 
+<!-- asset -->
 ```ts
 export const APP_HOST = 'bundle'
 
@@ -193,25 +200,26 @@ export function resolveAppPath(rendererRoot: string, url: string): string | null
   let u: URL
   try { u = new URL(url) } catch { return null }
   if (u.hostname !== APP_HOST) return null
-  let p = decodeURIComponent(u.pathname).replace(/^\/+/, '')   // decode 容中文/空格
+  let p = decodeURIComponent(u.pathname).replace(/^\/+/, '')   // decoding tolerates non-ASCII characters and spaces
   if (p === '') p = 'index.html'
   const abs = normalize(join(rendererRoot, p))
   const rootNorm = normalize(rendererRoot)
   const rootPrefix = rootNorm.endsWith(sep) ? rootNorm : rootNorm + sep
-  if (abs !== rootNorm && !abs.startsWith(rootPrefix)) return null   // 穿越防护
+  if (abs !== rootNorm && !abs.startsWith(rootPrefix)) return null   // traversal guard
   return abs
 }
 ```
 
 ### 第 3 步:handler(app ready 后,**建窗之前**)
 
+<!-- asset -->
 ```ts
 export function registerAppProtocol(rendererRoot: string): void {
   protocol.handle('app', async (req) => {
     const abs = resolveAppPath(rendererRoot, req.url)
     if (!abs) return new Response('Not found', { status: 404 })
     try {
-      return await net.fetch(pathToFileURL(abs).toString())   // await 是必需的,见坑
+      return await net.fetch(pathToFileURL(abs).toString())   // the await is required; see the pitfall
     } catch {
       return new Response('Not found', { status: 404 })
     }
@@ -221,11 +229,12 @@ export function registerAppProtocol(rendererRoot: string): void {
 
 ### 第 4 步:改加载方式
 
+<!-- asset -->
 ```ts
 if (process.env['ELECTRON_RENDERER_URL']) {
-  win.loadURL(process.env['ELECTRON_RENDERER_URL'])     // dev 仍走 http
+  win.loadURL(process.env['ELECTRON_RENDERER_URL'])     // dev still uses http
 } else {
-  win.loadURL(`app://${APP_HOST}/index.html`)           // prod 不再 loadFile
+  win.loadURL(`app://${APP_HOST}/index.html`)           // prod no longer uses loadFile
 }
 ```
 
@@ -252,12 +261,13 @@ if (appBase === undefined) return u.protocol === 'app:' || u.protocol === 'file:
 
 判据是**回调不得把 `IpcRendererEvent` 传给渲染层**(它带 `sender`):
 
+<!-- asset -->
 ```ts
-// ✅ 正确:丢弃事件对象
+// ✅ Right: drop the event object
 const listener = (_e: unknown, payload: unknown): void => cb(checked(payload))
 ipcRenderer.on(EVT.x, listener)
 
-// ❌ 错误:cb 拿到了 event
+// ❌ Wrong: cb receives the event
 ipcRenderer.on(EVT.x, cb)
 ```
 

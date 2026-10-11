@@ -34,6 +34,7 @@ when_to_use: "初始化 Electron + electron-builder 项目时逐项过一遍。�
 
 **装什么**:把本 skill 的 `assets/clean-old-releases.cjs` 复制到项目 `build/` 目录(与 `buildResources: build` 同处)。脚本通用无项目硬编码,靠 `BuildResult.outDir` 定位版本根、按 semver 排序、保留最近 N 个(默认 5,`KEEP_RELEASES` env 可覆盖)。
 
+<!-- example -->
 ```bash
 cp ~/.claude/skills/electron-scaffold/assets/clean-old-releases.cjs <项目>/build/
 ```
@@ -48,10 +49,11 @@ afterAllArtifactBuild: build/clean-old-releases.cjs
 - 钩子路径写成 `build/xxx.cjs`(相对项目根),electron-builder 会 resolve 到工作区内;不能指向工作区外。
 
 **验证**(装完跑一遍):
+<!-- example -->
 ```bash
-# 手动清一次现有产物 + 验证幂等(再跑应"无需清理",不误删保留项)
+# 手动清一次现有产物 + 验证幂等(再跑应输出 "nothing to clean",不误删保留项)
 node build/clean-old-releases.cjs        # 首次:打印删除清单
-node build/clean-old-releases.cjs        # 再跑:无需清理(版本数 ≤ N)
+node build/clean-old-releases.cjs        # 再跑:nothing to clean(版本数 ≤ N)
 KEEP_RELEASES=3 node build/clean-old-releases.cjs   # 参数化生效验证(干跑前先确认清单)
 ```
 成功标准:版本目录裁到最近 N 个;非版本散文件(latest-mac.yml / *.blockmap)不被碰;再跑幂等不越删越少。
@@ -96,25 +98,26 @@ KEEP_RELEASES=3 node build/clean-old-releases.cjs   # 参数化生效验证(干�
 
 **装什么 / 怎么接**——核心是**把"询问"和"使用"在时间上分开**:
 
+<!-- asset -->
 ```ts
-/** 只回答"够不够用",不按 status 细分:非 granted 一律同等对待 */
+/** Answers only "is it enough"; does not split by status: anything other than granted is treated the same */
 export function needsScreenPermission(platform: string, status: string): boolean {
   if (platform !== 'darwin') return false
   return status !== 'granted'
 }
 
-/** 启动时(主窗显示之后)触发一次系统询问。fire-and-forget。 */
+/** Trigger the system prompt once at startup (after the main window is shown). Fire-and-forget. */
 primeScreenPermission(): void {
   if (!needsScreenPermission(process.platform, systemPreferences.getMediaAccessStatus('screen'))) return
-  // 1x1 缩略图:只为触发授权流程并完成登记,不需要真实画面
+  // 1x1 thumbnail: only to trigger the authorisation flow and complete registration; no real image is needed
   void desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 1, height: 1 } })
-    .catch((err) => console.error('[perm] 触发屏幕录制授权询问失败(不致命)', err))
+    .catch((err) => console.error('[perm] failed to trigger the screen-recording permission prompt (not fatal)', err))
 }
 
-/** 使用时只查 + 引导,绝不在此触发询问 */
+/** At use time only check + guide; never trigger the prompt here */
 ensureScreenPermission(): boolean {
   if (!needsScreenPermission(process.platform, systemPreferences.getMediaAccessStatus('screen'))) return true
-  this.showPermissionGuide()   // 文案必须包含"授权后需重启应用"
+  this.showPermissionGuide()   // the copy must say "restart the app after granting permission"
   return false
 }
 ```
@@ -124,6 +127,7 @@ ensureScreenPermission(): boolean {
 ### ❌ 错误做法(每条都实测栽过)
 
 **❌ 相信 `not-determined` 分支存在**
+<!-- example -->
 ```ts
 if (status === 'granted' || status === 'not-determined') return true   // 错
 ```
@@ -143,6 +147,7 @@ app 尚未成为前台应用时,macOS **静默不弹框**,你会以为代码没�
 
 ### 验证
 
+<!-- example -->
 ```bash
 tccutil reset ScreenCapture <bundleId>    # 复现"全新机器",不必真换机器
 # 然后从访达双击启动打包版(不要从终端跑——终端子进程会继承终端的 TCC 归属,结果不作数)

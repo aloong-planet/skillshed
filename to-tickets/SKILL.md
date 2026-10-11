@@ -84,7 +84,7 @@ Publish the approved tickets. **How** depends on the tracker `/repo-scaffold` co
 - **Local files** → write one file per ticket under `docs/.workings/<slug>/issues/<NN>-<ticket-slug>.md`, numbered from `01` in dependency order (blockers first). Each file's "Blocked by" lists the numbers/titles it depends on. Use the per-ticket file template below — one ticket per file, never a single combined file.
 - **A real issue tracker (GitHub, Linear, …)** → publish one issue per ticket in dependency order (blockers first) so each ticket's blocking edges can reference real identifiers. Use the platform's native blocking / sub-issue relationship where it has one; otherwise set each ticket's "Blocked by" to the blocking issues. Apply the `ready-for-agent` triage label unless instructed otherwise — the tickets are agent-grabbable by construction.
 
-**Write each ticket's prose — title and body, in either tracker shape — in the repository's working language**: the `working-language` value in `capabilities.toml` (field format in `/repo-scaffold`'s capability registry; read and write rules in the global instructions' 「项目能力声明」 section). If it is undeclared, stop and ask the user; never pick a language yourself. Template headings stay exactly as written, because other skills look sections up by those headings.
+**Write each ticket's prose — title and body, in either tracker shape — in the repository's working language**: the `working-language` value in `capabilities.toml` (field format in `/repo-scaffold`'s capability registry; read and write rules in the global instructions' 「项目能力声明」 section). If it is undeclared, stop and ask the user; never pick a language yourself. Template headings and the other fixed names in the templates follow [the artifact-name vocabulary](../repo-scaffold/artifact-names.md).
 
 Work the **frontier**: any ticket whose blockers are all done. For a purely linear chain that means top to bottom.
 
@@ -138,15 +138,15 @@ Spec：[<spec-slug>](../../specs/<spec-slug>.md)
 
 | 来源锚点及支持原文 | 来源处置 | spec 覆盖单位 | 语义核对结论 |
 |---|---|---|---|
-| <已确认来源> | 有效 | <spec-slug>::US-001/AC-01 | <结论> |
+| <已确认来源> | 本轮确认且有效 | <spec-slug>::US-001/AC-01 | <结论> |
 
 ## spec → tickets → 验证
 
 | spec 覆盖单位及文档链接 | 来源原文及适用条件 | 承兑票与角色 | 计划验证及边界 |
 |---|---|---|---|
-| <spec-slug>::US-001/AC-01 | <原文> | 01：实现及用户路径验收 | Test：<入口、动作、可观察结果> |
-| <spec-slug>::US-001/AC-02 | <原文> | 01：实现及用户路径验收 | Test：<本项独立的入口、动作、可观察结果> |
-| <spec-slug>::CON-001 | <原文> | 01、02：各自适用的路径 | Test：<约束的验证方法> |
+| <spec-slug>::US-001/AC-01 | <原文> | <票号>：<角色，如实现及用户路径验收> | Test：<入口、动作、可观察结果> |
+| <spec-slug>::US-001/AC-02 | <原文> | <票号>：<角色，如实现及用户路径验收> | Test：<本项独立的入口、动作、可观察结果> |
+| <spec-slug>::CON-001 | <原文> | <票号列表>：<各自适用的路径> | Test：<约束的验证方法> |
 
 ## 当前验证
 
@@ -194,7 +194,7 @@ Spec：[<spec-slug>](../../specs/<spec-slug>.md)
 
 ## 技术前提
 
-- [ ] 为 <spec-slug>::US-001/AC-01 <所需的实现或验证前提>
+- [ ] <为 <spec-slug>::US-001/AC-01 所需的实现或验证前提>
   — **Test**：<验证机制>
 
 </local-ticket-template>
@@ -218,7 +218,7 @@ Spec：[<spec-slug>](../../specs/<spec-slug>.md)
 <必须按上方模板生成规则先展开产物声明及三项最终流程验收，再保留下列收口专属项。>
 
 - [ ] 按 /features-catalog 完成全 feature 文档与行为回归
-  — **Evidence**：checklist.md 中本轮逐项查证记录，以及 final-regression.md 中引用该记录的收口结论和文档回归表
+  — **Evidence**：<checklist.md 中本轮逐项查证记录，以及 final-regression.md 中引用该记录的收口结论和文档回归表>
 
 ## 产品验收
 
@@ -254,7 +254,7 @@ Spec：`docs/specs/<spec-slug>.md`；核对 commit：<commit 参考>
 
 ## 技术前提
 
-- [ ] 为 <spec-slug>::US-001/AC-01 <所需的实现或验证前提>
+- [ ] <为 <spec-slug>::US-001/AC-01 所需的实现或验证前提>
   — **Test**：<验证机制>
 
 ## Blocked by

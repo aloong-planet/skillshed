@@ -73,9 +73,10 @@
 - 可跳转元素加两个属性:`data-goto="<module>/<id>"`(画廊 manifest 的路由键)与 `data-goto-href="../<module>/<文件>.html"`(独立打开时的相对路径回退)。两者缺一不可:独立打开没有 manifest 可查路径,画廊 hash 路由不认文件路径。
 - 页尾统一贴导航 helper(正本如下,自包含零依赖)。file:// 下 iframe 与画廊壳异源,子页改不了父 hash——画廊内走 postMessage 由壳改 hash,独立打开回退为文件导航:
 
+<!-- asset -->
 ```html
 <script>
-  // 跨原型跳转:画廊内请求父页切换;独立打开时直接跳文件
+  // Cross-prototype navigation: inside the gallery ask the parent page to switch; when opened alone, go to the file directly
   document.addEventListener('click', (e) => {
     const el = e.target.closest('[data-goto]');
     if (!el) return;

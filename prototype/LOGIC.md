@@ -6,6 +6,7 @@
 
 ## 产物结构(不使用 README.md)
 
+<!-- example -->
 ```
 docs/prototypes/<功能模块>/<原型名>/
 ├── index.html     ← 原型页:问题段落 + mermaid 图 + 驾驶面板(从 logic-page-template.html 复制填充)
