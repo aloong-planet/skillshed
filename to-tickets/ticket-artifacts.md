@@ -4,7 +4,7 @@
 
 ## 身份与路径
 
-- 必须在 `docs/.workings/<slug>/` 下，使用同一个 `ticket-<id>-` 前缀命名本票的 `review-code.md`、`review-tests.md` 和 `doc-sync.md`；`<slug>` 必须取本 feature 已使用的施工目录标识，第三份产物的中文标题必须写为“文档同步清单”。本地票的 `<id>` 必须使用现有编号（例如 `06`）；tracker 票必须使用可作文件名的实际标识，标识需转换时必须在票中记录原标识与前缀的对应关系，并确认在本 feature 内唯一。
+- 必须在 `docs/.workings/<slug>/` 下，使用同一个 `ticket-<id>-` 前缀命名本票的 `review-code.md`、`review-tests.md` 和 `doc-sync.md`；`<slug>` 必须取本 feature 已使用的施工目录标识，第三份产物的标题必须按项目的 `working-language`（`capabilities.toml`，读写规则见全局指令的「项目能力声明」节）写成「文档同步清单」在该语言里的对应名称：`zh-Hans` 写「文档同步清单」，`en` 写 `Document sync checklist`。本地票的 `<id>` 必须使用现有编号（例如 `06`）；tracker 票必须使用可作文件名的实际标识，标识需转换时必须在票中记录原标识与前缀的对应关系，并确认在本 feature 内唯一。
 - 必须在票中声明上述三份产物路径；跨 feature 引用票时，必须同时记录 feature slug 与票标识。不得只用裸票号指向其它 feature 的票。
 - 必须保留 feature 级 `checklist.md` 与 `final-regression.md` 的名称和共享职责；不得以本票文档同步清单替代需求覆盖清单或交叉回归报告。
 
@@ -12,7 +12,7 @@
 
 - 必须把文档同步清单写成轻量待办：只列本票需要回写的事项，不得复制产品验收清单、审查明细或完整阶段状态表。
 - 必须按“同一同步事项、同一触发时点”组织一行；可独立核销、可能处于不同完成状态的事项必须拆行。同一行可包含多份文档，不得仅因文件不同而拆行。
-- 必须使用下表三列；成品清单必须按实际事项展开，不得保留填写指令。
+- 必须使用下表三列；成品清单必须按实际事项展开，不得保留填写指令。表头与状态取值必须按项目的 `working-language` 书写，含义与本节一一对应：`en` 的表头写 `Sync item and trigger` / `Documents` / `Status`，状态「已完成」「待触发」「待处理」分别写 `Done` / `Waiting` / `Pending`。
 
 | 同步事项及触发时点 | 涉及文档 | 状态与说明 |
 |---|---|---|
