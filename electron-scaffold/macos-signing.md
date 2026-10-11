@@ -65,6 +65,7 @@ macOS 桌面应用(Developer ID / DMG 直分发)从分发政策、配置到发�
 
 发布的顺序是固定的,不得把发布做成「本地打包之后追加一步公证」——本地打包出来的 DMG 里 `.app` 没有票据,而 DMG 打好后已补不进去:
 
+<!-- example -->
 ```text
 签名 .app
 → 提交 .app 公证 → staple 到 .app          ← 必须在打 DMG 之前
@@ -115,6 +116,7 @@ rm /tmp/cert.p12
 
 本地打包只需要第一项前置;在本机跑发布打包另需后两项:
 
+<!-- example -->
 ```bash
 security find-identity -v            # 钥匙串里有 Developer ID Application
 xcrun --find notarytool              # Xcode CLT 提供 notarytool
@@ -165,6 +167,7 @@ CI 的 macOS 打包按**触发方式**分档:
 
 **外层 DMG 与内部 App 是两个独立的验收对象,两边都要验。** staple 之后对每个 DMG:
 
+<!-- example -->
 ```bash
 # 外层 DMG:以这三条为决定性门禁
 xcrun stapler validate <dmg>

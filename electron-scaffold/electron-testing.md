@@ -9,24 +9,25 @@
 
 测试基建的一切前提是主进程留好注入口。四件,全部初始化时写:
 
+<!-- asset -->
 ```ts
-// ① 测试静音(e2e/smoke 注入;生产不设此变量):窗口不显示、不抢前台
+// ① Quiet test mode (injected by e2e/smoke; production never sets this variable): no window shown, no foreground steal
 const QUIET = process.platform === 'darwin' && Boolean(process.env['MYAPP_NO_FOREGROUND'])
 
-// ② 单实例锁:第二个实例什么都没初始化,直接 exit 最安全(quit 会走 before-quit 可能卡住)。
-//    app.exit 不中断本 tick 的后续同步代码,所以留住布尔、在 whenReady 里再挡一道
+// ② Single-instance lock: the second instance has initialised nothing, so exit at once is safest (quit runs before-quit and may hang).
+//    app.exit does not stop the rest of this tick's synchronous code, so keep the boolean and guard again in whenReady
 const gotTheLock = app.requestSingleInstanceLock()
 if (!gotTheLock) app.exit(0)
-// …… app.whenReady().then(() => { if (!gotTheLock) return; /* 初始化 */ })
+// … app.whenReady().then(() => { if (!gotTheLock) return; /* initialise */ })
 
-// ③ 建窗时接静音
+// ③ Apply quiet mode when creating the window
 new BrowserWindow({
   show: !QUIET,
   webPreferences: { /* …, */ backgroundThrottling: !QUIET }
 })
 
-// ④ dev 防孤儿:electron-vite(Ctrl+C)退出后不 kill electron,Electron 又吞 SIGINT
-//    ——轮询父进程存活,父(vite)没了就退出。仅 dev。
+// ④ Dev orphan guard: when electron-vite exits (Ctrl+C) it does not kill electron, and Electron swallows SIGINT
+//    — so poll whether the parent is alive and exit once the parent (vite) is gone. Dev only.
 if (process.env['ELECTRON_RENDERER_URL']) {
   const vitePid = process.ppid
   const t = setInterval(() => {
@@ -52,6 +53,7 @@ makeKey+激活,与 Dock 无关。隐藏窗口后 A/B:基线 32 tick 抢台 → 0
 Info.plist(`LSUIElement=false`)注册,主进程 JS 的 `dock.hide()` 几百毫秒后才执行,
 永远追不上——实测静音模式下原件照样注册 `ApplicationType=Foreground`。修法只能在 plist 层:
 
+<!-- example -->
 ```bash
 cp ~/.claude/skills/electron-scaffold/assets/quiet-electron.sh <项目>/scripts/
 ```
@@ -77,6 +79,7 @@ Electron 版本感知;**原件一字不动**,正常 dev 与打包版 Dock 行为
 
 ## 3. smoke 冒烟骨架
 
+<!-- example -->
 ```bash
 cp ~/.claude/skills/electron-scaffold/assets/smoke.sh.template <项目>/scripts/smoke.sh
 # 填顶部「项目填空」块:就绪产物 / 进程模式 / 真实 userData 对照,共三处 + 命名
@@ -111,6 +114,7 @@ cp ~/.claude/skills/electron-scaffold/assets/smoke.sh.template <项目>/scripts/
 
 ## 6. CI(GitHub Actions)
 
+<!-- example -->
 ```bash
 cp ~/.claude/skills/electron-scaffold/assets/ci-electron.yml <项目>/.github/workflows/ci.yml
 # 填一处:checks job 里项目自有的额外检查;分支名留 master/main 中实际用的

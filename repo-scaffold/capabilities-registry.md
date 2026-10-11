@@ -40,7 +40,7 @@ enforced-by = ["pnpm lint"]
 
 | ID | 形态 | 取值类型,或 `enabled = true` 的含义 | 默认值 |
 |---|---|---|---|
-| `working-language` | 顶层值 | 语言标签:仓库工作语言。管辖源码注释、工程文档、测试名、终端输出、commit message、PR 标题与正文、issue;不管辖面向用户的产品文案与 release note | `"en"` |
+| `working-language` | 顶层值 | 语言标签:仓库工作语言。管辖源码注释、工程文档、测试名、终端输出、commit message、PR 标题与正文、issue;不管辖面向用户的产品文案与 release note。skill 写进项目的固定名称、种子文本与资产随它书写的规则见 [artifact-names.md](./artifact-names.md) | `"en"` |
 | `i18n` | 段 | 产品界面支持多种语言,用户可见文案集中在字典里;`source` 指字典目录 | `enabled = false` |
 | `enumeration-wording-gate` | 段 | 有门禁检查文案不把可枚举维度的成员当全集列出;覆盖哪些维度以门禁脚本里的规则为准,`source` 指门禁脚本 | `enabled = false` |
 | `lint` | 段 | 有 linter 且已接入验证网关;`source` 指 linter 配置文件 | `enabled = false` |

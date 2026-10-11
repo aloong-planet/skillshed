@@ -25,6 +25,7 @@ typecheck → test → build,各子包都要覆盖。三者互不替代:
 
 ### 骨架
 
+<!-- asset -->
 ```yaml
 name: Checks
 
@@ -32,23 +33,23 @@ on:
   pull_request:
   push:
     branches:
-      - master          # 默认分支名按仓库实际填
+      - master          # use the repository's actual default branch name
 
 concurrency:
   group: checks-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  checks:               # 这个 id 就是 required status check 的名字(见下)
+  checks:               # this id is the required status check's name (see below)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      # pnpm 必须在 setup-node 之前:setup-node 的 cache: 'pnpm' 会调用 pnpm 探测 store 路径
+      # pnpm must come before setup-node: setup-node's cache: 'pnpm' calls pnpm to find the store path
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22        # 不要照抄其它 workflow 的版本,见「Node 版本」
+          node-version: 22        # do not copy another workflow's version; see "Node version" below
           cache: 'pnpm'
 
       - run: pnpm install --frozen-lockfile
@@ -56,11 +57,11 @@ jobs:
       - run: pnpm test
       - run: pnpm build
 
-      # 子包若有独立 lockfile / node_modules(不在 workspace 里),必须单独 install
+      # a sub-package with its own lockfile / node_modules (outside the workspace) must be installed separately
       - run: pnpm install --frozen-lockfile
-        working-directory: <子包目录>
+        working-directory: <sub-package directory>
       - run: pnpm build
-        working-directory: <子包目录>
+        working-directory: <sub-package directory>
 ```
 
 ### Node 版本:不能沿用打包 workflow 的版本
@@ -73,6 +74,7 @@ jobs:
 典型触发点:`node:sqlite` 需 Node ≥ 22.5、`node:test` 的部分 API、原生 fetch/WebSocket 的版本差异。判据是**CI 的 node 版本不低于本地开发用的版本**,而不是"复制隔壁 workflow"。
 
 排查方式:
+<!-- example -->
 ```bash
 node -v                                    # 本地
 grep -rln "node:sqlite\|node:test" src/    # 项目用到的版本敏感内置模块
@@ -125,6 +127,7 @@ gh run view <run-id> --log-failed | grep -E "error|FAIL|Process completed" | hea
 required status check 的 context 取 job 的 `name` 字段;未设 `name` 时取 **job id**。上面骨架里 job id 是 `checks`,则 context 就是 `checks`。
 
 确认实际登记的名字(而不是猜):
+<!-- example -->
 ```bash
 gh api "repos/<owner>/<repo>/commits/<sha>/check-runs" \
   --jq '.check_runs[] | "\(.name)  来源=\(.app.slug)"'
@@ -155,6 +158,7 @@ gh api "repos/<owner>/<repo>/commits/<sha>/check-runs" \
 
 UI 上勾了不等于存成功。用 API 读:
 
+<!-- example -->
 ```bash
 # 列出全部(注意:list 接口不返回 conditions,只能看 id/name/enforcement)
 gh api repos/<owner>/<repo>/rulesets \
@@ -174,6 +178,7 @@ gh api repos/<owner>/<repo>/rulesets/<id> --jq '{
 
 **多条 ruleset 并存时逐个查**。`enforcement=disabled` 且 `include=[]` 的是建了没配完的残留,删除前先确认它的规则集是现存规则的子集:
 
+<!-- example -->
 ```bash
 gh api repos/<owner>/<repo>/rulesets/<旧id> --jq '[.rules[].type]|sort'
 gh api repos/<owner>/<repo>/rulesets/<新id> --jq '[.rules[].type]|sort'

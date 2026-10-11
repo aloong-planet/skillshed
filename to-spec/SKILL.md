@@ -56,12 +56,12 @@ description: 把已达成共识的需求合成为持久 spec。需求讨论完�
 
 ## Spec 模板
 
-必须从已确认需求填写模板占位内容；章节是否生成、标识及粒度必须按 [需求标识与覆盖单位](requirement-identifiers.md) 的“唯一主定义”和“覆盖单位”执行。
+必须从已确认需求填写模板占位内容；章节是否生成、标识及粒度必须按 [需求标识与覆盖单位](requirement-identifiers.md) 的“唯一主定义”和“覆盖单位”执行。模板与本文件写进项目产物的内容（固定名称、占位符里的填写指引与叙述句），必须按 [产物固定名称](../repo-scaffold/artifact-names.md) 书写。
 
 ```md
-# {功能名}(与 docs/features/<同 slug>.md 同名)
+# {功能名,与 docs/features/<同 slug>.md 同名}
 
-> 关联: [features](../features/<slug>.md) · ADR-XXXX(如有)
+> 关联: [features](../features/<slug>.md) · {ADR-XXXX,如有}
 
 ## Problem Statement
 {用户视角的问题}
