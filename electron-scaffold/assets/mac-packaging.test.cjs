@@ -3,6 +3,9 @@
 // Every external command goes through an injected runner, so these tests check which commands run, in what
 // order, what fails and with which message. They never contact Apple and never build an app: a green run here
 // says nothing about a real signature or a real notarization. Those are verified by real packaging runs.
+//
+// `main` runs real commands and is tested only for its argument and location checks: the hook path it derives and
+// the DMG gate's loop over the selected DMGs are covered only by a real release packaging run.
 const { test, describe, afterEach } = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
@@ -518,7 +521,8 @@ describe('DMG gate: one DMG', () => {
       message: 'Apple notarization not accepted: Invalid (submission: id-Demo-1-2-1-mac-x64-dmg)'
     })
     assert.ok(commands.some((c) => c.startsWith('xcrun notarytool log id-Demo-1-2-1-mac-x64-dmg')))
-    assert.equal(errors.length, 1)
+    // The log body itself reaches the diagnostics
+    assert.deepEqual(errors, [JSON.stringify({ jobId: 'id-Demo-1-2-1-mac-x64-dmg', status: 'Accepted', issues: [] })])
   })
 
   test('a failure inside the mounted image still detaches (forcing if needed), and cleanup never hides the cause', () => {
