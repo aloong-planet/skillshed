@@ -49,27 +49,25 @@ macOS 桌面应用(Developer ID / DMG 直分发)从分发政策、配置到发�
 
 **app 的票据管「拖出来之后」,DMG 的票据管「打开 DMG 时」**,不能互相替代。
 
-## 3. 固定顺序、步骤脚本与硬约束
+## 3. 固定顺序、打包结构与硬约束
 
-签名与公证必须拆成独立的步骤脚本,第 1 节的两个入口命令只负责组合它们:
+每次打包必须是**一次** electron-builder 调用,同时产出并签名各架构的 `.app` 与 DMG;发布时 `.app` 的公证挂在这次调用的 `afterSign` 钩子上,由项目自己的公证代码执行,DMG 的公证与门禁在这次调用结束之后执行:
 
-| 步骤脚本 | 做什么 |
+| 入口命令 | 做什么 |
 |---|---|
-| `mac:sign` | 检查 Developer ID 证书(没有就报错退出);按架构构建并签名 `.app`,不打 DMG(`electron-builder --mac dir --<arch>`) |
-| `mac:notarize-app` | 用 `notarytool` 公证每个 `.app` 并 staple;公证状态与日志按第 6 节断言 |
-| `mac:dmg` | 每个架构从已签名的 `.app` 打 DMG 并签名(`electron-builder --mac dmg --<arch> --prepackaged <app>`) |
-| `mac:notarize-dmg` | 对每个 DMG 做提交前检查、公证、staple 与门禁(第 6、7 节) |
+| `dist:mac:local` | 检查 Developer ID 证书(没有就报错退出)→ 一次调用构建并签名各架构的 `.app` 与 DMG,内置公证关闭、不挂公证钩子 → 核对每个 `.app` 与 DMG 的签名 |
+| `dist:mac:release` | 构建前检查证书与公证凭据,缺任一就报错退出 → 同一次调用加挂 `afterSign` 钩子:每个 `.app` 签名之后、打它的 DMG 之前,用 `notarytool` 公证并 staple,公证状态与日志按第 6 节断言 → 核对签名,并断言每个 `.app` 已自带票据 → 对每个 DMG 做提交前检查、公证、staple 与门禁(第 6、7 节) |
 
-- `dist:mac:local` = `mac:sign` → `mac:dmg`
-- `dist:mac:release` = `mac:sign` → `mac:notarize-app` → `mac:dmg` → `mac:notarize-dmg`
+- **不得把一次打包拆成多次 electron-builder 调用**(如先用 `--mac dir` 打 `.app`、再用 `--prepackaged` 打 DMG):electron-builder 有些行为只在同一次调用同时构建 `.app` 与 DMG 或 zip 时才发生——往 `.app` 里写 `app-update.yml` 的条件正是这次调用的目标含 `dmg` 或 `zip`——拆开调用会把它们静默丢掉,构建不报错。
+- **不得用内置公证(`mac.notarize`)公证 `.app`**:它只要环境里有 Apple 凭据就自动提交,本地打包会在加载了凭据的机器上悄悄提交;缺凭据时只告警后跳过,发布出去的 `.app` 没有票据而构建是绿的;它也不留公证日志。
 
 发布的顺序是固定的,不得把发布做成「本地打包之后追加一步公证」——本地打包出来的 DMG 里 `.app` 没有票据,而 DMG 打好后已补不进去:
 
 <!-- example -->
 ```text
 签名 .app
-→ 提交 .app 公证 → staple 到 .app          ← 必须在打 DMG 之前
-→ 生成各架构 DMG(内部 app 已自带票据)
+→ afterSign 钩子:提交 .app 公证 → staple 到 .app   ← 必须在打 DMG 之前
+→ 同一次调用里由它生成该架构的 DMG(内部 app 已自带票据)
 → 签名每个 DMG
 → 提交前检查每个 DMG(第 6 节)
 → 提交每个 DMG 公证 → staple DMG
@@ -83,12 +81,14 @@ macOS 桌面应用(Developer ID / DMG 直分发)从分发政策、配置到发�
 - **staple 之后不得再改动字节**——改了票据与签名同时作废;
 - 打包完成后**没有可行的补钉途径**:DMG 只读挂载,虽可 `hdiutil convert` 成可写再改,但改动内容会作废它自身的签名与票据,等于整套重做。**唯一时机是打 DMG 之前。**
 
-electron-builder 侧(以下行为实测于 electron-builder / app-builder-lib 26.15.3;版本变化时按第 0 节重新坐实):
+electron-builder 侧(以下行为读自 app-builder-lib 26.17.0 的源码,并经一次真实发布打包坐实;版本变化时按第 0 节重新坐实):
 
-- **`electron-builder.yml` 必须写 `mac.notarize: false`**:`.app` 由 `mac:notarize-app` 公证,而内置公证只要环境里有 Apple 凭据就会自动执行,能关掉它的只有显式的 `notarize: false`。不关,本地打包会在加载了凭据的机器上悄悄提交公证。本地入口命令另传 `-c.mac.notarize=false` 作双保险。
-- **`--prepackaged` 不重签 `.app`**:它跳过打包与签名(内置公证也在其中),只把现成的 `.app` 做成 DMG。实测用已 staple 的 `.app` 打出的 DMG,arm64、x64、universal 三个架构里的 `.app` 文件逐一不变,cdhash 与票据都在。
+- **`electron-builder.yml` 必须写 `mac.notarize: false`**:能关掉内置公证的只有显式的 `notarize: false`。打包命令另传 `-c.mac.notarize=false` 作双保险。
+- **`afterSign` 钩子在签名之后、该架构的 DMG 构建之前执行,每个最终 `.app` 一次**:universal 构建的两个中间 `.app` 以不签名方式构建,不触发钩子。签名被跳过(找不到身份)时钩子也不执行,只打一条警告——因此打包后必须断言每个 `.app` 的签名身份,发布时还必须断言票据已装订。
+- **钩子模块中与钩子同名的导出(`afterSign`)优先于默认导出被取用**:打包脚本可以兼作钩子模块,只在 release 命令上用 `-c.afterSign=<脚本路径>` 挂上,本地打包因此不可能触发公证。
+- **钩子在构建过程中就向 Apple 提交**:构建前必须清掉本次构建上次留下的输出(各架构的输出目录、DMG、公证日志),不得留到构建后的产物全集检查——崩溃的 universal 构建会留下 `<输出目录>-<arch>-temp`,等构建后才发现时,公证已经提交出去了。
 - **DMG 签名(`dmg.sign: true`)不输出任何日志**:必须对 DMG 跑 `codesign` 核对,不得凭构建日志判断它签没签。
-- **`--dir` 的输出目录随架构不同**:x64 输出到 `mac/`,arm64 与 universal 输出到 `mac-<arch>/`。打 DMG 时必须从构建产物里定位 `.app`,不得按名字规律拼路径。
+- **各架构的输出目录名不同**:x64 输出到 `mac/`,arm64 与 universal 输出到 `mac-<arch>/`。打包后必须从构建产物里定位 `.app`,不得按名字规律拼路径。
 
 ## 4. 凭据与证书(一次性)
 
@@ -148,7 +148,7 @@ CI 的 macOS 打包按**触发方式**分档:
 两个 GitHub Actions 的具体约束:
 
 - **Secrets 不能直接写进 step 的 `if` 表达式**,要先在 job 层转成布尔 env(如 `HAS_CSC`、`HAS_APPLE`),再用它做分支判断。
-- **证书与公证凭据必须注入执行 `release` 命令的那一步**;`mac:notarize-app` 与 `mac:notarize-dmg` 缺凭据时必须报错退出,不得跳过。
+- **证书与公证凭据必须注入执行 `release` 命令的那一步**;缺凭据时按第 3 节的 `release` 一行报错退出,不得跳过。
 - **门禁位置**:公证与验收必须卡在**打包与上传之间**。任一步失败都要阻断 Release 上传,而不是先传了再说。
 
 ## 6. 门禁脚本要断言什么
