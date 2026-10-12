@@ -29,24 +29,39 @@ enforced-by = ["pnpm lint"]
 | 命令数组 | 字符串数组 | 每项是一条命令 |
 | 语言标签 | 字符串 | BCP 47 语言标签(如 `"en"`、`"zh"`) |
 | 字符串表 | 内联表 | 键与值都是字符串 |
+| 枚举 | 字符串 | 取值只能是该 ID 定义里列出的值之一 |
 
 ## 默认值
 
-下表每个 ID 都有一个默认值,它是 `/repo-scaffold` 询问时给出的推荐答案(问法见 `/repo-scaffold` 的 C 节)。文件里缺失的 ID 如何处理,以全局指令的「项目能力声明」节为准。
+下表每个 ID 都有一个默认值;`/repo-scaffold` 询问时怎样据此给出推荐答案,见其 C 节。文件里缺失的 ID 如何处理,以全局指令的「项目能力声明」节为准。
 
 段形态的默认值一律是 `enabled = false`。
 
 ## ID 一览
 
-| ID | 形态 | 取值类型,或 `enabled = true` 的含义 | 默认值 |
-|---|---|---|---|
-| `working-language` | 顶层值 | 语言标签:仓库工作语言;中文一律写 `"zh"`,不写 `"zh-Hans"`、`"zh-CN"` 等带文字或地区子标签的形式。管辖源码注释、工程文档、测试名、终端输出、commit message、PR 标题与正文、issue;不管辖面向用户的产品文案与 release note。skill 写进项目的固定名称、种子文本与资产随它书写的规则见 [artifact-names.md](./artifact-names.md) | `"en"` |
-| `i18n` | 段 | 产品界面支持多种语言,用户可见文案集中在字典里;`source` 指字典目录 | `enabled = false` |
-| `enumeration-wording-gate` | 段 | 有门禁检查文案不把可枚举维度的成员当全集列出;覆盖哪些维度以门禁脚本里的规则为准,`source` 指门禁脚本 | `enabled = false` |
-| `lint` | 段 | 有 linter 且已接入验证网关;`source` 指 linter 配置文件 | `enabled = false` |
-| `e2e-suite` | 段 | 有端到端测试且已接入验证网关;`source` 指端到端测试的配置文件 | `enabled = false` |
-| `theming` | 段 | 界面颜色由主题变量驱动,且至少有一个主题维度(明暗、多套配色、对比度等);有哪些维度以主题样式文件为准,`source` 指主题样式文件 | `enabled = false` |
-| `macos-distribution` | 段 | 项目对外分发 macOS 安装包,签名与公证要求按 electron-scaffold 的 [macos-signing.md](../electron-scaffold/macos-signing.md) 的分发政策;`source` 指项目的签名与公证运维手册,`enforced-by` 填发布门禁命令。专属子表见下 | `enabled = false` |
+| ID | 形态 | 取值类型,或 `enabled = true` 的含义 | 前提 | 默认值 |
+|---|---|---|---|---|
+| `client-framework` | 顶层值 | 枚举:项目是不是客户端应用、用哪个框架。`"none"`:不是客户端应用;`"electron"`:Electron 客户端;`"tauri"`:Tauri 客户端 | 无 | `"none"` |
+| `working-language` | 顶层值 | 语言标签:仓库工作语言;中文一律写 `"zh"`,不写 `"zh-Hans"`、`"zh-CN"` 等带文字或地区子标签的形式。管辖源码注释、工程文档、测试名、终端输出、commit message、PR 标题与正文、issue;不管辖面向用户的产品文案与 release note。skill 写进项目的固定名称、种子文本与资产随它书写的规则见 [artifact-names.md](./artifact-names.md) | 无 | `"en"` |
+| `i18n` | 段 | 产品界面支持多种语言,用户可见文案集中在字典里;`source` 指字典目录 | 无 | `enabled = false` |
+| `enumeration-wording-gate` | 段 | 有门禁检查文案不把可枚举维度的成员当全集列出;覆盖哪些维度以门禁脚本里的规则为准,`source` 指门禁脚本 | 无 | `enabled = false` |
+| `lint` | 段 | 有 linter 且已接入验证网关;`source` 指 linter 配置文件 | 无 | `enabled = false` |
+| `e2e-suite` | 段 | 有端到端测试且已接入验证网关;`source` 指端到端测试的配置文件 | 无 | `enabled = false` |
+| `theming` | 段 | 界面颜色由主题变量驱动,且至少有一个主题维度(明暗、多套配色、对比度等);有哪些维度以主题样式文件为准,`source` 指主题样式文件 | 无 | `enabled = false` |
+| `macos-distribution` | 段 | 项目对外分发 macOS 安装包;怎么打包按下文的实现指南分派,`source` 指项目的签名与公证运维手册,`enforced-by` 填发布门禁命令。专属子表见下 | `client-framework` 为 `"electron"` 或 `"tauri"` | `enabled = false` |
+
+### 前提
+
+「前提」列写了条件的 ID,只在条件成立时适用,条件不成立时不适用;「前提」为「无」的 ID 总是适用。适用与不适用的 ID 各自怎样写、怎样读,以全局指令的「项目能力声明」节为准。
+
+### `macos-distribution` 的实现指南
+
+分发政策(哪种构建签名、哪种公证、无证书怎么办)与框架无关;怎么打包按 `client-framework` 读对应的指南:
+
+| `client-framework` | 实现指南 |
+|---|---|
+| `"electron"` | electron-scaffold 的 [macos-signing.md](../electron-scaffold/macos-signing.md);其中第 1 节是分发政策 |
+| `"tauri"` | 暂无。需要它的 skill 必须停下来告诉用户「Tauri 项目的 macOS 打包没有指南」,不得改用 Electron 的指南 |
 
 ### `macos-distribution` 的专属子表
 
@@ -57,7 +72,7 @@ enforced-by = ["pnpm lint"]
 | `[macos-distribution.profiles.local]` | 本地打包 | `command`(命令,必填)、`env`(字符串表,可选:执行该命令时附加的环境变量) |
 | `[macos-distribution.profiles.release]` | 发布打包,正式版与预发布版共用 | 同上 |
 
-- 每个子表的命令要达到的签名与公证程度,由 macos-signing.md 的分发政策规定,本表不写。
+- 每个子表的命令要达到的签名与公证程度,由上文实现指南里的分发政策规定,本表不写。
 - 什么样的 tag 是正式版、什么样的是预发布版,由 `/github-ops` 第 4 节定义,本表不写。
 
 ```toml

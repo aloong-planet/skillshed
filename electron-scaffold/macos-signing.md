@@ -1,9 +1,9 @@
 # macOS 签名、公证与发布验收
 
-macOS 桌面应用(Developer ID / DMG 直分发)从分发政策、配置到发版验收的完整链条,是 macOS 分发的唯一来源。
+macOS 桌面应用(Developer ID / DMG 直分发)从分发政策、配置到发版验收的完整链条,是 Electron 项目 macOS 分发的唯一来源。
 按**平台**组织而非按时机——建项目时配的东西和发版时验的东西是同一条因果链,拆开看会各缺一半。
 
-**仅当项目能力声明 `macos-distribution` 已启用时读取本文**。入口:`electron-scaffold` 第 4 节(建项目)、`github-ops` 第 4 节(发版)。
+**仅当项目能力声明里 `client-framework` 为 `"electron"` 且 `macos-distribution` 已启用时读取本文**。入口:`electron-scaffold` 第 4 节(建项目)、`github-ops` 第 4 节(发版)。
 
 本文按 DMG 直分发写。以 ZIP、PKG 或 Mac App Store 分发时,必须按该形态重新推导最外层的提交与验收边界,不得照搬下面的 DMG 流程。
 

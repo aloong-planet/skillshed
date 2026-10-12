@@ -28,6 +28,7 @@ disable-model-invocation: true
 - `docs/` 下已有哪些目录(`adr` `specs` `features` `prototypes` `postmortems` `ops` `.workings`)
 - `docs/agents/` —— 本 skill 上次的产出是否已存在
 - 技术栈与包管理器,既有的 linter 配置与 `lint` 脚本,项目的全量验证脚本,`.github/workflows/` 下的检查 workflow
+- 是不是客户端应用、用哪个框架:依赖里有没有 `electron`、`@tauri-apps/*`,仓库根有没有 `src-tauri/`
 
 ## 2. 逐节确认
 
@@ -49,14 +50,15 @@ disable-model-invocation: true
 
 仅当探查发现 monorepo 迹象(`pnpm-workspace.yaml`、`package.json` 的 `workspaces`、`packages/*` 各自带 `src/`)时,才提供**多上下文**选项。多上下文的格式与推断规则由 `/domain-modeling` 定义,见其 `CONTEXT-FORMAT.md`——**本 skill 不重复定义,只记录选了哪种**。
 
-**C 节 —— 项目能力声明.** 按登记表逐个 ID 处理,`lint` 除外(它由 D 节决定)。**登记表里的每个 ID 都必须写进 `capabilities.toml`**——文件里缺失的 ID 是未确认(全局指令「项目能力声明」节):
+**C 节 —— 项目能力声明.** 按登记表逐个 ID 处理,`lint` 除外(它由 D 节决定)。**先定 `client-framework`,其余 ID 按登记表的「前提」列只处理适用的**:前提不成立的 ID 不问、不写。**每个适用的 ID 都必须写进 `capabilities.toml`**——文件里缺失的适用 ID 是未确认(全局指令「项目能力声明」节):
 
-- **`capabilities.toml` 不存在** → 新建:草稿里给登记表的每个 ID 先填上默认值,再按下面的问法逐项问。
-- **已存在** → 不重写已有的项;逐个核对登记表里的**全部** ID,缺哪项就在草稿里补哪项,按下面的问法问。已有项的形态、字段或取值类型与登记表不符的,作为一条发现列进草稿。
+- **`capabilities.toml` 不存在** → 新建:先问 `client-framework`;再在草稿里给其余适用的 ID 先填上默认值,按下面的问法逐项问。
+- **已存在** → 不重写已有的项;先核对 `client-framework`,再逐个核对其余**全部**适用的 ID,缺哪项就在草稿里补哪项,按下面的问法问。已有项的形态、字段或取值类型与登记表不符的,以及写了前提不成立的 ID 的,各作为一条发现列进草稿。
 
 问法:
 
-- **顶层值**:问取什么值,推荐答案是登记表里的默认值,用户一个词就能接受;未经用户确认不得写入。
+- **顶层值**:问取什么值,推荐答案是登记表里的默认值(`client-framework` 除外,见下条),用户一个词就能接受;未经用户确认不得写入。
+- **`client-framework`**:分两步问——先问是不是客户端应用,是的话再问用哪个框架。推荐答案取第 1 节的探查结果:依赖里有 `electron` → `"electron"`;依赖里有 `@tauri-apps/*` 或仓库根有 `src-tauri/` → `"tauri"`;都没有 → 默认值 `"none"`;两种框架的迹象都有时不给推荐,列出两边的证据请用户定。
 - **段**:问是否启用,推荐答案是默认值 `enabled = false`;**不得凭目录或文件推断哪些能力已启用**——接线未完成的仓库,现象与声明给出相反答案。用户答启用的,按登记表填 `source`、`enforced-by` 以及该 ID 的专属字段与子表。
 
 `AGENTS.md` 里没有指向 `capabilities.toml` 的引用行时,补一行。引用行按 `working-language` 书写,只说「跨 skill 生效的项目事实见仓库根的 `capabilities.toml`」这一个意思,不复述文件内容。
@@ -137,3 +139,5 @@ Windows 上不得用 symlink 代替导入——创建 symlink 需要管理员权
 ## 6. 收尾
 
 告诉用户配置已写好、哪些 skill 会读它,以及 `docs/agents/*.md` 与 `capabilities.toml` 可以直接手改——只有换 tracker 或要重铺时才需要重跑本 skill;`capabilities.toml` 的更新时机按全局指令的「项目能力声明」节,不经本 skill。
+
+`client-framework` 为 `"electron"` 时,告诉用户 Electron 项目的一次性基础设施由 `/electron-scaffold` 铺;为 `"tauri"` 时,告诉用户 Tauri 还没有对应的 scaffold skill。
