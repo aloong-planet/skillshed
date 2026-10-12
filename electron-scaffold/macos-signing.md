@@ -61,6 +61,7 @@ macOS 桌面应用(Developer ID / DMG 直分发)从分发政策、配置到发�
 - **不得把一次打包拆成多次 electron-builder 调用**(如先用 `--mac dir` 打 `.app`、再用 `--prepackaged` 打 DMG):electron-builder 有些行为只在同一次调用同时构建 `.app` 与 DMG 或 zip 时才发生——往 `.app` 里写 `app-update.yml` 的条件正是这次调用的目标含 `dmg` 或 `zip`——拆开调用会把它们静默丢掉,构建不报错。
 - **不得用内置公证(`mac.notarize`)公证 `.app`**:它只要环境里有 Apple 凭据就自动提交,本地打包会在加载了凭据的机器上悄悄提交;缺凭据时只告警后跳过,发布出去的 `.app` 没有票据而构建是绿的;它也不留公证日志。
 - **必须用资产 [`assets/mac-packaging.cjs`](./assets/mac-packaging.cjs) 实现本节与第 6、7 节,不得在项目里另写一套**:它实现两种打包、`afterSign` 钩子与 DMG 门禁,[`assets/mac-packaging.test.cjs`](./assets/mac-packaging.test.cjs) 是它的测试。两个文件必须复制到项目里的同一目录;`electron-builder.yml` 必须满足资产文件头列出的要求(资产运行时也会核对);测试(`node --test <目录>/mac-packaging.test.cjs`)必须接进项目的验证网关。资产不满足项目需要时,改资产本身并回到 skill 提交,不得只改项目里的副本。
+- **资产测试接进项目的测试脚本时,必须排在接收命令行参数的那条命令之前**:包管理器把 `<包管理器> test <参数>` 的参数追加到脚本末尾,`node --test` 排在末尾就会收下这些参数,项目原有测试运行器的过滤随之失效、改为全量运行。判据:`<包管理器> test <一个测试文件>` 只运行资产测试与该文件。
 
 <!-- example -->
 ```bash
