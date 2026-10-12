@@ -39,7 +39,7 @@
 
 ## 下载与安装
 
-<!-- macOS 行与 macOS 提示的写法(含「已通过 Apple 公证」的前提、按架构列全)见 electron-scaffold/macos-signing.md 第 10 节。 -->
+<!-- macOS 行与 macOS 提示的写法(含「已通过 Apple 公证」的前提、按架构列全)见 SKILL.md 第 4 节开头所说的 macOS 指南中发版时的 macOS 步骤。 -->
 
 | 平台 | 下载文件 | 说明 |
 |---|---|---|
