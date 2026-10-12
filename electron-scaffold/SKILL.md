@@ -184,7 +184,7 @@ TCC 按 bundle id 记账、**同时记录代码签名要求**。同一个 bundle
 
 **先看项目能力声明**:读 `capabilities.toml` 的 `macos-distribution`(读写规则见全局指令的「项目能力声明」节)——
 
-- `enabled = true` → 必须完整读取 [macos-signing.md](./macos-signing.md),该文档的条文与本文件同等生效。建项目时按它装:第 1 节的分发政策定两条打包命令要达到什么,第 3 节的步骤脚本搭出 `dist:mac:local` 与 `dist:mac:release`,第 4 节配证书与凭据,第 5 节配 CI 各档,第 6、7 节写门禁与验收。两条命令写进 `macos-distribution.profiles`。
+- `enabled = true` → 必须完整读取 [macos-signing.md](./macos-signing.md),该文档的条文与本文件同等生效。建项目时按它装:第 1 节的分发政策定两条打包命令要达到什么,第 3 节的打包结构搭出 `dist:mac:local` 与 `dist:mac:release`,第 4 节配证书与凭据,第 5 节配 CI 各档,第 6、7 节写门禁与验收。两条命令写进 `macos-distribution.profiles`。
 - `enabled = false` → 产出里写明「按项目能力声明,macos-distribution 未启用,该项跳过」。
 - 缺失 → 未确认,按全局指令停下来问。初始化时这一项由 `/repo-scaffold` 询问,本节不另问。
 
