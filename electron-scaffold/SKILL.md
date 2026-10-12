@@ -8,7 +8,7 @@ when_to_use: "初始化 Electron + electron-builder 项目时逐项过一遍。�
 
 初始化 Electron(electron-builder)新项目时**一次性**铺的基础设施。这些是"建项目时装一次、以后自动生效"的东西,不是日常操作。日常发版/打包规范另见 `/github-ops` skill。
 
-**先看项目能力声明的 `client-framework`**(读写规则见全局指令的「项目能力声明」节):值为 `"electron"` 时本 skill 适用;为其他登记的取值时本 skill 不适用,产出里写明「按项目能力声明,client-framework 为 <值>,electron-scaffold 不适用」后停止,不得照本 skill 铺任何东西;缺失或取值未登记 → 未确认,按全局指令停下来问。初始化时这一项由 `/repo-scaffold` 询问,本 skill 不另问。
+**先看项目能力声明的 `client-framework`**(读写规则见全局指令的「项目能力声明」节):值为 `"electron"` 时本 skill 适用;为其他登记的取值时本 skill 不适用,产出里写明「按项目能力声明,client-framework 为 <值>,electron-scaffold 不适用」后停止,不得照本 skill 铺任何东西;缺失或取值未登记 → 未确认,按全局指令停下来问。
 
 > 用法:新建 Electron 项目做初始化时,过一遍下面的清单,把适用项装进去。每项都有:何时需要、装什么、怎么接、验证。
 
@@ -188,7 +188,7 @@ TCC 按 bundle id 记账、**同时记录代码签名要求**。同一个 bundle
 
 - `enabled = true` → 必须完整读取 [macos-signing.md](./macos-signing.md),该文档的条文与本文件同等生效。建项目时按它装:第 1 节的分发政策定两条打包命令要达到什么,第 3 节的打包结构搭出 `dist:mac:local` 与 `dist:mac:release`,第 4 节配证书与凭据,第 5 节配 CI 各档,第 6、7 节写门禁与验收。两条命令写进 `macos-distribution.profiles`。
 - `enabled = false` → 产出里写明「按项目能力声明,macos-distribution 未启用,该项跳过」。
-- 缺失 → 未确认,按全局指令停下来问。初始化时这一项由 `/repo-scaffold` 询问,本节不另问。
+- 缺失 → 未确认,按全局指令停下来问。
 
 Mac App Store 线由商店分发,不走 Gatekeeper 的票据路径,不适用本节(渠道划分见第 3 节)。
 
