@@ -79,7 +79,7 @@ git log --oneline origin/master..HEAD   # 本分支相对 master 到底带了哪
 | **预发布 tag**:带预发布后缀(`-alpha`/`-beta`/`-rc`/`-dev`) | 迭代版 | **Pre-release** |
 
 - **macOS 安装包先看项目能力声明**:读 `capabilities.toml` 的 `client-framework` 与 `macos-distribution`(读写规则见全局指令的「项目能力声明」节),先按前者、再按后者分支——
-  - `client-framework` 未确认 → 按全局指令停下来问。
+  - `client-framework` 未确认(缺失或取值未登记)→ 按全局指令停下来问。
   - `client-framework` 为 `"none"` → `macos-distribution` 不适用:按全局指令写明不适用,本文件里凡涉及 macOS 安装包的步骤一并跳过。
   - `client-framework` 为 `"electron"` 或 `"tauri"` → 按 `macos-distribution`:
     - `enabled = true` → 按 `/repo-scaffold` 能力登记表里该 ID 的[实现指南](../repo-scaffold/capabilities-registry.md),取与 `client-framework` 对应的那份完整读取(下称 macOS 指南),按其中发版时的 macOS 步骤执行;该文档的条文与本文件同等生效。登记表写明没有指南的,按登记表停下来。
