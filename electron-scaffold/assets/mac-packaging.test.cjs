@@ -479,17 +479,25 @@ describe('DMG gate: one DMG', () => {
     ...extra
   })
 
-  test('runs verify → submit → log → staple → Gatekeeper → the app inside, and detaches', () => {
+  test('runs verify → submit → log → staple → Gatekeeper → the app inside, then detaches and removes the mount point', () => {
     const { commands, run } = notaryRunner()
-    const id = mac.notarizeDmg('/r/Demo 1.2.1-mac-arm64.dmg', options(run))
+    const logs = []
+    const removed = []
+    const id = mac.notarizeDmg('/r/Demo 1.2.1-mac-arm64.dmg', options(run, {
+      writeNotaryLog: (file, contents) => { commands.push('notary-log-kept'); logs.push({ file, contents }) },
+      removeMountPoint: (mountPoint) => { commands.push('mount-point-removed'); removed.push(mountPoint) }
+    }))
     assert.equal(id, 'id-Demo-1-2-1-mac-arm64-dmg')
     assert.deepEqual(commands.map((c) => c.split(' ').slice(0, 3).join(' ')), [
       'hdiutil verify /r/Demo', 'codesign --verify --verbose=4', 'codesign --display --verbose=4',
-      'xcrun notarytool submit', 'xcrun notarytool log', 'xcrun stapler staple', 'xcrun stapler validate',
+      'xcrun notarytool submit', 'xcrun notarytool log', 'notary-log-kept', 'xcrun stapler staple', 'xcrun stapler validate',
       'hdiutil verify /r/Demo', 'spctl --assess --type', 'hdiutil attach -readonly', 'codesign --verify --deep',
-      'xcrun stapler validate', 'hdiutil detach /tmp/mount'
+      'xcrun stapler validate', 'hdiutil detach /tmp/mount', 'mount-point-removed'
     ])
     assert.ok(commands.includes('xcrun stapler validate /tmp/mount point/Demo.app'))
+    // Apple's log is kept unmodified next to the DMG it belongs to
+    assert.deepEqual(logs, [{ file: '/r/Demo 1.2.1-mac-arm64.dmg.notary-log.json', contents: JSON.stringify({ jobId: 'id-Demo-1-2-1-mac-arm64-dmg', status: 'Accepted', issues: [] }) }])
+    assert.deepEqual(removed, ['/tmp/mount point'])
   })
 
   test('a DMG without a secure timestamp fails before it is submitted', () => {
