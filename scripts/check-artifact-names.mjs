@@ -33,7 +33,7 @@ const TEMPLATES = [
 ]
 // Copied into projects whole.
 const ASSET_DIRS = ['electron-scaffold/assets']
-const ASSET_FILES = ['prototype/gallery-template.html', 'prototype/logic-page-template.html', 'prototype/logic-template.js', 'prototype/sync-mmd.mjs']
+const ASSET_FILES = ['prototype/gallery-template.html', 'prototype/logic-page-template.html', 'prototype/logic-template.js', 'prototype/sync-mmd.mjs', 'prototype/demo-harness.js', 'prototype/demo-dimensions.js', 'prototype/app-identity.js']
 // Documents whose code blocks may be copied into projects; every Chinese-bearing block must be classified.
 const ASSET_DOC_DIRS = ['electron-scaffold', 'prototype']
 const ASSET_DOC_FILES = ['github-ops/checks-gate.md']
