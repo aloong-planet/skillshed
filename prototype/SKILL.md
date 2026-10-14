@@ -26,6 +26,9 @@ description: 用一次性原型回答拿不准的设计问题,产物留在 docs/
 | [logic-page-template.html](./logic-page-template.html) | Logic 原型页模板(图渲染 + 驾驶面板 + 画布交互) |
 | [gallery-template.html](./gallery-template.html) | 画廊壳模板 |
 | [sync-mmd.mjs](./sync-mmd.mjs) | `.mmd` → `model.mmd.js` 生成期同步脚本 |
+| [demo-harness.js](./demo-harness.js) | 演示条停靠脚本(拖动、收成悬浮球、限位视口、条宽收到最宽一行) |
+| [demo-dimensions.js](./demo-dimensions.js) | 产品维度脚本(设置原型页写出语言、明暗等取值,其余原型页按声明跟随) |
+| [app-identity.js](./app-identity.js) | 标签页标识脚本(在画廊壳与每个原型页的浏览器标签页上标出所属 app 的名字与图标) |
 
 模板类资产**正本在此**,项目里的是复制实例——要改行为,改这里再重新复制,不手改实例。
 
@@ -33,7 +36,7 @@ description: 用一次性原型回答拿不准的设计问题,产物留在 docs/
 
 1. **位置与命名**:统一放 `docs/prototypes/<功能模块>/`(模块名对齐 docs/features/ 的 slug 或 CONTEXT.md 术语簇;新功能用其 feature-slug)。**不进 src/**。README/文件头写明原型化的目标功能与问题,补足上下文。
 2. **一条命令可跑**:logic 接入项目既有 task runner;HTML 双击/浏览器直开。
-3. **默认零持久化**:状态只在内存——持久化是原型要检验的对象,不是它可依赖的东西。
+3. **默认零持久化**:状态只在内存——持久化是原型要检验的对象,不是它可依赖的东西。**例外仅限读者的浏览状态**(演示条的位置与收起、画廊侧栏的折叠,以及 [UI.md](./UI.md) 演示基建条款第 5 条的产品维度取值连同设置原型页据以写出它的偏好与模拟输入):它们服务于读者跨页、跨次浏览,不是原型要检验的持久化行为,可存浏览器本地存储,读写失败时页面必须照常运行。
 4. **跳过打磨**:无测试、无错误处理(仅保可跑)、无抽象、无泛化("将来支持 X"禁止)。
 5. **状态外显**:每次动作(logic)/每次切换(UI)后,渲染完整相关状态。
 6. **用后捕获,原型保留**:答案(裁决+它解决的问题)记入 issue/commit;验证过的**决策**折进真代码/spec/ADR(mermaid 图按 to-spec 豁免条款可直接内联);验证过的逻辑模块提升进真代码。**原型本身是持久资产,留在 `docs/prototypes/` 不清空**——状态机图 + 可驾驶面板是模型的活文档,清掉等于每次重造。
@@ -49,11 +52,15 @@ description: 用一次性原型回答拿不准的设计问题,产物留在 docs/
    - **判据**:用户在不拼路径、不 `cd`、不靠文件管理器翻目录的前提下,仅凭回复中的链接即可预览本轮改动结果。缺链接即本轮交付未完成。
    - **与规则 8 的边界**:本规则约束的是**对用户的会话交付**,不是往 ADR/spec 里写死路径;持久文档仍只记结论。
 10. **界面规范依赖**:UI 原型动手前先调 `/ui-design`(Skill 工具)载入界面硬性规范,其全部规则在原型阶段同等生效(原型载体的适配见 [UI.md](./UI.md)「/ui-design 接线」节);Logic 驾驶面板、画廊壳、演示 harness 等原型工装不适用。
+11. **浏览器标签页标明所属 app(硬规则)**:画廊壳与每个原型页的标签页都必须带上所属 app 的名字与图标——同时开着几个项目的原型时,只有页面自身标题与浏览器默认图标的标签页分不出各属哪个 app。
+   - **声明**:`manifest.js` 必须写明 `window.PROTOTYPE_APP = { name, icon }`。`name` 为 app 名;`icon` 为 app 图标相对 `docs/prototypes/` 的路径,必须是浏览器能显示的格式(png、svg、ico;安装包用的 `.icns` 不行)。app 尚未定图标时 `icon` 写 `null`,标签页标识脚本改以 app 名的首字母缩写生成图标(取法写在该脚本里);app 定下图标后,必须把 `icon` 改为该图标的路径。
+   - **引入**:画廊壳与每个原型页都必须在 `<head>` 内先引入 `manifest.js`、再引入标签页标识脚本 `app-identity.js`(正本 [app-identity.js](./app-identity.js),复制时机见「画廊」节的懒创建)——脚本一运行就读取 `manifest.js` 里的声明,据此在页面标题前加上 app 名并设置标签图标,`manifest.js` 排在它后面时它读不到声明。路径前缀 UI 页为 `../`、Logic 页为 `../../`;画廊模板与 Logic 页模板已自带这两行,UI 页必须自行写上。
+   - **页面不自设**:页面不得自行设置标签图标,`<title>` 不得写 app 名——脚本会再设一遍、再加一遍。
 
 ## 画廊(Figma 式浏览全部原型)
 
 `docs/prototypes/index.html` = 画廊壳:左侧 Figma 式深色工具侧栏(按模块分组,可收起,快捷键 S) + 右侧屏幕。**一切条目统一 iframe**——UI 是自包含 HTML,Logic 也是自渲染页(问题/图/命令都在页内),壳不做任何内容渲染。hash 路由可分享,↑/↓ 键切换。
 
-- **懒创建**:首次生成原型时铺齐画廊基建——从本 skill 目录复制 [gallery-template.html](./gallery-template.html) → `docs/prototypes/index.html`、[sync-mmd.mjs](./sync-mmd.mjs) → `docs/prototypes/sync-mmd.mjs`,创建空注册表 `manifest.js`,并**懒下载渲染库** `vendor/mermaid.min.js`(`curl -sL -o docs/prototypes/vendor/mermaid.min.js https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js`,约 3.4MB,一次下载后离线可用;缺失时 Logic 页自动降级为显示图源文本)。基建在项目里不手改——要改,改 skill 正本后重新复制。
+- **懒创建**:首次生成原型时铺齐画廊基建——从本 skill 目录复制 [gallery-template.html](./gallery-template.html) → `docs/prototypes/index.html`、[sync-mmd.mjs](./sync-mmd.mjs) → `docs/prototypes/sync-mmd.mjs`、[demo-harness.js](./demo-harness.js) → `docs/prototypes/demo-harness.js`、[demo-dimensions.js](./demo-dimensions.js) → `docs/prototypes/demo-dimensions.js`、[app-identity.js](./app-identity.js) → `docs/prototypes/app-identity.js`,创建注册表 `manifest.js`(含所属 app 的声明,见通用规则 11;`window.PROTOTYPES = []`)与空维度登记表 `dimensions.js`(`window.DEMO_DIMENSIONS = {}`),并**懒下载渲染库** `vendor/mermaid.min.js`(`curl -sL -o docs/prototypes/vendor/mermaid.min.js https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js`,约 3.4MB,一次下载后离线可用;缺失时 Logic 页自动降级为显示图源文本)。基建在项目里不手改——要改,改 skill 正本后重新复制。
 - **注册表同步(硬规则)**:每生成一个原型,往 `manifest.js` 的 `window.PROTOTYPES` 追加一条 `{module, type:'ui'|'logic', id, name, path}`;删除原型同步删条目——注册表腐烂等于画廊失明。
 - 技术约束的由来:注册表与图源经 .js 包装、且 .mmd→model.mmd.js 走**生成期**同步脚本(file:// 下运行时 fetch 本地文件被 CORS 拦,script 标签不受限);右屏统一 iframe(隔离各原型的 CSS/JS);渲染库 vendor 本地化不用 CDN 引用(离线可用,保自包含)。
