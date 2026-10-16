@@ -104,6 +104,7 @@ skill 条文与模板以中文规范名给出、要写进项目产物的固定�
 | 核销前的范围复核 | Pre-delivery scope re-check | `implement/document-sync.md` |
 | 后置验收 | Deferred acceptance | `implement/SKILL.md` |
 | 文档布局 | Documentation layout | `repo-scaffold/SKILL.md` |
+| 演示· | Demo · | `prototype/UI.md` |
 
 ## 种子文本
 
