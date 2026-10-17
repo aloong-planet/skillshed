@@ -1,6 +1,6 @@
 <!doctype html>
 <!-- Prototype gallery shell (copied from the prototype skill's template; do not edit by hand — change the skill template and copy it again).
-     Depends on manifest.js in the same directory: window.PROTOTYPES = [{module,type,id,name,path}],
+     Depends on manifest.js in the same directory: window.PROTOTYPES = [{module,type,id,name,path}] (type is ui, logic or candidates),
      and window.PROTOTYPE_APP = {name, icon}, which app-identity.js puts on the browser tab and this shell
      puts above the list (see the skill's SKILL.md, general rule 11); and on dimensions.js with
      demo-dimensions.js, which the settings panel behind the gear in the sidebar header sets (the skill's
@@ -103,7 +103,7 @@
     for (const p of items) {
       const el = document.createElement('div');
       el.className = 'item'; el.dataset.key = key(p);
-      el.innerHTML = `<span class="tag">${p.type === 'logic' ? 'Logic' : 'UI'}</span><span>${p.name}</span>`;
+      el.innerHTML = `<span class="tag">${p.type === 'logic' ? 'Logic' : p.type === 'candidates' ? 'Candidates' : 'UI'}</span><span>${p.name}</span>`;
       el.onclick = () => { location.hash = key(p); };
       list.appendChild(el);
     }
