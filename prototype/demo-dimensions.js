@@ -82,8 +82,9 @@ window.DemoDimensions = (() => {
       // Marked as demo scaffolding; appended last, so a page's own harness stays the first one in the document
       noteEl.setAttribute('data-demo-harness', '')
       noteEl.setAttribute('role', 'status')
-      // all:initial first: pages style their own harness through [data-demo-harness] (centred, pinned to the
-      // bottom), and without it those rules would land on the note too and stretch it across the page
+      // all:initial first: older pages style their own harness through [data-demo-harness] (centred, pinned
+      // to the bottom) instead of leaving its look to demo-harness.js, and without it those rules would land
+      // on the note too and stretch it across the page
       noteEl.style.cssText = 'all:initial;display:block;position:fixed;top:10px;right:12px;z-index:2147483000;' +
         'padding:5px 11px;border-radius:999px;background:#1c1c1e;color:#e8e8ea;white-space:nowrap;' +
         'font:600 11.5px/1.4 -apple-system,system-ui,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.3);pointer-events:none'
