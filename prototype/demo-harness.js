@@ -32,7 +32,8 @@
 //
 // On top of that look, the script changes how the bar sits on screen:
 //   · the bar is exactly as wide as its widest row (a wrapped flex box otherwise keeps the full width
-//     it was offered, leaving wide empty margins either side of the rows);
+//     it was offered, leaving wide empty margins either side of the rows); a note wraps at 420px, so a
+//     long note does not stretch the bar across the page and over the design;
 //   · its grip, or any bare background around and between the rows, drags it anywhere; a button
 //     collapses it into a small ball that drags the same way, and clicking the ball expands it again;
 //   · bar and ball are kept wholly inside the viewport, while dragging and after every resize;
@@ -47,6 +48,7 @@
   h.classList.add('dh-bar')
 
   const GAP = 8        // the minimum distance kept between the dock and each viewport edge
+  const NOTE = 420     // the widest a note's lines may make the bar; a longer note wraps
   const BALL = 32
   const KEY = 'proto-demo-harness'
   const svg = (box, body) => `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='${box}'>${body}</svg>`)}")`
@@ -62,7 +64,8 @@
   // The selected option sits inside the card's border and the title covers it, so the title is the card's
   // full height and nothing after it looks taller.
   // Everything inside the bar takes its margin, padding and font from the rules here and from the bar: a
-  // prototype page keeps the app's own * rules as the app wrote them, and they would otherwise reach in.
+  // prototype page keeps its * rules on * rather than on the app window's box, and they would otherwise
+  // reach in.
   document.head.insertAdjacentHTML('beforeend', `<style>
     [data-demo-harness].dh-bar{position:fixed;left:0;right:0;bottom:16px;margin:0 auto;width:max-content;
       max-width:calc(100vw - ${2 * GAP}px);z-index:50;box-sizing:border-box;display:flex;flex-wrap:wrap;align-items:center;
@@ -196,11 +199,13 @@
         const cs = getComputedStyle(n)
         if (cs.display === 'none' || cs.position === 'absolute' || cs.position === 'fixed') continue
         if (n.classList.contains('dh-note')) {
-          // The note takes a whole row whatever its length, so only its text lines count
+          // The note takes a whole row whatever its length, so only its text lines count, and only up to
+          // NOTE px from the note's left edge: past that the note wraps rather than widen the bar
           const range = document.createRange()
           range.selectNodeContents(n)
           const pad = parseFloat(cs.paddingRight) + parseFloat(cs.borderRightWidth)
-          boxes = [...range.getClientRects()].map((b) => ({ left: b.left, right: b.right + pad }))
+          const most = n.getBoundingClientRect().left + NOTE
+          boxes = [...range.getClientRects()].map((b) => ({ left: b.left, right: Math.min(b.right + pad, most) }))
         } else {
           const b = n.getBoundingClientRect()
           if (b.width || b.height) boxes = [{ left: b.left - parseFloat(cs.marginLeft), right: b.right + parseFloat(cs.marginRight) }]
@@ -216,9 +221,10 @@
   }
 
   /**
-   * Shrinks the bar to its widest row. Shrinking to that width never moves a line break: every row
-   * still fits, and the first item of each next row did not fit even in the wider box. Returns false while
-   * the page itself hides the bar (a context the switches do not apply to).
+   * Shrinks the bar to its widest row, counting a note as at most NOTE px wide. Shrinking to that width
+   * moves no line break but the note's: every other row still fits, and the first item of each next row
+   * did not fit even in the wider box. Returns false while the page itself hides the bar (a context the
+   * switches do not apply to).
    */
   function fitWidth() {
     const cs = getComputedStyle(h)

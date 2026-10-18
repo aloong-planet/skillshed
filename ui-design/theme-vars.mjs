@@ -166,20 +166,43 @@ for (const st of states) {
     for (const [k, v] of sels) root.setAttribute(k, v)
   }, st.selectors.flatMap(attrsFromSelector))
   readings[st.key] = await page.evaluate(() => {
-    // 只收主题块声明的变量:选择器不含后代组合子,且落在根元素上。
+    // 只收主题块声明的变量:选择器组里至少有一个选择器不含组合子,且落在根元素上。
     // 「以 :root 开头」是不够的——`:root[data-x] .child` 也以它开头,但那是组件级变量。
+    // 选择器组(如 `:root, .theme-light`)先在顶层逗号处拆开、逐个判:整串一起判时,逗号后的空格
+    // 被当成后代组合子,整块主题变量一个也收不到,而结果照样是"齐整"。
     const declared = new Set()
+    /** 选择器组在顶层逗号处拆开;方括号、圆括号与引号里的逗号不拆 */
+    const split = (list) => {
+      const out = []
+      let cur = ''
+      let depth = 0
+      let quote = null
+      for (const c of list) {
+        if (quote) { if (c === quote) quote = null }
+        else if (c === '"' || c === "'") quote = c
+        else if (c === '(' || c === '[') depth++
+        else if (c === ')' || c === ']') depth--
+        else if (c === ',' && depth === 0) { out.push(cur.trim()); cur = ''; continue }
+        cur += c
+      }
+      out.push(cur.trim())
+      return out
+    }
+    const isThemeBlock = (s) => {
+      // ① 含组合子 → 变量作用在后代上,不是主题块(属性选择器与函数式伪类括号里的内容先剔掉再判)
+      let bare = s.replace(/\[[^\]]*\]/g, '')
+      while (/\([^()]*\)/.test(bare)) bare = bare.replace(/\([^()]*\)/g, '')
+      if (/[\s>+~]/.test(bare)) return false
+      // ② 根本不指向根元素 → 组件级变量。**这道守卫不可省**:少了它,像 `.app` 这种
+      //    永远不命中根元素的选择器,其变量会被收进名单却在每个态都读不出值,报成
+      //    "所有态都缺定义"——一条纯粹由工具制造的假警报。
+      return /^(:root|html)\b/.test(s)
+    }
     const collect = (rules) => {
       for (const r of Array.from(rules)) {
         if (r.constructor.name === 'CSSMediaRule') collect(r.cssRules)
         else if (r.style && r.selectorText) {
-          const s = r.selectorText.trim()
-          // ① 含后代组合子 → 变量作用在后代上,不是主题块(属性选择器里的空格先剔掉再判)
-          if (/[\s>+~]/.test(s.replace(/\[[^\]]*\]/g, ''))) continue
-          // ② 根本不指向根元素 → 组件级变量。**这道守卫不可省**:少了它,像 `.app` 这种
-          //    永远不命中根元素的选择器,其变量会被收进名单却在每个态都读不出值,报成
-          //    "所有态都缺定义"——一条纯粹由工具制造的假警报。
-          if (!/^(:root|html)\b/.test(s)) continue
+          if (!split(r.selectorText).some(isThemeBlock)) continue
           // ③ 是主题块,但当前态不匹配 → 名字要收(别的取值下它有值),值留给命中的那一态
           for (const p of Array.from(r.style)) if (p.startsWith('--')) declared.add(p)
         }
@@ -262,9 +285,14 @@ if (unresolved.length) {
   for (const r of unresolved) console.log(`  ${r.name}  缺: ${r.missing.join(' / ')}`)
   console.log('')
 }
-if (!partial.length && !unresolved.length) {
+if (!names.length) {
+  // 零个变量时下面两类问题自然都是零,但那是什么都没核,不是核过了齐整
+  console.log('✗ 一个主题变量都没收到 —— 检查范围为空,不能当作齐整。')
+  console.log('  核对 CSS 路径;主题变量必须声明在指向根元素(:root 或 html)、不含组合子的选择器上。\n')
+}
+if (names.length && !partial.length && !unresolved.length) {
   console.log('✓ 每个变量都在每个主题态下解析出了值,且沿各维度的变化是齐整的。')
   console.log('  最后一步只能人来做:对照上面的分组,确认每个变量的变化维度**与设计意图一致**。')
   console.log('  工具能判"变得齐不齐",判不了"本来该不该变"。')
 }
-process.exit(unresolved.length || partial.length ? 1 : 0)
+process.exit(!names.length || unresolved.length || partial.length ? 1 : 0)
