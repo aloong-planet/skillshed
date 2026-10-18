@@ -26,7 +26,7 @@ description: 用一次性原型回答拿不准的设计问题,产物留在 docs/
 | [logic-page-template.html](./logic-page-template.html) | Logic 原型页模板(图渲染 + 驾驶面板 + 画布交互) |
 | [gallery-template.html](./gallery-template.html) | 画廊壳模板(含统一设置) |
 | [sync-mmd.mjs](./sync-mmd.mjs) | `.mmd` → `model.mmd.js` 生成期同步脚本 |
-| [demo-harness.js](./demo-harness.js) | 演示条脚本(统一外观与标记约定、拖动、收成悬浮球、限位视口、条宽收到最宽一行、长说明换行、动作按下反馈) |
+| [demo-harness.js](./demo-harness.js) | 演示条脚本(统一外观与标记约定、拖动、收成悬浮球、限位视口、条宽收到最宽一行、组多时换行让出两侧底角、长说明换行、动作按下反馈) |
 | [demo-dimensions.js](./demo-dimensions.js) | 产品维度脚本(设置原型页与画廊的统一设置写出语言、明暗等取值,其余原型页按声明跟随) |
 | [app-identity.js](./app-identity.js) | 标签页标识脚本(在画廊壳与每个原型页的浏览器标签页上标出所属 app 的名字与图标) |
 
