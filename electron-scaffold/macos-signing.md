@@ -5,7 +5,7 @@ macOS 桌面应用(Developer ID / DMG 直分发)从分发政策、配置到发�
 
 **仅当项目能力声明里 `client-framework` 为 `"electron"` 且 `macos-distribution` 已启用时读取本文**。入口:`electron-scaffold` 第 4 节(建项目)、`github-ops` 第 4 节(发版)。
 
-本文按 DMG 直分发写。以 ZIP、PKG 或 Mac App Store 分发时,必须按该形态重新推导最外层的提交与验收边界,不得照搬下面的 DMG 流程。
+本文按 DMG 直分发写,并含随 DMG 一同发布、供应用内更新(electron-updater)安装的 ZIP,其提交与验收边界已按 ZIP 形态推导(第 2、3、6、7 节)。以 ZIP 代替 DMG 分发、以 PKG 或 Mac App Store 分发时,必须按该形态重新推导最外层的提交与验收边界,不得照搬下面的 DMG 流程。
 
 ---
 
@@ -49,19 +49,22 @@ macOS 桌面应用(Developer ID / DMG 直分发)从分发政策、配置到发�
 
 **app 的票据管「拖出来之后」,DMG 的票据管「打开 DMG 时」**,不能互相替代。
 
+**ZIP 的票据只在它里面的 `.app` 上**:`stapler` 不处理 ZIP(在 macOS 26 上对 ZIP 报 `Stapler is incapable of working with ZIP archive files.`,退出码 66),ZIP 本身既装订不了票据,也验不出票据;更新器装的是 ZIP 里的 `.app`,它在发布打包时已带上自己的票据。因此随 DMG 发布的 ZIP 不另行提交公证,它的验收对象必须是解压出来的 `.app`(第 6、7 节)。
+
 ## 3. 固定顺序、打包结构与硬约束
 
-每次打包必须是**一次** electron-builder 调用,同时产出并签名各架构的 `.app` 与 DMG;发布时 `.app` 的公证挂在这次调用的 `afterSign` 钩子上,由项目自己的公证代码执行,DMG 的公证与门禁在这次调用结束之后执行:
+每次打包必须是**一次** electron-builder 调用,同时产出并签名各架构的 `.app` 与 DMG(有应用内更新时还从同一个 `.app` 打出 ZIP);发布时 `.app` 的公证挂在这次调用的 `afterSign` 钩子上,由项目自己的公证代码执行,DMG 的公证与门禁在这次调用结束之后执行:
 
 | 入口命令 | 做什么 |
 |---|---|
-| `dist:mac:local` | 检查 Developer ID 证书(没有就报错退出)→ 一次调用构建并签名各架构的 `.app` 与 DMG,内置公证关闭、不挂公证钩子 → 核对每个 `.app` 与 DMG 的签名 |
-| `dist:mac:release` | 构建前检查证书与公证凭据,缺任一就报错退出 → 同一次调用加挂 `afterSign` 钩子:每个 `.app` 签名之后、打它的 DMG 之前,用 `notarytool` 公证并 staple,公证状态与日志按第 6 节断言 → 核对签名,并断言每个 `.app` 已自带票据 → 对每个 DMG 做提交前检查、公证、staple 与门禁(第 6、7 节) |
+| `dist:mac:local` | 检查 Developer ID 证书(没有就报错退出)→ 一次调用构建并签名各架构的 `.app` 与 DMG(有 ZIP 时连同 ZIP),内置公证关闭、不挂公证钩子 → 核对每个 `.app` 与 DMG 的签名,有 ZIP 时还核对每个 ZIP 里的 `.app`(第 6 节) |
+| `dist:mac:release` | 构建前检查证书与公证凭据,缺任一就报错退出 → 同一次调用加挂 `afterSign` 钩子:每个 `.app` 签名之后、打它的 DMG 与 ZIP 之前,用 `notarytool` 公证并 staple,公证状态与日志按第 6 节断言 → 核对签名,并断言每个 `.app`(有 ZIP 时含每个 ZIP 里的 `.app`)已自带票据 → 核对产物全集,再对每个 DMG 做提交前检查、公证、staple 与门禁(第 6、7 节) |
 
 - **不得把一次打包拆成多次 electron-builder 调用**(如先用 `--mac dir` 打 `.app`、再用 `--prepackaged` 打 DMG):electron-builder 有些行为只在同一次调用同时构建 `.app` 与 DMG 或 zip 时才发生——往 `.app` 里写 `app-update.yml` 的条件正是这次调用的目标含 `dmg` 或 `zip`——拆开调用会把它们静默丢掉,构建不报错。
 - **不得用内置公证(`mac.notarize`)公证 `.app`**:它只要环境里有 Apple 凭据就自动提交,本地打包会在加载了凭据的机器上悄悄提交;缺凭据时只告警后跳过,发布出去的 `.app` 没有票据而构建是绿的;它也不留公证日志。
 - **必须用资产 [`assets/mac-packaging.cjs`](./assets/mac-packaging.cjs) 实现本节与第 6、7 节,不得在项目里另写一套**:它实现两种打包、`afterSign` 钩子与 DMG 门禁,[`assets/mac-packaging.test.cjs`](./assets/mac-packaging.test.cjs) 是它的测试。两个文件必须复制到项目里的同一目录;`electron-builder.yml` 必须满足资产文件头列出的要求(资产运行时也会核对);测试(`node --test <目录>/mac-packaging.test.cjs`)必须接进项目的验证网关。资产不满足项目需要时,改资产本身并回到 skill 提交,不得只改项目里的副本。
 - **资产测试接进项目的测试脚本时,必须排在接收命令行参数的那条命令之前**:包管理器把 `<包管理器> test <参数>` 的参数追加到脚本末尾,`node --test` 排在末尾就会收下这些参数,项目原有测试运行器的过滤随之失效、改为全量运行。判据:`<包管理器> test <一个测试文件>` 只运行资产测试与该文件。
+- **项目用 electron-updater 做应用内更新时,ZIP 必须由这同一次调用产出**:macOS 的更新器只从 ZIP 安装,并读 electron-builder 写在它旁边的更新元数据(`<渠道>-mac.yml`)。做法是在 `mac.target` 里加 `zip` 目标;ZIP 在 `afterSign` 钩子之后从同一个 `.app` 打出,发布时里面就是已带票据的 `.app`,不得另起调用或事后重新打包。
 
 <!-- example -->
 ```bash
@@ -94,16 +97,18 @@ cp ~/.claude/skills/electron-scaffold/assets/mac-packaging.cjs ~/.claude/skills/
 
 - **一切签名与公证都在上传之前**;
 - **staple 之后不得再改动字节**——改了票据与签名同时作废;
+- **ZIP 写出之后不得改动它的任何字节**:更新元数据记录了它的大小与 sha512,更新器下载后按此校验,改过的 ZIP 装不上。同理,更新元数据不得列出之后还会改字节的文件:DMG 要在门禁里 staple,所以不写进元数据(资产文件头的要求);
 - 打包完成后**没有可行的补钉途径**:DMG 只读挂载,虽可 `hdiutil convert` 成可写再改,但改动内容会作废它自身的签名与票据,等于整套重做。**唯一时机是打 DMG 之前。**
 
-electron-builder 侧(以下行为读自 app-builder-lib 26.17.0 的源码,并经一次真实发布打包坐实;版本变化时按第 0 节重新坐实):
+electron-builder 侧(以下行为读自 app-builder-lib 26.17.0 的源码,并经一次真实发布打包坐实,更新元数据一条逐句注明来源;版本变化时按第 0 节重新坐实):
 
 - **`electron-builder.yml` 必须写 `mac.notarize: false`**:能关掉内置公证的只有显式的 `notarize: false`。打包命令另传 `-c.mac.notarize=false` 作双保险。
 - **`afterSign` 钩子在签名之后、该架构的 DMG 构建之前执行,每个最终 `.app` 一次**:universal 构建的两个中间 `.app` 以不签名方式构建,不触发钩子。签名被跳过(找不到身份)时钩子也不执行,只打一条警告——因此打包后必须断言每个 `.app` 的签名身份,发布时还必须断言票据已装订。
 - **钩子模块中与钩子同名的导出(`afterSign`)优先于默认导出被取用**:打包脚本可以兼作钩子模块,只在 release 命令上用 `-c.afterSign=<脚本路径>` 挂上,本地打包因此不可能触发公证。
-- **钩子在构建过程中就向 Apple 提交**:构建前必须清掉本次构建上次留下的输出(各架构的输出目录、DMG、公证日志),不得留到构建后的产物全集检查——崩溃的 universal 构建会留下 `<输出目录>-<arch>-temp`,等构建后才发现时,公证已经提交出去了。
+- **钩子在构建过程中就向 Apple 提交**:构建前必须清掉本次构建上次留下的输出(各架构的输出目录、DMG、ZIP、公证日志与更新元数据):这次构建没写出某个文件时,上次的那份不得冒充这次的;也不得留到构建后的产物全集检查——崩溃的 universal 构建会留下 `<输出目录>-<arch>-temp`,等构建后才发现时,公证已经提交出去了。
 - **DMG 签名(`dmg.sign: true`)不输出任何日志**:必须对 DMG 跑 `codesign` 核对,不得凭构建日志判断它签没签。
 - **各架构的输出目录名不同**:x64 输出到 `mac/`,arm64 与 universal 输出到 `mac-<arch>/`。打包后必须从构建产物里定位 `.app`,不得按名字规律拼路径。
+- **更新元数据的文件名随发布 provider 而定**:GitHub provider 对任何版本(含预发布)都只写 `latest-mac.yml`(经一次未签名的真实构建坐实);generic provider 按版本的预发布标识写 `<渠道>-mac.yml`,配置里没有、也探测不到 provider 时不写元数据(读自源码)。electron-updater 6.8.9 遇到预发布先读 `<渠道>-mac.yml`,读不到再退回 `latest-mac.yml`(读自其 `GitHubProvider` 源码)。核对元数据时取版本目录里那一份 `*-mac.yml`,不得按渠道名猜文件。
 
 ## 4. 凭据与证书(一次性)
 
@@ -121,12 +126,15 @@ electron-builder 侧(以下行为读自 app-builder-lib 26.17.0 的源码,并经
 
 **坑:空的 `CSC_LINK` 会被 electron-builder 当成"证书路径"**,报出与证书无关的错误。不得把空字符串传给 `CSC_LINK`;secret 缺失时按第 1 节直接失败,并提示配置它。
 
-导出证书为 base64(一次性):
+把证书交给 CI(一次性):
 
+- **只导出 Developer ID Application 这一个身份**:在「钥匙串访问」的「我的证书」里只选中「Developer ID Application: …」这一项(展开可见它带着私钥),「文件 → 导出项目…」存成 `.p12` 并设密码。不得用 `security export -t identities`:它把钥匙串里全部签名身份连同私钥一起导出,CI 因此拿到它用不上的私钥。
+- **证书不得经过剪贴板**:剪贴板对其他应用可读,剪贴板历史工具还会留存它。base64 必须经管道直接交给 secret,导出的 `.p12` 用完即删。
+
+<!-- example -->
 ```bash
-security export -t identities -f pkcs12 -o /tmp/cert.p12
-base64 -i /tmp/cert.p12 | pbcopy
-rm /tmp/cert.p12
+base64 -i <导出的文件>.p12 | gh secret set CSC_LINK -R <owner>/<repo>   # 值从标准输入读入,不回显
+rm <导出的文件>.p12
 ```
 
 本地打包只需要第一项前置;在本机跑发布打包另需后两项:
@@ -170,9 +178,10 @@ CI 的 macOS 打包按**触发方式**分档:
 
 只看命令退出码不够,以下每条都要显式断言:
 
-- **产物全集**:提交 Apple 之前先核对预期产物全集——缺失、重复、多出、版本或架构不符,都必须在等待公证之前失败。
+- **产物全集**:提交 Apple 之前先核对预期产物全集——缺失、重复、多出、版本或架构不符,都必须在等待公证之前失败。有 ZIP 时全集还包括每个架构的 ZIP 与恰好一份更新元数据:元数据必须是本版本的,列出的恰是这些 ZIP,记录的大小与 sha512 与文件一致。
 - **提交前检查**:对最终签名后的每个 DMG,在 `notarytool submit` 之前跑 `hdiutil verify`(镜像完整性)、`codesign --verify --verbose=4` 与下一条的签名内容断言;任一失败不得提交。
 - **签名内容**:`codesign --display --verbose=4` 的输出里断言**签名身份是 Developer ID Application**、**Team ID 匹配**、**Timestamp 非 `none`**(缺安全时间戳的签名会在证书过期后失效)。
+- **ZIP 里的 `.app`**:把 ZIP 解压到临时目录(`ditto -x -k`),断言解出的恰好是预期的那一个 `.app`,对它跑 `codesign --verify --deep --strict` 与上一条的签名内容断言,发布时再跑 `stapler validate`;临时目录用完即删,ZIP 本身不动(第 3 节硬约束)。
 - **解析必须结构化**:签名字段取完整字段比对,不做子串匹配;notarytool 的输出按 JSON 解析;stdout 与 stderr 都要捕获——Apple 的命令行工具常把诊断写进 stderr。
 - **公证状态**:`notarytool submit --wait --output-format json` 的 `status` 必须是 `Accepted` 且带有效 submission id。**但 submit 的状态不够**——还要用 `notarytool log <id>` 拉回日志,断言 **jobId 与本次 submission id 一致、状态仍是 Accepted、没有 severity 为 error 的问题**(比较不区分大小写),并把日志**原样(未改动的 JSON)随构建产物留档**,如与产物同级的 `<产物>.notary-log.json`;CI 上随临时产物一并上传。
 - **票据装订**:见第 7 节。
@@ -210,6 +219,24 @@ hdiutil detach "$MP"
 - 卸载必须放在 finally 路径里,成功失败都卸载;正常卸载失败时可以强制卸载兜底,但清理阶段的错误不得覆盖原始的验收错误。
 - `codesign --deep --strict` 只用于 App,不作为外层 DMG 的决定性门禁。
 
+**有 ZIP 时,每个 ZIP 里的 App 与更新元数据同样要验**(ZIP 自身没有票据,见第 2 节):元数据记录的大小与 sha512 必须等于发布出去的 ZIP 本身。
+
+<!-- example -->
+```bash
+# ZIP 里的 App:解压到独立的临时目录,不动 ZIP 本身
+D=$(mktemp -d); ditto -x -k <zip> "$D"
+ls -A "$D"                                               # ← 必须恰好是 <产品>.app
+xcrun stapler validate "$D"/<产品>.app
+codesign --verify --deep --strict --verbose=2 "$D"/<产品>.app
+codesign --display --verbose=4 "$D"/<产品>.app           # 签名身份、TeamIdentifier、Timestamp 按第 6 节核对
+spctl --assess --type execute --verbose=4 "$D"/<产品>.app
+rm -rf "$D"
+
+# 更新元数据(随发布下载的那一份 *-mac.yml)中该 ZIP 一条的 sha512 与 size,必须等于这两个值
+openssl dgst -sha512 -binary <zip> | base64
+stat -f %z <zip>
+```
+
 **对照法定位**:拿本机任一已公证的 app(编辑器、IM 客户端)跑同一条命令,有票据的返回成功——同类物件横向对照比纵向读流水线代码快一个数量级。
 
 **用户侧的正常提示别误判为故障**:浏览器下载的 app 一定带隔离属性,首次从访达启动必弹一次"是从互联网下载的 App,确定要打开吗",与公证无关,点一次即消。**判据是措辞**——带"Apple 已检查,未发现恶意软件"→ 公证生效;"无法验证开发者 / 可能包含恶意软件"→ 才是故障。别因为看到前者就回头去改公证配置。
@@ -227,7 +254,7 @@ hdiutil detach "$MP"
 - 用 fake command runner 做的单测,验的是**命令序列、失败传播、清理逻辑**,**不等于验过 Apple**——它一次也没访问过 Apple 服务。测试文件里要写明这一点,不能让绿色被读成"公证通过"。
 - 真实端到端只能由**发布 tag**(正式版或预发布)或**专门的手动验证档**产生。
 - 下列信号单独成立时都不得据以宣称"已公证":tag 形态、打包步骤成功、`notarytool submit` 返回 Accepted、只有内部 App 的检查通过(包括 `spctl --type execute`——它说明不了打开 DMG 时 Gatekeeper 怎么判)。必须以第 6、7 节的全部断言为准。
-- 注入命令执行器的单测至少覆盖:产物全集发现与版本、架构错配;签名身份、Team ID 精确匹配、时间戳缺失或为 `none`;submit 的 JSON 畸形、缺 submission id、状态非 Accepted;日志 jobId 不符、状态不符、含 error 级问题;第 3 节的命令顺序;含空格的路径;挂载失败、内部 App 验收失败、正常卸载、强制卸载兜底、原始错误不被覆盖;workflow 条件能证明手动验证档无法发布或改动镜像。
+- 注入命令执行器的单测至少覆盖:产物全集发现与版本、架构错配;签名身份、Team ID 精确匹配、时间戳缺失或为 `none`;submit 的 JSON 畸形、缺 submission id、状态非 Accepted;日志 jobId 不符、状态不符、含 error 级问题;第 3 节的命令顺序;含空格的路径;挂载失败、内部 App 验收失败、正常卸载、强制卸载兜底、原始错误不被覆盖;有 ZIP 时:ZIP 缺失或多出、ZIP 里不止那一个 App、ZIP 里 App 的签名身份、Team ID、时间戳不符或缺票据、更新元数据缺失或多份、版本不符、所列文件与 ZIP 不符、大小或 sha512 不符、ZIP 没被写过;workflow 条件能证明手动验证档无法发布或改动镜像。
 - 对 workflow 文本做静态测试只是回归护栏,不能替代真跑一次手动验证档。
 - 这几条属于「验证会假绿」的通用形态,判据见 [review-code/false-greens.md](../review-code/false-greens.md)。
 
@@ -236,8 +263,8 @@ hdiutil detach "$MP"
 由 `github-ops` 第 4、5 节在 `macos-distribution` 启用时引入;本节只写 macOS 特有的部分,发版的通用流程仍以 `github-ops` 为准。
 
 - **正式版与预发布 tag 都执行 `release` 命令**(第 1 节),GitHub 上的标记按 tag 形态定。公证要等 Apple 2–30 分钟,发版前按这个时长预期 CI。
-- **每个架构的 DMG 都是独立交付物**:每个架构的 `.app` 与 DMG 各自公证,等待随产物数成倍增长;**每个最终 DMG 都必须分别通过签名、公证、staple 与外层 Gatekeeper 评估,任一必需产物未通过,不得宣称整版已公证**。CI 产物 glob 用 `*.dmg` 通配;release note 的下载表必须按架构列全。
+- **每个架构的 DMG 都是独立交付物**:每个架构的 `.app` 与 DMG 各自公证,等待随产物数成倍增长;**每个最终 DMG 都必须分别通过签名、公证、staple 与外层 Gatekeeper 评估,任一必需产物未通过,不得宣称整版已公证**。CI 产物 glob 用 `*.dmg` 通配,有 ZIP 时另加 `*.zip`、`*.zip.blockmap` 与 `*-mac.yml`:更新器读元数据、下载 ZIP,blockmap 供它做差量下载(electron-updater 6.8.9 缺了它就整包下载);release note 的下载表必须按架构列全 DMG,ZIP 只供更新器读取,不得列进下载表。
 - Windows 不涉及公证,照常打包。
 - **本项目的实际取值**:命令看 `capabilities.toml` 的 `macos-distribution.profiles`;签名身份、secret 名、产物命名看该项 `source` 指向的项目运维手册。
-- **下载产物独立验证**(`github-ops` 第 5 节第 6 步):对每个 DMG 跑第 7 节的全部检查,不只信 CI 绿。
+- **下载产物独立验证**(`github-ops` 第 5 节第 6 步):对每个 DMG 跑第 7 节的全部检查,有 ZIP 时对每个 ZIP 与更新元数据也跑,不只信 CI 绿。
 - **release note 的 macOS 段**:用 `release-note-template.md` 的 macOS 段,仅当本次发布的门禁与上一条下载验收都通过时才可写「已通过 Apple 公证」;**不得仅凭 tag 名宣称已公证**。门禁不过就不发布(第 5 节),所以不存在「已发布但未公证」的版本。
