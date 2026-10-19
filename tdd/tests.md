@@ -102,6 +102,6 @@ expect(info.version).toBe("2.0");
 
 **④ 守旧路径**——测试锁着废弃常量/已被取代的行为,真不变量裸奔。修法:核对断言对象是否仍是生产代码的**活路径**(grep 生产引用),把护栏挪到现行为上。
 
-变异检验自身的假绿形态(变异没到达被测路径)及其样例见 [red-green-mutation.md](./red-green-mutation.md),适用条件以该文开头为准。
+变异检验自身的假绿形态(变异没到达被测路径)及其样例见 [review-tests/mutation-testing.md](../review-tests/mutation-testing.md),适用条件以该文开头为准。
 
 **检验法(通用)**:说不出"这个测试在什么情况下会红",它就是嫌疑假通过。
