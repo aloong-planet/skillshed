@@ -34,5 +34,5 @@ header.
 | 7 | Verification gateway | Asset tests green in the scratch project; the lint replica reports nothing on both files; check-artifact-names exit 0 | Done |
 | 8 | Code review (`/review-code`), its own task | `ticket-18-review-code.md` | Done (one bug found and fixed, R1) |
 | 9 | Test review, post-implementation check (`/review-tests`), its own task | Post-implementation section in `ticket-18-review-tests.md` | Done |
-| 10 | Ticket acceptance check, archiving, document sync | `ticket-18-doc-sync.md` has no Pending item | Done (two Waiting items, on agentshed #235) |
+| 10 | Ticket acceptance check, archiving, document sync | `ticket-18-doc-sync.md` has no Pending item | Done; its two Waiting items done on 2026-10-19 at agentshed#267's merge, and #18 closed |
 | 11 | Delivery: push, PR referring to #18, the issue's artifact section, the comment on agentshed #235, the capabilities issue | PR open; stop for the owner's confirmation | Done: #19 created; #235 commented; #18 section added; PR #20 opened and stopped there. The refactor item was declined as recommended |
