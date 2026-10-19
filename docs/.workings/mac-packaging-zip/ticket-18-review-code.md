@@ -87,8 +87,8 @@ Smell baseline, over the code this ticket adds or changes:
 | Speculative Generality | `selectByArch` has two callers (DMGs and ZIPs); not speculative |
 | Message Chains, Middle Man, Refused Bequest | None |
 
-## Refactor list (not executed; for the owner's decision)
+## Refactor list (not executed)
 
-| # | Item | Reason | Impact | Recommendation |
-|---|---|---|---|---|
-| 1 | Share the app checks of the ZIP check and the DMG gate's mounted app | Duplicated Code (two calls each) | Self-contained: each copy affects only its own container | Do not do: the two containers have different clean-up contracts (mount, detach, forced detach versus a temporary directory), and a shared helper would have to carry both |
+| # | Item | Reason | Impact | Recommendation | Owner's decision |
+|---|---|---|---|---|---|
+| 1 | Share the app checks of the ZIP check and the DMG gate's mounted app | Duplicated Code (two calls each) | Self-contained: each copy affects only its own container | Do not do: the two containers have different clean-up contracts (mount, detach, forced detach versus a temporary directory), and a shared helper would have to carry both | Not done, as recommended: the owner's "continue with your suggestions" in the session of 2026-10-19, in reply to the PR's list |
