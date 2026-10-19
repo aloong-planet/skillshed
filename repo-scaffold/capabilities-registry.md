@@ -52,6 +52,7 @@ enforced-by = ["pnpm lint"]
 | `enumeration-wording-gate` | 段 | 有门禁检查文案不把可枚举维度的成员当全集列出;覆盖哪些维度以门禁脚本里的规则为准,`source` 指门禁脚本 | 无 | `enabled = false` |
 | `lint` | 段 | 有 linter 且已接入验证网关;`source` 指 linter 配置文件 | 无 | `enabled = false` |
 | `e2e-suite` | 段 | 有端到端测试且已接入验证网关;`source` 指端到端测试的配置文件 | 无 | `enabled = false` |
+| `red-green-mutation` | 段 | 修 bug 以外的测试必须先红,并对测试做变异检验;条文与适用范围见 tdd 的 [red-green-mutation.md](../tdd/red-green-mutation.md)。`source` 指记录项目采用这一做法的文档(如 ADR);这一做法靠人守,`enforced-by` 写 `[]` | 无 | `enabled = false` |
 | `theming` | 段 | 界面颜色由主题变量驱动,且至少有一个主题维度(明暗、多套配色、对比度等);有哪些维度以主题样式文件为准,`source` 指主题样式文件 | 无 | `enabled = false` |
 | `macos-distribution` | 段 | 项目对外分发 macOS 安装包;怎么打包按下文的实现指南分派,`source` 指项目的签名与公证运维手册,`enforced-by` 填发布门禁命令。专属子表见下 | `client-framework` 为 `"electron"` 或 `"tauri"` | `enabled = false` |
 
