@@ -101,6 +101,10 @@ skill 条文与模板以中文规范名给出、要写进项目产物的固定�
 | 覆盖是否完整 | Coverage | `review-tests/SKILL.md` |
 | case 设计是否合理 | Case design | `review-tests/SKILL.md` |
 | 有没有假通过 | False greens | `review-tests/SKILL.md` |
+| 资源是否复用 | Resource reuse | `review-tests/SKILL.md` |
+| 设计审查 | Design review | `review-tests/SKILL.md` |
+| 实现后复核 | Post-implementation check | `review-tests/SKILL.md` |
+| 用例设计表 | Test design table | `review-tests/SKILL.md` |
 | 核销前的范围复核 | Pre-delivery scope re-check | `implement/document-sync.md` |
 | 后置验收 | Deferred acceptance | `implement/SKILL.md` |
 | 文档布局 | Documentation layout | `repo-scaffold/SKILL.md` |
