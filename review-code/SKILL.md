@@ -67,7 +67,7 @@ description: 对刚写完的改动做批判式自审,目标是找出真 bug 而�
 
 ## 记录归属
 
-- 分层标签写进记录时，必须按 [产物固定名称](../repo-scaffold/artifact-names.md) 书写。
+- 分层标签写进记录时，必须按 [产物固定名称](../repo-scaffold/artifact-names/review-code.md) 书写。
 
 - 必须完整读取 [Ticket 产物与文档同步清单](../to-tickets/ticket-artifacts.md)，按有票、无票或旧票接续入口确定代码审查路径并写入本轮分层报告，注明日期、实现版本与范围；有关联票时必须注明票身份。
 - 复审记录的维护及审查发现产生的文档同步义务，必须按 [文档同步与记录维护](../implement/document-sync.md)处理；不得将代码修复完成等同于文档同步完成。

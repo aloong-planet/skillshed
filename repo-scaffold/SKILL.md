@@ -14,6 +14,6 @@ description: 把一个仓库配置成这套 skills 能在其上运作的样子�
 - **项目能力声明** —— 仓库根的 `capabilities.toml`。允许出现的 ID 及其形态、字段与默认值由本 skill 的 [capabilities-registry.md](./capabilities-registry.md) 定义;读写规则以全局指令的「项目能力声明」节为准,本 skill 不重复定义。
 - **Lint** —— 为仓库接入 linter,并在 `capabilities.toml` 里声明。
 
-**只为查阅而载入时不得铺设**:用户没有要求为本仓库铺设或重铺这套约定、而是其他 skill 或全局指令要查能力登记表([capabilities-registry.md](./capabilities-registry.md))或产物固定名称表([artifact-names.md](./artifact-names.md))时,只读所需的引用文档,不得读取 [scaffolding.md](scaffolding.md),也不得执行其中的铺设。
+**只为查阅而载入时不得铺设**:用户没有要求为本仓库铺设或重铺这套约定、而是其他 skill 或全局指令要查能力登记表([capabilities-registry.md](./capabilities-registry.md))或产物固定名称([artifact-names.md](./artifact-names.md) 与 [artifact-names/](./artifact-names/) 下各表)时,只读所需的引用文档,不得读取 [scaffolding.md](scaffolding.md),也不得执行其中的铺设。
 
 **为本仓库铺设或重铺这套约定时**,必须完整读取 [scaffolding.md](scaffolding.md),按其第 1–6 节执行。

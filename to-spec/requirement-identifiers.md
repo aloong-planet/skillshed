@@ -1,6 +1,6 @@
 # 需求标识与覆盖单位
 
-本文件规定写进项目产物的标签与区名，必须按 [产物固定名称](../repo-scaffold/artifact-names.md) 书写。
+本文件规定写进项目产物的标签与区名，必须按 [产物固定名称](../repo-scaffold/artifact-names/to-spec.requirement-identifiers.md) 书写。
 
 ## 唯一主定义
 

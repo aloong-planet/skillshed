@@ -31,7 +31,7 @@ description: 维护产品功能目录(docs/features/,当前版本用户可见功
 
 ## 单文件模板
 
-模板、README 与交叉回归报告中写进项目的固定名称（节名、表头、阶段名、收口结论），必须按 [产物固定名称](../repo-scaffold/artifact-names.md) 书写。
+模板、README 与交叉回归报告中写进项目的固定名称（节名、表头、阶段名、收口结论），必须按 [产物固定名称](../repo-scaffold/artifact-names/features-catalog.md) 书写。
 
 ```md
 # {功能名}

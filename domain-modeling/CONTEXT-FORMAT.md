@@ -1,6 +1,6 @@
 # CONTEXT.md 格式
 
-模板的节名写进项目时,必须按 [产物固定名称](../repo-scaffold/artifact-names.md) 书写。
+模板的节名写进项目时,必须按 [产物固定名称](../repo-scaffold/artifact-names/domain-modeling.CONTEXT-FORMAT.md) 书写。
 
 ## 结构
 

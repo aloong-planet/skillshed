@@ -2,7 +2,7 @@
 
 ADR 放 `docs/adr/`,顺序编号:`0001-slug.md`。扫目录取最高已有号 +1,编号不复用。
 懒创建:第一条 ADR 需要时才建目录,**连同 `README.md`**(见文末)。
-模板与本文件中写进 ADR 的固定名称(段名、状态取值、后果标签、「未留档」、索引表头与分组名),必须按 [产物固定名称](../repo-scaffold/artifact-names.md) 书写。
+模板与本文件中写进 ADR 的固定名称(段名、状态取值、后果标签、「未留档」、索引表头与分组名),必须按 [产物固定名称](../repo-scaffold/artifact-names/domain-modeling.ADR-FORMAT.md) 书写。
 
 ## 模板(五段全必填)
 

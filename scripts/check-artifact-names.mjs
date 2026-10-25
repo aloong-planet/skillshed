@@ -4,17 +4,22 @@
 //   node scripts/check-artifact-names.mjs
 // Exit 0 when every check passes, 1 when any fails. The report quantifies what was scanned.
 //
-//  A. Vocabulary table: every row has a Chinese name, an English name and its defining files; names are
-//     unique in both columns; each defining file contains the Chinese name and links the table.
+//  A. Vocabulary tables: one table per defining file under repo-scaffold/artifact-names/, its file name
+//     derived from that file's path (`<skill>.md` for `<skill>/SKILL.md`, `<skill>.<name>.md` for
+//     `<skill>/<name>.md`). Every row has a Chinese and an English name; names are unique in both columns
+//     across all tables; each table points back to the rules; each defining file contains its Chinese
+//     names and links its table; the rules file holds no table of its own.
 //  B. Template completeness: in every template, each fixed name (headings, table cells, bold leads,
-//     labels and their values) must be a table name or a placeholder. Anything left is unmapped.
-//  C. Seed texts: the files listed in the table's seed section exist; repo-scaffold links the table.
+//     labels and their values) must be a table name or a placeholder. Anything left is unmapped. The
+//     template's file must link the table of every name it uses.
+//  C. Seed texts: the files listed in the rules file's seed section exist; repo-scaffold links the rules.
 //  D. Assets: asset files and code blocks marked `<!-- asset -->` contain no Chinese; in the asset-bearing
 //     documents every code block that contains Chinese carries `<!-- example -->` (it is not copied).
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
-const TABLE = 'repo-scaffold/artifact-names.md'
+const RULES = 'repo-scaffold/artifact-names.md'
+const TABLE_DIR = 'repo-scaffold/artifact-names'
 const CJK = /[㐀-鿿豈-﫿]/
 const CJK_G = /[㐀-鿿豈-﫿]/g
 
@@ -44,7 +49,7 @@ const report = {}
 const read = (f) => readFileSync(f, 'utf8')
 const cjkLines = (s) => s.split('\n').filter((l) => CJK.test(l)).length
 
-// ---- A. table ---------------------------------------------------------------------------------------
+// ---- A. tables --------------------------------------------------------------------------------------
 function parseTable(text) {
   const lines = text.split('\n')
   const start = lines.findIndex((l) => /^\|.*中文规范名.*\|/.test(l))
@@ -52,37 +57,52 @@ function parseTable(text) {
   const rows = []
   for (let i = start + 2; i < lines.length && lines[i].startsWith('|'); i++) {
     const cells = lines[i].split('|').slice(1, -1).map((c) => c.trim())
-    rows.push({ line: i + 1, zh: cells[0], en: cells[1], definedIn: (cells[2] ?? '').split(/[,，]\s*/).map((s) => s.replace(/`/g, '').trim()).filter(Boolean) })
+    rows.push({ line: i + 1, zh: cells[0], en: cells[1] ?? '' })
   }
   return rows
 }
+/** `to-spec.md` → `to-spec/SKILL.md`; `to-tickets.ticket-artifacts.md` → `to-tickets/ticket-artifacts.md` */
+function definingFileOf(table) {
+  const stem = table.replace(/\.md$/, ''), dot = stem.indexOf('.')
+  return dot < 0 ? `${stem}/SKILL.md` : `${stem.slice(0, dot)}/${stem.slice(dot + 1)}.md`
+}
 
 let names = []
-if (!existsSync(TABLE)) {
-  errors.push(`A: ${TABLE} does not exist`)
+const tableOf = new Map() // Chinese name → table file name
+if (!existsSync(RULES)) errors.push(`A: ${RULES} does not exist`)
+else if (parseTable(read(RULES))) errors.push(`A: ${RULES} holds a table with a 中文规范名 column; names belong in ${TABLE_DIR}/`)
+if (!existsSync(TABLE_DIR)) {
+  errors.push(`A: ${TABLE_DIR} does not exist`)
 } else {
-  const rows = parseTable(read(TABLE))
-  if (!rows) errors.push(`A: ${TABLE} has no table with a 中文规范名 column`)
-  else {
-    const seenZh = new Map(), seenEn = new Map()
+  const seenZh = new Map(), seenEn = new Map()
+  const tables = readdirSync(TABLE_DIR).sort()
+  let rowCount = 0
+  for (const name of tables) {
+    const file = `${TABLE_DIR}/${name}`
+    if (!name.endsWith('.md')) { errors.push(`A: ${file} is not a .md table`); continue }
+    const text = read(file)
+    if (!text.includes('](../artifact-names.md)')) errors.push(`A: ${file} does not point back to the rules (../artifact-names.md)`)
+    const rows = parseTable(text)
+    if (!rows || rows.length === 0) { errors.push(`A: ${file} has no rows under a 中文规范名 column`); continue }
+    const def = definingFileOf(name)
+    const defText = existsSync(def) ? read(def) : null
+    if (defText === null) errors.push(`A: ${file} names defining file ${def}, which does not exist`)
+    else if (!defText.includes(`artifact-names/${name}`)) errors.push(`A: ${def} does not link its table artifact-names/${name}`)
     for (const r of rows) {
-      const where = `${TABLE}:${r.line}`
+      const where = `${file}:${r.line}`
       if (!r.zh || !CJK.test(r.zh)) errors.push(`A: ${where} Chinese name missing or not Chinese: "${r.zh}"`)
       if (!r.en || CJK.test(r.en)) errors.push(`A: ${where} English name missing or contains Chinese: "${r.en}"`)
-      if (seenZh.has(r.zh)) errors.push(`A: ${where} duplicate Chinese name "${r.zh}" (also line ${seenZh.get(r.zh)})`)
-      if (seenEn.has(r.en.toLowerCase())) errors.push(`A: ${where} duplicate English name "${r.en}" (also line ${seenEn.get(r.en.toLowerCase())})`)
-      seenZh.set(r.zh, r.line); seenEn.set(r.en.toLowerCase(), r.line)
-      if (r.definedIn.length === 0) errors.push(`A: ${where} no defining file`)
-      for (const f of r.definedIn) {
-        if (!existsSync(f)) { errors.push(`A: ${where} defining file ${f} does not exist`); continue }
-        const t = read(f)
-        if (!t.includes(r.zh)) errors.push(`A: ${where} "${r.zh}" does not appear in its defining file ${f}`)
-        if (!t.includes('artifact-names.md')) errors.push(`A: ${f} defines "${r.zh}" but does not link artifact-names.md`)
-      }
+      if (seenZh.has(r.zh)) errors.push(`A: ${where} duplicate Chinese name "${r.zh}" (also ${seenZh.get(r.zh)})`)
+      if (seenEn.has(r.en.toLowerCase())) errors.push(`A: ${where} duplicate English name "${r.en}" (also ${seenEn.get(r.en.toLowerCase())})`)
+      seenZh.set(r.zh, where); seenEn.set(r.en.toLowerCase(), where)
+      tableOf.set(r.zh, name)
+      if (defText !== null && !defText.includes(r.zh)) errors.push(`A: ${where} "${r.zh}" does not appear in its defining file ${def}`)
     }
-    names = rows.map((r) => r.zh).sort((a, b) => b.length - a.length)
-    report.tableRows = rows.length
+    rowCount += rows.length
   }
+  names = [...tableOf.keys()].sort((a, b) => b.length - a.length)
+  report.tables = tables.length
+  report.tableRows = rowCount
 }
 
 // ---- B. templates -----------------------------------------------------------------------------------
@@ -137,30 +157,41 @@ function namePartsOf(line) {
   if (label) return [label[1], ...label[2].split('|')]
   return []
 }
-let elements = 0, unmapped = 0
+let elements = 0, unmapped = 0, links = 0
 for (const t of TEMPLATES) {
   if (!existsSync(t.file)) { errors.push(`B: template source ${t.file} does not exist`); continue }
+  const used = new Set()
   for (const b of blocksOf(t)) {
     b.lines.forEach((l, k) => {
       for (const part of namePartsOf(l)) {
         if (!CJK.test(part)) continue
         elements++
         let rest = part
-        for (const n of names) rest = rest.split(n).join(' ')
+        for (const n of names) {
+          if (rest.includes(n)) used.add(tableOf.get(n))
+          rest = rest.split(n).join(' ')
+        }
         const left = (rest.match(CJK_G) ?? []).length
         if (left) { unmapped++; errors.push(`B: ${t.file}:${b.start + k} unmapped fixed name in "${part.trim()}"`) }
       }
     })
   }
+  // A reader writing the template must be led to every table its names come from
+  const text = read(t.file)
+  for (const table of used) {
+    links++
+    if (!text.includes(`artifact-names/${table}`)) errors.push(`B: ${t.file} uses names from artifact-names/${table} but does not link it`)
+  }
 }
 report.templateElements = elements
 report.unmappedElements = unmapped
+report.templateTableLinks = links
 
 // ---- C. seed texts ----------------------------------------------------------------------------------
-if (existsSync(TABLE)) {
-  const t = read(TABLE)
+if (existsSync(RULES)) {
+  const t = read(RULES)
   const seeds = [...t.matchAll(/^- `([^`]+\.md)`.*种子/gm)].map((m) => m[1])
-  if (seeds.length === 0) errors.push(`C: ${TABLE} lists no seed texts`)
+  if (seeds.length === 0) errors.push(`C: ${RULES} lists no seed texts`)
   for (const f of seeds) if (!existsSync(f)) errors.push(`C: seed text ${f} does not exist`)
   report.seedTexts = seeds.length
 }

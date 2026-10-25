@@ -2,7 +2,7 @@
 
 本文适用于建立、映射、审核与更新 feature checklist 的一切场合。入口:[SKILL.md](SKILL.md)「The feature checklist」节;`/to-spec` 建立清单时直接读本文。
 
-清单模板的标题与模板里的其它固定名称写进项目时,必须按 [产物固定名称](../repo-scaffold/artifact-names.md) 书写。
+清单模板的标题与模板里的其它固定名称写进项目时,必须按 [产物固定名称](../repo-scaffold/artifact-names/to-tickets.feature-checklist.md)与[to-spec 的固定名称](../repo-scaffold/artifact-names/to-spec.md) 书写。
 
 必须按 `/to-spec` 流程中的[准备：核对记录约定](../to-spec/SKILL.md#准备核对记录约定)使用同一份 feature checklist；本文规定其 spec 到 tickets 的映射及验证责任。
 

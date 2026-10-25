@@ -2,7 +2,7 @@
 
 本文适用于写出或改写票的正文:[SKILL.md](SKILL.md) 第 5 步发布票时,以及需求变化后按 [feature-checklist.md](feature-checklist.md)「变更与当前验证」改写已发布票的需求引用与验收项时。
 
-Template headings and the other fixed names in the templates follow [the artifact-name vocabulary](../repo-scaffold/artifact-names.md).
+Template headings and the other fixed names in the templates follow the artifact-name tables for [this file](../repo-scaffold/artifact-names/to-tickets.ticket-templates.md), for [the requirement identifiers](../repo-scaffold/artifact-names/to-spec.requirement-identifiers.md) and for [the feature catalogue](../repo-scaffold/artifact-names/features-catalog.md).
 
 必须仅在实际需要时生成技术前提区；票内引用文本是注明来源 commit 参考的摘录，需求改变后必须按 [feature-checklist.md](feature-checklist.md)「变更与当前验证」条对齐，不得将摘录作为另一份需求权威。模板中的 Test 可按 [SKILL.md](SKILL.md)「Every acceptance criterion must name what guarantees it」改选适当保障层级。收口票的“产品验收”区及其跨票组合条目仅在该组合已由 spec 定义且本票承兑时生成。
 
