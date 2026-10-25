@@ -3,7 +3,7 @@
 macOS 桌面应用(Developer ID / DMG 直分发)从分发政策、配置到发版验收的完整链条,是 Electron 项目 macOS 分发的唯一来源。
 按**平台**组织而非按时机——建项目时配的东西和发版时验的东西是同一条因果链,拆开看会各缺一半。
 
-**仅当项目能力声明里 `client-framework` 为 `"electron"` 且 `macos-distribution` 已启用时读取本文**。入口:`electron-scaffold` 第 4 节(建项目)、`github-ops` 第 4 节(发版)。
+**仅当项目能力声明里 `client-framework` 为 `"electron"` 且 `macos-distribution` 已启用时读取本文**。入口:`electron-scaffold` 第 4 节(建项目)、`github-ops` 的 [release.md](../github-ops/release.md)(发版)。
 
 本文按 DMG 直分发写,并含随 DMG 一同发布、供应用内更新(electron-updater)安装的 ZIP,其提交与验收边界已按 ZIP 形态推导(第 2、3、6、7 节)。以 ZIP 代替 DMG 分发、以 PKG 或 Mac App Store 分发时,必须按该形态重新推导最外层的提交与验收边界,不得照搬下面的 DMG 流程。
 
@@ -29,7 +29,7 @@ macOS 桌面应用(Developer ID / DMG 直分发)从分发政策、配置到发�
 | 本地打包 | 开发者本机;CI 上不发布的手动打包 | Developer ID | 不公证,且必须显式关闭 |
 | 开发模式 | 不打包(如 `pnpm dev`) | 不签名 | 不公证 |
 
-- 正式版与预发布版的打包要求完全相同;两种 tag 的形态与它们在 GitHub 上的标记(Latest / Pre-release)由 `github-ops` 第 4 节定义。
+- 正式版与预发布版的打包要求完全相同;两种 tag 的形态与它们在 GitHub 上的标记(Latest / Pre-release)由 `github-ops` 的 [release.md](../github-ops/release.md)「发版 / Release 标准」定义。
 - **没有 Developer ID 证书时,任何打包命令都必须失败**,并提示安装证书(本机)或配置 `CSC_LINK`(CI);不得产出未签名或 ad-hoc 签名的包。
 - 每种打包实际执行的命令,由项目在 `capabilities.toml` 的 `macos-distribution.profiles` 里声明(`local` 对应本地打包,`release` 对应发布);项目运维手册指向它,不得另抄一份。
 - **命令名必须写环境名,不得写机制**:`dist:mac:local`、`dist:mac:release`。名字写了机制(如 `:sign`),机制一增一减名字就成了谎——一个实际签名加公证的命令叫 `:sign`,读的人会当它只签名。
@@ -260,11 +260,11 @@ stat -f %z <zip>
 
 ## 10. 发版时的 macOS 步骤
 
-由 `github-ops` 第 4、5 节在 `macos-distribution` 启用时引入;本节只写 macOS 特有的部分,发版的通用流程仍以 `github-ops` 为准。
+由 `github-ops` 的 [release.md](../github-ops/release.md) 在 `macos-distribution` 启用时引入;本节只写 macOS 特有的部分,发版的通用流程仍以 `github-ops` 为准。
 
 - **正式版与预发布 tag 都执行 `release` 命令**(第 1 节),GitHub 上的标记按 tag 形态定。公证要等 Apple 2–30 分钟,发版前按这个时长预期 CI。
 - **每个架构的 DMG 都是独立交付物**:每个架构的 `.app` 与 DMG 各自公证,等待随产物数成倍增长;**每个最终 DMG 都必须分别通过签名、公证、staple 与外层 Gatekeeper 评估,任一必需产物未通过,不得宣称整版已公证**。CI 产物 glob 用 `*.dmg` 通配,有 ZIP 时另加 `*.zip`、`*.zip.blockmap` 与 `*-mac.yml`:更新器读元数据、下载 ZIP,blockmap 供它做差量下载(electron-updater 6.8.9 缺了它就整包下载);release note 的下载表必须按架构列全 DMG,ZIP 只供更新器读取,不得列进下载表。
 - Windows 不涉及公证,照常打包。
 - **本项目的实际取值**:命令看 `capabilities.toml` 的 `macos-distribution.profiles`;签名身份、secret 名、产物命名看该项 `source` 指向的项目运维手册。
-- **下载产物独立验证**(`github-ops` 第 5 节第 6 步):对每个 DMG 跑第 7 节的全部检查,有 ZIP 时对每个 ZIP 与更新元数据也跑,不只信 CI 绿。
+- **下载产物独立验证**(`github-ops` 的 [release.md](../github-ops/release.md)「标准发版流程」第 6 步):对每个 DMG 跑第 7 节的全部检查,有 ZIP 时对每个 ZIP 与更新元数据也跑,不只信 CI 绿。
 - **release note 的 macOS 段**:用 `release-note-template.md` 的 macOS 段,仅当本次发布的门禁与上一条下载验收都通过时才可写「已通过 Apple 公证」;**不得仅凭 tag 名宣称已公证**。门禁不过就不发布(第 5 节),所以不存在「已发布但未公证」的版本。

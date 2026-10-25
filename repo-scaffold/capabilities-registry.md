@@ -79,7 +79,7 @@ enforced-by = ["pnpm lint"]
 | `[macos-distribution.profiles.release]` | 发布打包,正式版与预发布版共用 | 同上 |
 
 - 每个子表的命令要达到的签名与公证程度,由上文实现指南里的分发政策规定,本表不写。
-- 什么样的 tag 是正式版、什么样的是预发布版,由 `/github-ops` 第 4 节定义,本表不写。
+- 什么样的 tag 是正式版、什么样的是预发布版,由 `/github-ops` 的 [release.md](../github-ops/release.md)「发版 / Release 标准」定义,本表不写。
 
 ```toml
 [macos-distribution]

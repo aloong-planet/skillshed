@@ -6,7 +6,7 @@
 > - **分层**:开头"版本说明"用 1–3 句白话概括本版最值得关心的变化,再往下分组列细节。
 > - **按需删小节**:没有的组(破坏性变更/已知问题等)整节删掉,不留空标题。
 > - **GitHub Release 的 Title 只写「版本号-类型」,不带任何亮点说明**:正式版(干净 tag)= `<tag>-release`(如 `v1.2.0-release`),预发布(`-beta`/`-rc`/`-alpha`/`-dev` 后缀 tag)= 直接用带后缀的 tag 名(如 `v1.2.0-beta`)。所有详细信息(亮点/变更/下载)全部放正文,标题不重复。
-> - **macOS 行与 macOS 提示的去留**按 SKILL.md 第 4 节「Release note 必填」里的 macOS 段一条处理。
+> - **macOS 行与 macOS 提示的去留**按 release.md「Release note 必填」里的 macOS 段一条处理。
 > - 提交/note/tag 一律**无 AI 署名、无 co-author**(见 SKILL.md 第 1 节)。
 
 ---
@@ -39,7 +39,7 @@
 
 ## 下载与安装
 
-<!-- macOS 行与 macOS 提示的写法(含「已通过 Apple 公证」的前提、按架构列全)见 SKILL.md 第 4 节开头所说的 macOS 指南中发版时的 macOS 步骤。 -->
+<!-- macOS 行与 macOS 提示的写法(含「已通过 Apple 公证」的前提、按架构列全)见 release.md「发版 / Release 标准」开头所说的 macOS 指南中发版时的 macOS 步骤。 -->
 
 | 平台 | 下载文件 | 说明 |
 |---|---|---|

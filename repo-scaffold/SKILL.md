@@ -41,7 +41,7 @@ description: 把一个仓库配置成这套 skills 能在其上运作的样子�
 
 `git remote` 指向 GitHub 就推荐 GitHub。否则提供:
 
-- **GitHub** —— 票是仓库的 GitHub Issues,操作规范见 `/github-ops` 的「Issue 操作」节
+- **GitHub** —— 票是仓库的 GitHub Issues,操作规范见 `/github-ops` 的 [issues.md](../github-ops/issues.md)
 - **本地文件** —— 票是 `docs/.workings/<slug>/issues/` 下的文件,适合无远程或纯个人的仓库
 - **其他**(Jira、Linear 等)—— 请用户用一段话描述工作流,原样记录
 
