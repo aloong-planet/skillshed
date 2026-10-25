@@ -51,7 +51,7 @@ Give each ticket its **blocking edges** — the other tickets that must complete
 
 Pick the enumeration technique to fit the change (repo-wide search, exhausting a type, walking a directory, listing call sites). One criterion decides whether it counts: **the result must be a reproducible listing, not a recollection.**
 
-Before presenting the breakdown in step 4, draft its acceptance criteria and complete the requirements audit in **The feature checklist** below. The change-surface enumeration above must not substitute for that audit. 必须完整读取 [Ticket 产物与文档同步清单](ticket-artifacts.md)，将其中的产物声明、同步项计划与最终流程验收纳入草案和双向审核；不得因此提前发布 tickets。
+Before presenting the breakdown in step 4, draft its acceptance criteria and complete the requirements audit in **The feature checklist** (read [feature-checklist.md](feature-checklist.md) in full first). The change-surface enumeration above must not substitute for that audit. 必须完整读取 [Ticket 产物与文档同步清单](ticket-artifacts.md)，将其中的产物声明、同步项计划与最终流程验收纳入草案和双向审核；不得因此提前发布 tickets。
 
 **A feature cut into more than one ticket ends with a dedicated closeout ticket** — numbered last, blocked by every other ticket in the feature, and named so nobody has to infer it: the file is `<NN>-feature-closeout.md`, or on a tracker the title opens with `收口:`. **Like wide refactors below, it is an exception to vertical slicing**: it carries the full-feature closeout (see `/features-catalog`) and delivers no product behaviour of its own, so it is verifiable but not demoable.
 
@@ -79,12 +79,12 @@ Iterate until the user approves the breakdown.
 
 ### 5. Publish the tickets to the configured tracker
 
-Publish the approved tickets. **How** depends on the tracker `/repo-scaffold` configured — the tickets are the same either way, only the shape of the blocking edges changes:
+Publish the approved tickets. Before writing any ticket, read [ticket-templates.md](ticket-templates.md) in full: every ticket, in either tracker shape, is written from its templates. **How** depends on the tracker `/repo-scaffold` configured — the tickets are the same either way, only the shape of the blocking edges changes:
 
-- **Local files** → write one file per ticket under `docs/.workings/<slug>/issues/<NN>-<ticket-slug>.md`, numbered from `01` in dependency order (blockers first). Each file's "Blocked by" lists the numbers/titles it depends on. Use the per-ticket file template below — one ticket per file, never a single combined file.
+- **Local files** → write one file per ticket under `docs/.workings/<slug>/issues/<NN>-<ticket-slug>.md`, numbered from `01` in dependency order (blockers first). Each file's "Blocked by" lists the numbers/titles it depends on. Use the per-ticket file template in [ticket-templates.md](ticket-templates.md) — one ticket per file, never a single combined file.
 - **A real issue tracker (GitHub, Linear, …)** → publish one issue per ticket in dependency order (blockers first) so each ticket's blocking edges can reference real identifiers. Use the platform's native blocking / sub-issue relationship where it has one; otherwise set each ticket's "Blocked by" to the blocking issues. Apply the `ready-for-agent` triage label unless instructed otherwise — the tickets are agent-grabbable by construction.
 
-**Write each ticket's prose — title and body, in either tracker shape — in the repository's working language**: the `working-language` value in `capabilities.toml` (field format in `/repo-scaffold`'s capability registry; read and write rules in the global instructions' 「项目能力声明」 section). If it is undeclared, stop and ask the user; never pick a language yourself. Template headings and the other fixed names in the templates follow [the artifact-name vocabulary](../repo-scaffold/artifact-names.md).
+**Write each ticket's prose — title and body, in either tracker shape — in the repository's working language**: the `working-language` value in `capabilities.toml` (field format in `/repo-scaffold`'s capability registry; read and write rules in the global instructions' 「项目能力声明」 section). If it is undeclared, stop and ask the user; never pick a language yourself.
 
 Work the **frontier**: any ticket whose blockers are all done. For a purely linear chain that means top to bottom.
 
@@ -110,157 +110,4 @@ When the same criterion recurs across several tickets, back it with **one mechan
 
 ## The feature checklist
 
-必须按 `/to-spec` 流程中的[准备：核对记录约定](../to-spec/SKILL.md#准备核对记录约定)使用同一份 feature checklist；本节规定其 spec 到 tickets 的映射及验证责任。
-
-1. **枚举 spec**：必须以当前已确认的 spec 为需求基线，完整读取并逐节盘点需求、背景或明确不做的归类，按共享规范的“核对范围与旧格式接续”确定本轮范围并记录其余条目不受影响的依据。必须在本节引言指定的同一份清单的“spec → tickets → 验证”部分枚举本轮覆盖单位，包括适用的质量要求、共享约束及散落在其它章节的义务；复合条件未拆清时必须回到 /to-spec 补齐，不得只在清单中拆出隐藏的新要求。必须按本节“双向审核后再确认拆票”条核对 spec 与 tickets 的双向覆盖；“已确认来源 → spec”由 /to-spec 负责，不得将其作为拆票阶段例行重做的检查。仅在发现具体需求歧义、冲突或缺失时，才追溯相关来源或回到 /to-spec 处理。
-
-2. **分配责任**：必须让共享规范规定的本轮核对范围内每个覆盖单位直接对应承兑 ticket 及其引用的相同标识，允许一票承兑多个单位。共享条件必须列全所有适用票和各自验证范围，允许合并为一行或按适用路径拆行；拆行时必须沿用同一覆盖单位的完整标识、注明各行适用路径，并核对各行合计覆盖全部适用范围，各行对原要求的表述不得相互矛盾或改变原意。跨票组合必须列出实现贡献票并指定收口验证责任，不得因此延期各票自身可完成的验收。既有行为无需修改时，必须分配明确的回归验证责任；不得以宽泛票名或组件名代替覆盖。技术前提和流程验收必须按共享规范分类，不得成为无来源的范围扩张。
-
-3. **定验证边界**：必须按原有 Gate/Test/Evidence 规则为每个承兑项说明保障机制。用户可见行为必须列出入口、动作、可观察结果，并让计划验证经过该用户路径；内部约束必须在对应内部边界验证。执行前必须标为未验证；执行后必须记录实现版本、实际结果和可复查依据。不得用低层通过替代用户路径验收。
-
-4. **双向审核后再确认拆票**：必须按“Draft vertical slices”规定的审核时点，完成本轮核对范围内 spec 覆盖单位 → ticket → 验证责任的正向核对，以及每个票内验收项 → spec 或明确技术前提/流程依据的反向核对。必须逐项记录漏项、无承兑方、语义收窄、验证边界错误和未批准扩张及其处置；有未解决缺口不得发布。用户调整拆票后必须重核受影响范围，再按现有确认与发布流程执行；不得以行数、已填单元格或关闭票数宣称覆盖。
-
-5. **变更与当前验证**：需求或票范围变化时，必须先按共享规范“稳定身份与变更授权”处理确认及权威来源，再按共享规范更新身份对应与清单，重做受影响的双向核对。必须按 [文档同步与记录维护](../implement/document-sync.md)维护下方“当前验证”部分，不得把旧版本通过无条件沿用到变化后的需求。清单的工作索引定位必须遵守本节引言所引用的“准备：核对记录约定”；不得因历史上有一条通过记录就略过本轮验收。
-
-接续只有“验证历史”的旧清单时，必须按本节“定验证边界”及“变更与当前验证”逐项核对本轮覆盖单位与适用路径，在同一清单建立对应的“当前验证”记录；不得将最后一条历史结果直接当作当前有效结论。未涉及的旧材料必须按 [文档同步与记录维护](../implement/document-sync.md)处理，不得借格式接续扩大本轮验收范围。
-
-必须按本节枚举结果逐项展开下面的清单模板，不得将示例行集当作完整范围。来源核对由 `/to-spec` 填写，本阶段补承兑与验证计划，实施和收口必须更新受影响覆盖单位及适用路径的真实验证结果。
-
-<checklist-template>
-
-# <功能名> — 覆盖与验收清单
-
-Spec：[<spec-slug>](../../specs/<spec-slug>.md)
-来源 commit：<commit 参考；含未提交修改或无可用 commit 时如实注明>
-核对范围：<本轮范围及共享要求>
-
-## 来源 → spec
-
-| 来源锚点及支持原文 | 来源处置 | spec 覆盖单位 | 语义核对结论 |
-|---|---|---|---|
-| <已确认来源> | 本轮确认且有效 | <spec-slug>::US-001/AC-01 | <结论> |
-
-## spec → tickets → 验证
-
-| spec 覆盖单位及文档链接 | 来源原文及适用条件 | 承兑票与角色 | 计划验证及边界 |
-|---|---|---|---|
-| <spec-slug>::US-001/AC-01 | <原文> | <票号>：<角色，如实现及用户路径验收> | Test：<入口、动作、可观察结果> |
-| <spec-slug>::US-001/AC-02 | <原文> | <票号>：<角色，如实现及用户路径验收> | Test：<本项独立的入口、动作、可观察结果> |
-| <spec-slug>::CON-001 | <原文> | <票号列表>：<各自适用的路径> | Test：<约束的验证方法> |
-
-## 当前验证
-
-| 核对日期、spec 与实现 commit 参考 | 覆盖单位、票及适用路径 | 实际结果与有效证据引用 | 当前结论 |
-|---|---|---|---|
-| <日期及 commit 参考；未提交修改如实注明> | <spec-slug>::US-001/AC-01；01 | 尚未执行 | 未验证 |
-| <日期及 commit 参考；未提交修改如实注明> | <spec-slug>::US-001/AC-02；01 | 尚未执行 | 未验证 |
-
-## 双向核对
-
-| 核对范围或发现 | 涉及来源及标识 | 处置与依据 |
-|---|---|---|
-| <本轮范围及结论或缺口> | <定位> | <处理结果> |
-
-</checklist-template>
-
-必须仅在实际需要时生成技术前提区；票内引用文本是注明来源 commit 参考的摘录，需求改变后必须按本节“变更与当前验证”条对齐，不得将摘录作为另一份需求权威。模板中的 Test 可按“Every acceptance criterion must name what guarantees it”改选适当保障层级。收口票的“产品验收”区及其跨票组合条目仅在该组合已由 spec 定义且本票承兑时生成。
-
-必须将以下三种票模板中的产物与流程验收占位指令，按 [Ticket 产物与文档同步清单](ticket-artifacts.md) 展开为实际路径、验收项及 Evidence 位置；成品票不得残留占位指令，也不得要求票的读者访问本机 skill 才能理解验收条件。
-
-<local-ticket-template>
-
-# <NN> — <Ticket title>
-
-**What to build:** the end-to-end behaviour this ticket makes work, from the user's perspective — not a layer-by-layer implementation list.
-
-**Blocked by:** the numbers/titles of the tickets that gate this one, or "None — can start immediately".
-
-**Status:** ready-for-agent
-
-## 本票产物与流程验收
-
-<必须按上方模板生成规则展开产物声明及三项最终流程验收。>
-
-## 需求来源
-
-[<spec-slug> spec](../../../specs/<spec-slug>.md)；核对 commit：<commit 参考>
-
-## 产品验收
-
-- [ ] <spec-slug>::US-001/AC-01 — <来源原文及必要前提>
-  — **Test**：<验证机制及用户路径>
-- [ ] <spec-slug>::CON-001 — <直接验收条件原文>
-  — **Test**：<本票适用范围及验证机制>
-
-## 技术前提
-
-- [ ] <为 <spec-slug>::US-001/AC-01 所需的实现或验证前提>
-  — **Test**：<验证机制>
-
-</local-ticket-template>
-
-<closeout-ticket-template>
-
-# <NN> — 收口:全 feature 验收与文档回归
-
-**这是收口票。** 本 feature 的最后一张,承担全 feature 收口,不交付产品行为。
-
-**Blocked by:** 本 feature 的全部其它票(逐一列出编号)。
-
-**Status:** ready-for-agent
-
-## 需求来源
-
-[<spec-slug> spec](../../../specs/<spec-slug>.md)；核对 commit：<commit 参考>
-
-## 流程验收
-
-<必须按上方模板生成规则先展开产物声明及三项最终流程验收，再保留下列收口专属项。>
-
-- [ ] 按 /features-catalog 完成全 feature 文档与行为回归
-  — **Evidence**：<checklist.md 中本轮逐项查证记录，以及 final-regression.md 中引用该记录的收口结论和文档回归表>
-
-## 产品验收
-
-- [ ] <spec-slug>::US-001/AC-03 — <已确认的跨票组合验收条件原文>
-  — **Test**：<跨票组合用例>
-
-</closeout-ticket-template>
-
-<issue-template>
-
-## 本票产物与流程验收
-
-<必须按上方模板生成规则展开产物声明及三项最终流程验收。>
-
-## Parent
-
-A reference to the parent issue on the tracker (if the source was an existing issue, otherwise omit this section).
-
-## What to build
-
-The end-to-end behaviour this ticket makes work, from the user's perspective — not layer-by-layer implementation.
-
-## 需求来源
-
-Spec：`docs/specs/<spec-slug>.md`；核对 commit：<commit 参考>
-
-## 产品验收
-
-- [ ] <spec-slug>::US-001/AC-01 — <来源原文及必要前提>
-  — **Test**：<验证机制及用户路径>
-- [ ] <spec-slug>::CON-001 — <直接验收条件原文>
-  — **Test**：<本票适用范围及验证机制>
-
-## 技术前提
-
-- [ ] <为 <spec-slug>::US-001/AC-01 所需的实现或验证前提>
-  — **Test**：<验证机制>
-
-## Blocked by
-
-- A reference to each blocking ticket, or "None — can start immediately".
-
-</issue-template>
-
-In either form, avoid specific implementation file paths or code snippets — they go stale fast. Requirement-source references and verification-evidence locations are not implementation details; provide them under their respective reference rules. Exception: if a prototype produced a snippet that encodes a decision more precisely than prose can (state machine, reducer, schema, type shape), inline it and note briefly that it came from a prototype. Trim to the decision-rich parts — not a working demo, just the important bits.
+建立、映射、审核或更新 feature checklist 时(本 skill 第 3 步的需求审核,以及其它 skill 按「The feature checklist」执行的步骤),必须完整读取 [feature-checklist.md](feature-checklist.md) 并按其执行。

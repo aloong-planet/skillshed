@@ -24,36 +24,36 @@ skill 条文与模板以中文规范名给出、要写进项目产物的固定�
 | 技术前提 | Technical prerequisites | `to-spec/requirement-identifiers.md` |
 | 流程验收 | Process acceptance | `to-spec/requirement-identifiers.md` |
 | 不受本轮影响 | Not affected this round | `to-spec/requirement-identifiers.md` |
-| 收口 | Closeout | `to-tickets/SKILL.md` |
-| 全 feature 验收与文档回归 | full-feature acceptance and documentation regression | `to-tickets/SKILL.md` |
-| 这是收口票。 | This is the closeout ticket. | `to-tickets/SKILL.md` |
-| 覆盖与验收清单 | Coverage and acceptance checklist | `to-tickets/SKILL.md` |
-| 来源 commit | Source commit | `to-tickets/SKILL.md` |
-| 核对范围 | Scope | `to-tickets/SKILL.md` |
-| 核对 commit | Checked commit | `to-tickets/SKILL.md` |
-| 来源 → spec | Source → spec | `to-tickets/SKILL.md` |
-| 来源锚点及支持原文 | Source anchor and supporting text | `to-tickets/SKILL.md` |
-| 来源处置 | Source disposition | `to-tickets/SKILL.md` |
-| spec 覆盖单位 | Spec coverage unit | `to-tickets/SKILL.md` |
-| 语义核对结论 | Semantic check | `to-tickets/SKILL.md` |
-| spec → tickets → 验证 | Spec → tickets → verification | `to-tickets/SKILL.md` |
-| spec 覆盖单位及文档链接 | Spec coverage unit and link | `to-tickets/SKILL.md` |
-| 来源原文及适用条件 | Source text and conditions | `to-tickets/SKILL.md` |
-| 承兑票与角色 | Owning ticket and role | `to-tickets/SKILL.md` |
-| 计划验证及边界 | Planned verification and boundary | `to-tickets/SKILL.md` |
-| 当前验证 | Current verification | `to-tickets/SKILL.md` |
-| 核对日期、spec 与实现 commit 参考 | Check date, spec and implementation commits | `to-tickets/SKILL.md` |
-| 覆盖单位、票及适用路径 | Coverage unit, ticket and path | `to-tickets/SKILL.md` |
-| 实际结果与有效证据引用 | Actual result and evidence | `to-tickets/SKILL.md` |
-| 当前结论 | Current conclusion | `to-tickets/SKILL.md` |
-| 尚未执行 | Not run yet | `to-tickets/SKILL.md` |
-| 未验证 | Unverified | `to-tickets/SKILL.md` |
-| 双向核对 | Two-way audit | `to-tickets/SKILL.md` |
-| 核对范围或发现 | Scope or finding | `to-tickets/SKILL.md` |
-| 涉及来源及标识 | Sources and identifiers | `to-tickets/SKILL.md` |
-| 处置与依据 | Disposition and basis | `to-tickets/SKILL.md` |
-| 本票产物与流程验收 | Ticket artifacts and process acceptance | `to-tickets/SKILL.md` |
-| 产品验收 | Product acceptance | `to-tickets/SKILL.md` |
+| 收口 | Closeout | `to-tickets/ticket-templates.md` |
+| 全 feature 验收与文档回归 | full-feature acceptance and documentation regression | `to-tickets/ticket-templates.md` |
+| 这是收口票。 | This is the closeout ticket. | `to-tickets/ticket-templates.md` |
+| 覆盖与验收清单 | Coverage and acceptance checklist | `to-tickets/feature-checklist.md` |
+| 来源 commit | Source commit | `to-tickets/feature-checklist.md` |
+| 核对范围 | Scope | `to-tickets/feature-checklist.md` |
+| 核对 commit | Checked commit | `to-tickets/ticket-templates.md` |
+| 来源 → spec | Source → spec | `to-tickets/feature-checklist.md` |
+| 来源锚点及支持原文 | Source anchor and supporting text | `to-tickets/feature-checklist.md` |
+| 来源处置 | Source disposition | `to-tickets/feature-checklist.md` |
+| spec 覆盖单位 | Spec coverage unit | `to-tickets/feature-checklist.md` |
+| 语义核对结论 | Semantic check | `to-tickets/feature-checklist.md` |
+| spec → tickets → 验证 | Spec → tickets → verification | `to-tickets/feature-checklist.md` |
+| spec 覆盖单位及文档链接 | Spec coverage unit and link | `to-tickets/feature-checklist.md` |
+| 来源原文及适用条件 | Source text and conditions | `to-tickets/feature-checklist.md` |
+| 承兑票与角色 | Owning ticket and role | `to-tickets/feature-checklist.md` |
+| 计划验证及边界 | Planned verification and boundary | `to-tickets/feature-checklist.md` |
+| 当前验证 | Current verification | `to-tickets/feature-checklist.md` |
+| 核对日期、spec 与实现 commit 参考 | Check date, spec and implementation commits | `to-tickets/feature-checklist.md` |
+| 覆盖单位、票及适用路径 | Coverage unit, ticket and path | `to-tickets/feature-checklist.md` |
+| 实际结果与有效证据引用 | Actual result and evidence | `to-tickets/feature-checklist.md` |
+| 当前结论 | Current conclusion | `to-tickets/feature-checklist.md` |
+| 尚未执行 | Not run yet | `to-tickets/feature-checklist.md` |
+| 未验证 | Unverified | `to-tickets/feature-checklist.md` |
+| 双向核对 | Two-way audit | `to-tickets/feature-checklist.md` |
+| 核对范围或发现 | Scope or finding | `to-tickets/feature-checklist.md` |
+| 涉及来源及标识 | Sources and identifiers | `to-tickets/feature-checklist.md` |
+| 处置与依据 | Disposition and basis | `to-tickets/feature-checklist.md` |
+| 本票产物与流程验收 | Ticket artifacts and process acceptance | `to-tickets/ticket-templates.md` |
+| 产品验收 | Product acceptance | `to-tickets/ticket-templates.md` |
 | 文档同步清单 | Document sync checklist | `to-tickets/ticket-artifacts.md` |
 | 同步事项及触发时点 | Sync item and trigger | `to-tickets/ticket-artifacts.md` |
 | 涉及文档 | Documents | `to-tickets/ticket-artifacts.md` |

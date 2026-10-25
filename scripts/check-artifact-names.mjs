@@ -23,13 +23,14 @@ const CJK_G = /[㐀-鿿豈-﫿]/g
 // the body rows of those in `firstColumnOf`.
 const TEMPLATES = [
   { file: 'to-spec/SKILL.md', kind: 'fence', langs: ['md'] },
-  { file: 'to-tickets/SKILL.md', kind: 'tag', tags: ['checklist-template', 'local-ticket-template', 'closeout-ticket-template', 'issue-template'] },
+  { file: 'to-tickets/feature-checklist.md', kind: 'tag', tags: ['checklist-template'] },
+  { file: 'to-tickets/ticket-templates.md', kind: 'tag', tags: ['local-ticket-template', 'closeout-ticket-template', 'issue-template'] },
   // Only the parts written into tickets: the sync checklist's header row and the process-acceptance item names
   { file: 'to-tickets/ticket-artifacts.md', kind: 'tables', headerOf: ['同步事项及触发时点'], firstColumnOf: ['验收项'] },
   { file: 'features-catalog/SKILL.md', kind: 'fence', langs: ['md'] },
   { file: 'domain-modeling/ADR-FORMAT.md', kind: 'fence', langs: ['md'] },
   { file: 'domain-modeling/CONTEXT-FORMAT.md', kind: 'fence', langs: ['md'] },
-  { file: 'repo-scaffold/SKILL.md', kind: 'fence', langs: ['markdown'] }
+  { file: 'repo-scaffold/scaffolding.md', kind: 'fence', langs: ['markdown'] }
 ]
 // Copied into projects whole.
 const ASSET_DIRS = ['electron-scaffold/assets']
