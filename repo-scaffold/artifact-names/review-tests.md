@@ -12,3 +12,4 @@
 | 设计审查 | Design review |
 | 实现后复核 | Post-implementation check |
 | 用例设计表 | Test design table |
+| 发现 | Findings |

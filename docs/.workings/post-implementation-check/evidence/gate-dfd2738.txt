@@ -1,0 +1,52 @@
+# Full verification gate — post-implementation check handoff and handback
+
+Run: 2026-10-25 19:51 +0800
+
+$ git rev-parse HEAD
+dfd273887745ca267f4080dd3b0cd701cdc0c82d
+
+$ git status --porcelain --untracked-files=all, then git hash-object per file (version list; this log, written by the run, is excluded)
+M capabilities.toml 63f01e76bcce15817e900e99623a56a2afd94e5a
+M features-catalog/SKILL.md 24120cea7fb6c3e3e3c441e2738fda7ebffe9c61
+M github-ops/SKILL.md a192c7e65a59a8c869251a04b46bbc5fe81ed9a9
+M github-ops/checks-gate.md 20fb0e45afa3692ece2ead258dbc07161699cace
+M implement/SKILL.md 1dc93fc8eafc69513a4c52031ab0bee98286b92e
+M implement/delivery-and-feedback.md 50e1d47c5fcf036a139da3f28824eded17c4ff33
+M implement/post-implementation-check.md a1641b5134bbf9a47f7dbf6f74b2eb16350065e9
+M repo-scaffold/artifact-names/review-tests.md 522104cd6c32666c4a355bbd288b728b9385daa3
+M review-tests/SKILL.md dbda54f4c04e4584020a23ba6c37fc123614350c
+?? docs/.workings/post-implementation-check/checklist.md df6a9dc263b69331412341e4636247878ca2cb41
+?? docs/.workings/post-implementation-check/final-regression.md 466c5161304112ba3fca52a87c6e02ecedf43c12
+?? docs/.workings/post-implementation-check/review-code.md 0ebe43d9d2ad4e11c1d347cf3f7b98458f0c7a6f
+?? docs/.workings/post-implementation-check/tasks.md 2fd77fa49df1a239de64f70faa69030636d94922
+?? docs/specs/README.md a535a18c6ab8824849b3c31f115f9ad30959706d
+?? docs/specs/post-implementation-check.md 1221e20f87ffbb15877140b5d47e7af94c57759f
+?? docs/specs/task-graph-query.md 6fedf6553854d55235c4f422c70e5292405f9b01
+?? eli5/SKILL.md ff6b33c9b3277c493e03e47fad327c6ad318e1d5
+
+$ python3 -c "import tomllib; print(tomllib.load(open(\"capabilities.toml\",\"rb\")))"
+{'client-framework': 'none', 'working-language': 'en', 'lint': {'enabled': False}, 'e2e-suite': {'enabled': False}, 'i18n': {'enabled': False}, 'enumeration-wording-gate': {'enabled': False}, 'mutation-testing': {'enabled': False}, 'theming': {'enabled': False}}
+By the project capability declaration, lint is not enabled; skipped.
+By the project capability declaration, e2e-suite is not enabled; skipped.
+
+$ node scripts/check-artifact-names.mjs
+artifact-names check
+  tables: 14
+  tableRows: 98
+  templateElements: 78
+  unmappedElements: 0
+  templateTableLinks: 11
+  seedTexts: 3
+  assetFiles: 13
+  assetCjkLines: 0
+  assetDocBlocks: 42
+  assetBlocks: 16
+  exampleBlocks: 18
+
+all checks passed
+exit=0
+
+$ python3 <link check: every relative link in the skills tree outside docs/.workings resolves; wayfinder is untracked and predates this change>
+links checked: 248
+broken: ['wayfinder/SKILL.md -> link']
+exit=0
