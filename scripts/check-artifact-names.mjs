@@ -38,7 +38,8 @@ const TEMPLATES = [
   { file: 'repo-scaffold/scaffolding.md', kind: 'fence', langs: ['markdown'] }
 ]
 // Copied into projects whole: every file under ASSET_DIRS, and every file under ASSET_SKILL_DIRS but its
-// Markdown documents, read from the directory so that an asset added there is checked without a change here.
+// Markdown documents and dotfiles, read from the directory so that an asset added there is checked without
+// a change here.
 const ASSET_DIRS = ['electron-scaffold/assets']
 const ASSET_SKILL_DIRS = ['prototype']
 // Documents whose code blocks may be copied into projects; every Chinese-bearing block must be classified.

@@ -5,11 +5,12 @@
 // Exit 0 when every check passes, 1 when any fails. The report quantifies what was scanned.
 //
 // In a project the skill's copies sit beside the project's own prototype pages, with the same extensions,
-// and the project's checks tell them apart by the marker. Every file under prototype/ other than Markdown
-// must carry the marker on one line of its leading comment (after a `#!` line and a `<!doctype>` line);
-// the templates filled in with each prototype's own content are listed below and must not carry it at
-// all. A file that is neither marked nor listed is reported, so an asset added or renamed turns this red
-// until someone decides which kind it is.
+// and a project's checks can tell them apart by the marker. Every file under prototype/ other than its
+// Markdown documents and dotfiles must carry the marker on one line of its leading comment (skipping a
+// leading `#!` line and `<!doctype>` line); the templates filled in with each prototype's own content are
+// listed below and must not carry it at all. A file that is neither marked nor listed is reported, and so
+// is a listed template that no longer exists: an asset added without the marker, or a listed template
+// renamed, turns this red until someone decides which kind it is.
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
