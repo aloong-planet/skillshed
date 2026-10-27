@@ -7,6 +7,8 @@ description: 按 spec 或 ticket 实施开发、交付并处理验收后的状�
 
 实施 spec 或 tickets 描述的工作。编码全程遵循 AGENTS.md 的**窄而完整**原则(正文只在 AGENTS.md,此处不复制)。开始前读 CONTEXT.md 与相关 ADR。
 
+本 skill 各步写或改的测试,凡是全量验证网关的测试命令会运行的,都不得读取惰性文件:网关判定改动范围时把惰性文件判为不影响测试命令,以此为前提(惰性文件、测试命令与跳过条件见 [full-verification-gate.md](full-verification-gate.md)「按改动范围跳过测试命令」条)。要校验惰性文件的内容(如 README 与站点页面一致),必须做成每次全量都照跑的检查命令,不得做成这样的测试。
+
 仅收到既有交付的验收反馈且没有新增实现要求时，必须直接执行“验收反馈回写”(按该节完整读取 [delivery-and-feedback.md](delivery-and-feedback.md))，不得重新拉分支或重跑实现步骤；反馈包含缺陷或新范围时，必须先定位受影响要求并按现有需求变更与验证流程处理。
 
 ## 验收时点与阶段门禁
@@ -41,7 +43,7 @@ description: 按 spec 或 ticket 实施开发、交付并处理验收后的状�
 
 ## 全量验证网关(第 5 步之后、第 6 步之前)
 
-第 5 步完成(含其修复)后,必须完整读取 [full-verification-gate.md](full-verification-gate.md),按其跑全量、写日志,并按其判定改动后能否沿用上次全量结果。
+第 5 步完成(含其修复)后,必须完整读取 [full-verification-gate.md](full-verification-gate.md),按其跑全量、写日志,并按其判定哪些测试命令可以跳过、改动后能否沿用上次全量结果。
 
 ## 第 6 步:`/review-tests` 实现后复核(审写成的测试)
 
