@@ -30,7 +30,12 @@ description: 用一次性原型回答拿不准的设计问题,产物留在 docs/
 | [demo-dimensions.js](./demo-dimensions.js) | 产品维度脚本(设置原型页与画廊的统一设置写出语言、明暗等取值,其余原型页按声明跟随) |
 | [app-identity.js](./app-identity.js) | 标签页标识脚本(在画廊壳与每个原型页的浏览器标签页上标出所属 app 的名字与图标) |
 
-模板类资产**正本在此**,项目里的是复制实例——要改行为,改这里再重新复制,不手改实例。
+本 skill 的资产(上表里的非 Markdown 文件)按进项目的方式分两类,新增资产时必须先定它属哪一类:
+
+- **原样复制的资产**:复制进项目后不再改动的文件,复制目标与时机见「画廊」节的懒创建。**正本在此**,项目里的是复制实例:要改行为,必须改这里的正本再重新复制,不得手改实例。文件开头的第一段注释(跳过 `#!` 行与 `<!doctype>` 行)必须在同一行里写出复制来源标记 `copied from the prototype skill's template`,复制进任何 `working-language` 的项目都原样保留、不得改写。项目的原型目录里,复制来的文件与原型页的扩展名相同,项目的检查可以靠这个标记认出复制来的文件;改成按清单认,本 skill 新增或改名资产时清单不会跟着变,漏掉的文件就被当成原型内容放过。
+- **照模板填写的资产**:复制后填进原型自己的内容、此后照常编辑的文件,即 [LOGIC.md](./LOGIC.md) 产物结构里写明「复制填充」的模板。项目里的是该原型自己的文件,不得带复制来源标记。
+
+改动本 skill 的资产后,必须在本 skill 所在仓库的根目录运行 `node scripts/check-prototype-copies.mjs`,退出码非 0 不得提交。它逐个核对本 skill 目录的非 Markdown 文件:脚本里列出的照模板填写的资产不带标记,其余文件都在第一段注释里带标记;因此新增或改名照模板填写的资产时,必须同时改脚本的列表。
 
 ## 通用规则
 
@@ -61,6 +66,6 @@ description: 用一次性原型回答拿不准的设计问题,产物留在 docs/
 
 `docs/prototypes/index.html` = 画廊壳:左侧 Figma 式深色工具侧栏(按模块分组,可收起,快捷键 S) + 右侧屏幕;侧栏头部的设置按钮打开统一设置,为全部原型切换界面语言与外观明暗(规则见 [UI.md](./UI.md) 演示基建条款第 5 条)。**一切条目统一 iframe**——UI 是自包含 HTML,Logic 也是自渲染页(问题/图/命令都在页内),壳不做任何内容渲染。hash 路由可分享,↑/↓ 键切换。
 
-- **懒创建**:首次生成原型时铺齐画廊基建——从本 skill 目录复制 [gallery-template.html](./gallery-template.html) → `docs/prototypes/index.html`、[demo-harness.js](./demo-harness.js) → `docs/prototypes/demo-harness.js`、[demo-dimensions.js](./demo-dimensions.js) → `docs/prototypes/demo-dimensions.js`、[app-identity.js](./app-identity.js) → `docs/prototypes/app-identity.js`,创建注册表 `manifest.js`(含所属 app 的声明,见通用规则 11;`window.PROTOTYPES = []`)与空维度登记表 `dimensions.js`(`window.DEMO_DIMENSIONS = {}`)。只有 Logic 页用得上的两样等首次生成 Logic 原型时再铺:复制 [sync-mmd.mjs](./sync-mmd.mjs) → `docs/prototypes/sync-mmd.mjs`,并**懒下载渲染库** `vendor/mermaid.min.js`(`curl -sL -o docs/prototypes/vendor/mermaid.min.js https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js`,约 3.4MB,一次下载后离线可用;缺失时 Logic 页自动降级为显示图源文本)。基建在项目里不手改——要改,改 skill 正本后重新复制。
+- **懒创建**:首次生成原型时铺齐画廊基建——从本 skill 目录复制 [gallery-template.html](./gallery-template.html) → `docs/prototypes/index.html`、[demo-harness.js](./demo-harness.js) → `docs/prototypes/demo-harness.js`、[demo-dimensions.js](./demo-dimensions.js) → `docs/prototypes/demo-dimensions.js`、[app-identity.js](./app-identity.js) → `docs/prototypes/app-identity.js`,创建注册表 `manifest.js`(含所属 app 的声明,见通用规则 11;`window.PROTOTYPES = []`)与空维度登记表 `dimensions.js`(`window.DEMO_DIMENSIONS = {}`)。只有 Logic 页用得上的两样等首次生成 Logic 原型时再铺:复制 [sync-mmd.mjs](./sync-mmd.mjs) → `docs/prototypes/sync-mmd.mjs`,并**懒下载渲染库** `vendor/mermaid.min.js`(`curl -sL -o docs/prototypes/vendor/mermaid.min.js https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js`,约 3.4MB,一次下载后离线可用;缺失时 Logic 页自动降级为显示图源文本)。复制来的文件按「本 skill 的文件」节的原样复制资产处理。
 - **注册表同步(硬规则)**:每生成一个原型,往 `manifest.js` 的 `window.PROTOTYPES` 追加一条 `{module, type:'ui'|'logic'|'candidates', id, name, path}`(`candidates` 只用于候选页,见 [UI.md](./UI.md)「候选页」节);删除原型同步删条目——注册表腐烂等于画廊失明。
 - 技术约束的由来:注册表与图源经 .js 包装、且 .mmd→model.mmd.js 走**生成期**同步脚本(file:// 下运行时 fetch 本地文件被 CORS 拦,script 标签不受限);右屏统一 iframe(隔离各原型的 CSS/JS);渲染库 vendor 本地化不用 CDN 引用(离线可用,保自包含)。
