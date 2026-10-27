@@ -16,7 +16,7 @@
 //  D. Assets: asset files and code blocks marked `<!-- asset -->` contain no Chinese; in the asset-bearing
 //     documents every code block that contains Chinese carries `<!-- example -->` (it is not copied).
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, basename } from 'node:path'
 
 const RULES = 'repo-scaffold/artifact-names.md'
 const TABLE_DIR = 'repo-scaffold/artifact-names'
@@ -37,9 +37,11 @@ const TEMPLATES = [
   { file: 'domain-modeling/CONTEXT-FORMAT.md', kind: 'fence', langs: ['md'] },
   { file: 'repo-scaffold/scaffolding.md', kind: 'fence', langs: ['markdown'] }
 ]
-// Copied into projects whole.
+// Copied into projects whole: every file under ASSET_DIRS, and every file under ASSET_SKILL_DIRS but its
+// Markdown documents and dotfiles, read from the directory so that an asset added there is checked without
+// a change here.
 const ASSET_DIRS = ['electron-scaffold/assets']
-const ASSET_FILES = ['prototype/gallery-template.html', 'prototype/logic-page-template.html', 'prototype/logic-template.js', 'prototype/sync-mmd.mjs', 'prototype/demo-harness.js', 'prototype/demo-dimensions.js', 'prototype/app-identity.js']
+const ASSET_SKILL_DIRS = ['prototype']
 // Documents whose code blocks may be copied into projects; every Chinese-bearing block must be classified.
 const ASSET_DOC_DIRS = ['electron-scaffold', 'prototype']
 const ASSET_DOC_FILES = ['github-ops/checks-gate.md']
@@ -199,7 +201,9 @@ if (!read('repo-scaffold/SKILL.md').includes('artifact-names.md')) errors.push('
 
 // ---- D. assets --------------------------------------------------------------------------------------
 const walk = (d) => readdirSync(d).flatMap((n) => { const p = join(d, n); return statSync(p).isDirectory() ? walk(p) : [p] })
-const assetFiles = [...ASSET_DIRS.flatMap(walk), ...ASSET_FILES]
+// Dotfiles (.DS_Store and the like) in a skill directory are not assets
+const skillAssets = (d) => walk(d).filter((f) => !f.endsWith('.md') && !basename(f).startsWith('.'))
+const assetFiles = [...ASSET_DIRS.flatMap(walk), ...ASSET_SKILL_DIRS.flatMap(skillAssets)]
 let assetCjk = 0
 for (const f of assetFiles) {
   const n = cjkLines(read(f)); assetCjk += n
