@@ -8,7 +8,7 @@
 
 | 位置 | 回答的问题 | 谁维护 |
 |---|---|---|
-| `CONTEXT.md`(仓库根) | 术语的准确含义、该避免哪些同义词 | `/domain-modeling` |
+| `docs/CONTEXT.md` | 术语的准确含义、该避免哪些同义词 | `/domain-modeling` |
 | `docs/adr/` | 为什么这么定、否决了什么 | `/domain-modeling` |
 | `docs/specs/<slug>.md` | 这个功能穷举过哪些边界、哪些明确不做 | `/to-spec` |
 | `docs/features/<slug>.md` | 当前版本用户可见的行为 | `/features-catalog` |
@@ -30,7 +30,7 @@
 
 动手改代码或提方案之前,先读:
 
-- 仓库根的 `CONTEXT.md`;若存在 `CONTEXT-MAP.md`,按它找到与当前话题相关的那个上下文的 `CONTEXT.md`(格式与推断规则见 `/domain-modeling` 的 `CONTEXT-FORMAT.md`)
+- `docs/CONTEXT.md` 的目录,用到的术语再取单条(读法见全局指令「读项目词汇表 `CONTEXT.md`」);若存在 `docs/CONTEXT-MAP.md`,按它找到与当前话题相关的那个上下文的 `CONTEXT.md`(格式与推断规则见 `/domain-modeling` 的 `CONTEXT-FORMAT.md`)
 - `docs/adr/` 中与本次改动区域相关的 ADR;多上下文仓库还要看该上下文目录下的 `docs/adr/`
 
 **这些文件不存在时静默继续。** 不得提示它们缺失,不得建议提前创建——`/domain-modeling` 会在术语或决策真正敲定时懒创建。

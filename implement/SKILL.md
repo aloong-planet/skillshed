@@ -5,7 +5,7 @@ description: 按 spec 或 ticket 实施开发、交付并处理验收后的状�
 
 > Fork 自 mattpocock/skills(2026-07 快照)。修改:扩为第 4-7 步编排器(分支纪律、用例设计审查、验证网关、双 review 门、Spec 终检、拆解归档)。
 
-实施 spec 或 tickets 描述的工作。编码全程遵循 AGENTS.md 的**窄而完整**原则(正文只在 AGENTS.md,此处不复制)。开始前读 CONTEXT.md 与相关 ADR。
+实施 spec 或 tickets 描述的工作。编码全程遵循 AGENTS.md 的**窄而完整**原则(正文只在 AGENTS.md,此处不复制)。开始前按全局指令「读项目词汇表 `CONTEXT.md`」查 CONTEXT.md(先读目录,用到的术语再取单条),并读相关 ADR。
 
 本 skill 各步写或改的测试,凡是全量验证网关的测试命令会运行的,都不得读取惰性文件:网关判定改动范围时把惰性文件判为不影响测试命令,以此为前提(惰性文件、测试命令与跳过条件见 [full-verification-gate.md](full-verification-gate.md)「按改动范围跳过测试命令」条)。要校验惰性文件的内容(如 README 与站点页面一致),必须做成每次全量都照跑的检查命令,不得做成这样的测试。
 
