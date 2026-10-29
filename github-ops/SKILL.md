@@ -1,6 +1,6 @@
 ---
 name: github-ops
-description: "Rules and standards for ANY GitHub operation — git commit, push, PR, release, tag, issue, Actions, CI check gates, branch protection/rulesets, or anything that ends up on GitHub. Use whenever cutting a branch, committing, pushing, opening/reviewing a PR, cutting a release, creating/deleting tags, editing release notes, setting up or verifying CI gates and required status checks, or writing anything published to a GitHub repo. Enforces the no-AI-signature rule, the branch-from-master rule, and the release/tag conventions. **Watching CI: run this skill's own watch-ci.sh — never hand-roll a polling loop.**"
+description: "Rules and standards for ANY GitHub operation — git commit, push, PR, release, tag, issue, Actions, CI check gates, branch protection/rulesets, or anything that ends up on GitHub. Use whenever cutting a branch, committing, pushing, opening/reviewing a PR, cutting a release, creating/deleting tags, editing release notes, setting up or verifying CI gates and required status checks, or writing anything published to a GitHub repo. Enforces the no-AI-signature rule, the branch-from-main rule, and the release/tag conventions. **Watching CI: run this skill's own watch-ci.sh — never hand-roll a polling loop.**"
 when_to_use: "Activate for any git branch creation / commit / push / PR / release / tag / issue / GitHub Actions / CI gate / branch ruleset work, or any text that will appear on GitHub. Waiting on a CI run counts — use watch-ci.sh from this skill's directory."
 ---
 
@@ -30,41 +30,41 @@ when_to_use: "Activate for any git branch creation / commit / push / PR / releas
 提交前自检——查**本分支全部** commit,不只最后一条(一次推多条时 `-1` 会漏掉前面的):
 
 ```bash
-git log origin/master..HEAD --format=%B | grep -inE "co-authored|generated with" \
+git log origin/main..HEAD --format=%B | grep -inE "co-authored|generated with" \
   && echo "有署名,必须改" || echo "干净"
 ```
 
-这里不必先 `fetch`:`origin/master` 陈旧只会让范围**变大**(多查几条),不会漏查——与第 2 节的基线自检方向相反,那边陈旧会导致误判。
+这里不必先 `fetch`:`origin/main` 陈旧只会让范围**变大**(多查几条),不会漏查——与第 2 节的基线自检方向相反,那边陈旧会导致误判。
 
 **这条命令只覆盖 commit message。** PR 描述、release note、issue 与评论不在 git 历史里,自检查不到——它们在**提交给平台之前**逐份自查:正文里不得出现 co-author 行、`Generated with` 尾注、或任何指向 AI 工具的署名。判据:每份将要发到平台的文本,发出前都能说出"已看过、无署名"。
 
-## 2. 分支永远从最新 master 拉(硬性)
+## 2. 分支永远从最新 main 拉(硬性)
 
 `git checkout -b` 之前**必须**先把基线摆正:
 
 ```bash
-git checkout master && git pull        # 先回 master 并拉最新
+git checkout main && git pull        # 先回 main 并拉最新
 git checkout -b <type>/<slug>          # 再拉新分支
 ```
 
 **这条对一切分支生效**——feature 分支、配 CI、修工具链、改文档、hotfix,全都算。不要因为"这次只是顺手配个 CI"就在当前分支上直接 `-b`。
-**本节一律以 `master` 指代该仓库的默认分支**;实际叫别的名字时(`main`、`trunk`),把命令里的 `master` 换成它——先查清默认分支名再执行,别照抄。
+**本节一律以 `main` 指代该仓库的默认分支**;实际叫别的名字时(`master`、`trunk`),把命令里的 `main` 换成它——先查清默认分支名再执行,别照抄。
 
 **开 PR 前自检基线**(比事后补救便宜得多):
 
 ```bash
-git fetch origin                        # 必须先 fetch:origin/master 是本地缓存,不刷新就是拿陈旧基线在比
-git log --oneline origin/master..HEAD   # 本分支相对 master 到底带了哪些 commit
+git fetch origin                        # 必须先 fetch:origin/main 是本地缓存,不刷新就是拿陈旧基线在比
+git log --oneline origin/main..HEAD   # 本分支相对 main 到底带了哪些 commit
 ```
 
 这个列表必须与 PR 描述**一一对应**。数量对不上就是基线错了,**别直接开 PR**:
 
-- **分支还没推过** → 直接 `git rebase origin/master`,零风险。
+- **分支还没推过** → 直接 `git rebase origin/main`,零风险。
 - **分支已经推过** → rebase 后必须 force push,那是破坏性操作,走第 4 节的流程(先备份、告知代价、经确认)。改基线的成本在推送那一刻就翻倍了,这也是为什么这条检查要放在**开 PR 前**。
 
-**机制:在未合并的分支上再拉分支,新 PR 会静默带上旧分支的全部 commit。** PR 描述只写新改动,squash 合并后 master 上落下一个标题只说小改动、内容却是整批的 commit。代码可以全对、CI 全绿,坏的是**历史可读性**——`git log` 与 bisect 追某个改动的来历时,会被指到名不副实的 commit 上;修复要 force push 默认分支(第 4 节的破坏性操作),代价远高于事前敲那两条命令。
+**机制:在未合并的分支上再拉分支,新 PR 会静默带上旧分支的全部 commit。** PR 描述只写新改动,squash 合并后 main 上落下一个标题只说小改动、内容却是整批的 commit。代码可以全对、CI 全绿,坏的是**历史可读性**——`git log` 与 bisect 追某个改动的来历时,会被指到名不副实的 commit 上;修复要 force push 默认分支(第 4 节的破坏性操作),代价远高于事前敲那两条命令。
 
-**合并之后**:下一个分支开工前再 `git checkout master && git pull` 一次,别拿合并前的本地 master 当基线。
+**合并之后**:下一个分支开工前再 `git checkout main && git pull` 一次,别拿合并前的本地 main 当基线。
 
 **提交前核对暂存区的实际内容,不只看文件名**:同一工作区可能有另一个会话或另一件事在并行改动,按文件 `add` 会把不属于本次的改动一并带走,而 commit 只显示文件名、看不出里面混了什么。判据:提交前逐处过一遍暂存的改动内容,每一处都能说出它属于本次的哪条需求;说不出的先撤出暂存区。
 

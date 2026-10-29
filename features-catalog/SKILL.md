@@ -15,7 +15,7 @@ description: 维护产品功能目录(docs/features/,当前版本用户可见功
 2. **行为变更就地改写**：行为改变时必须更新现有描述，不得受“只追加”方式限制；历史归属按文首约定执行。
 3. **功能移除即删文件**:连同索引行一起删;移除本身若够 ADR 门槛(判据见 domain-modeling),另落 ADR。
 
-推论:master 上的 `docs/features/` 永远描述 master 上的产品——改变用户可见行为的 PR 必须携带对应 features 更新。
+推论:默认分支上的 `docs/features/` 永远描述默认分支上的产品——改变用户可见行为的 PR 必须携带对应 features 更新。
 
 ## 内容规则
 

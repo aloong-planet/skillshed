@@ -33,7 +33,7 @@ on:
   pull_request:
   push:
     branches:
-      - master          # use the repository's actual default branch name
+      - main            # use the repository's actual default branch name
 
 concurrency:
   group: checks-${{ github.ref }}
