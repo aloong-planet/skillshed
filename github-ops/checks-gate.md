@@ -43,11 +43,12 @@ jobs:
   checks:               # this id is the required status check's name (see below)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # every action at a full commit with its release in a comment (the github-ops skill: pin every action)
+      - uses: actions/checkout@<40-hex commit> # v<x.y.z>
 
       # pnpm must come before setup-node: setup-node's cache: 'pnpm' calls pnpm to find the store path
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@<40-hex commit> # v<x.y.z>
+      - uses: actions/setup-node@<40-hex commit> # v<x.y.z>
         with:
           node-version: 22        # do not copy another workflow's version; see "Node version" below
           cache: 'pnpm'

@@ -209,6 +209,8 @@ Mac App Store 线由商店分发,不走 Gatekeeper 的票据路径,不适用本�
 | [assets/smoke.sh.template](./assets/smoke.sh.template) | 复制后填「项目填空」块(核心三处+命名,未填空会自报) | dev 冒烟:双隔离、失败留证、就绪产物判据 |
 | [assets/ci-electron.yml](./assets/ci-electron.yml) | 复制进 .github/workflows/ | ubuntu+xvfb 的 e2e 门禁,四个"抄错才知道"的坑已排 |
 
+主进程有批量读文件路径(扫描、建索引)的项目,另按文档第 7 节配基准脚本。
+
 **怎么接**:seam 写进 main;e2e 在 playwright globalSetup 跑 quiet-electron.sh 并设
 `ELECTRON_OVERRIDE_DIST_PATH`;smoke 模板自带接线(electron-vite 另需
 `ELECTRON_EXEC_PATH`,两个都给——依据见文档第 2 节);**e2e 目录与 playwright.config
@@ -217,7 +219,23 @@ Mac App Store 线由商店分发,不走 Gatekeeper 的票据路径,不适用本�
 **验证**(硬性,文档各节附具体方法):smoke 每条失败分支强制触发一遍;Dock/前台用
 lsappinfo 探针 A/B(探针先在"坏"状态自证非空过);换测试运行体制后重放已知可红的变异。
 
+## 6. 开发运行与打包版的 userData 目录
+
+**何时需要**:定 app 名(`package.json` 的 `name`、`productName`,electron-builder 的 `productName`)时,
+以及往 userData 新增文件时。userData 目录名来自 app 名(`app.getName()`);开发运行与打包版的 app 名只差
+大小写时,在 macOS 默认的大小写不敏感卷上两者是同一个目录,开发运行读写的就是已安装版的偏好、缓存与各类
+记录。
+
+**装什么**:不装东西,是起名与新增 userData 文件时的一项判定。
+
+**怎么接**:两个名字只差大小写时,必须逐个判定 userData 里的文件——只该描述已安装版的记录(如「更新后」
+提示所依据的上次版本记录)不得在开发运行中读写;此后每新增一个 userData 文件都先做这个判定。不想承担
+这项判定,就让两个名字不只差大小写。
+
+**验证**:开发运行与打包版各打印一次 `app.getPath('userData')`,忽略大小写比较两者是否相同;相同时,开发
+运行一次后,已安装版那些只属于安装版的记录修改时间不变。
+
 <!--
 扩展位:以后 Electron 新项目基础设施的其它一次性项(如无签名 CI 打包坑、多架构产物命名、
-graceful-quit 骨架等)可在此追加为 ## 6 / ## 7 ……。每项保持"何时需要 / 装什么 / 怎么接 / 验证"结构。
+graceful-quit 骨架等)可在此追加为 ## 7 / ## 8 ……。每项保持"何时需要 / 装什么 / 怎么接 / 验证"结构。
 -->
