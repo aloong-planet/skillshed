@@ -25,3 +25,6 @@
 /.content-studio-backup-*/
 
 .DS_Store
+
+# Working records stay on the machine (see the global instructions on working records); never committed.
+/docs/.workings/

@@ -13,6 +13,7 @@
 - 仓库根的 `capabilities.toml` 是否存在
 - `docs/CONTEXT.md` 与 `docs/CONTEXT-MAP.md`,以及仓库根是否还留着旧位置的 `CONTEXT.md`、`CONTEXT-MAP.md`(旧位置的处理见 `/domain-modeling` 的 `CONTEXT-FORMAT.md`)
 - `docs/` 下已有哪些目录(`adr` `specs` `features` `prototypes` `postmortems` `ops` `.workings`)
+- 仓库 `.gitignore` 是否忽略 `docs/.workings/`,以及 `git ls-files docs/.workings` 有没有输出(已提交的施工记录)
 - `docs/agents/` —— 本 skill 上次的产出是否已存在
 - 技术栈与包管理器,既有的 linter 配置与 `lint` 脚本,项目的全量验证脚本,`.github/workflows/` 下的检查 workflow
 - 是不是客户端应用、用哪个框架:依赖里有没有 `electron`、`@tauri-apps/*`,仓库根有没有 `src-tauri/`
@@ -36,6 +37,8 @@
 **B 节 —— 文档布局.** 默认**单上下文**:一份 `docs/CONTEXT.md`,`docs/adr/` 放决策。这适合绝大多数仓库,**直接写,不必问**。
 
 仅当探查发现 monorepo 迹象(`pnpm-workspace.yaml`、`package.json` 的 `workspaces`、`packages/*` 各自带 `src/`)时,才提供**多上下文**选项。多上下文的格式与推断规则由 `/domain-modeling` 定义,见其 `CONTEXT-FORMAT.md`——**本 skill 不重复定义,只记录选了哪种**。
+
+施工记录不进仓库(全局指令「施工记录存储」节):`.gitignore` 没有忽略 `docs/.workings/` 的,补一行 `docs/.workings/`;该目录下已有跟踪文件的,用 `git rm -r --cached docs/.workings` 移出索引,文件留在原处。两项都列进草稿,经用户确认后执行。移出索引若在分支上提交、经合并进入默认分支,主检出拉取这次合并时会把这些文件从磁盘上删除——拉取后必须在主检出的仓库根运行 `git archive <拉取前的提交> docs/.workings | tar -x` 把它们还原,还原出的文件处于被忽略状态,不会重新进入索引。
 
 **C 节 —— 项目能力声明.** 按登记表逐个 ID 处理,`lint` 除外(它由 D 节决定)。**先定 `client-framework`,其余 ID 按登记表的「前提」列只处理适用的**:前提不成立的 ID 不问、不写。**每个适用的 ID 都必须写进 `capabilities.toml`**——文件里缺失的适用 ID 是未确认(全局指令「项目能力声明」节):
 
@@ -70,6 +73,7 @@
 - 要插进目标指令文件的 `## Agent skills` 段(以及 Claude Code 在用时那行 `@AGENTS.md` 导入)。目标文件按第 4 节的规则定;既有 `CLAUDE.md` 含实质内容时,**第 4 节的迁移之问先于出草稿**——答案决定块写进哪个文件
 - `docs/agents/issue-tracker.md` 与 `docs/agents/docs-layout.md` 的内容
 - `capabilities.toml` 的新建或补写内容,以及 `AGENTS.md` 的引用行(C 节无需改动任何文件时不列)
+- B 节的 `.gitignore` 补行与施工记录移出索引(无需改动时不列)
 - D 节的接线清单:要安装的依赖、要新建或改动的配置与脚本、CI 步骤,以及存量报错按 lint-adoption.md 第 3 节的分类结果——要修的、按文件范围关闭的(各附约束与退役条件)、逐行豁免并建票的(D 节无需安装或改动任何文件时不列)
 
 ## 4. 写入
@@ -121,7 +125,7 @@ Windows 上不得用 symlink 代替导入——创建 symlink 需要管理员权
 
 ## 5. 不创建目录
 
-**除 D 节经用户确认的 lint 接线外,只写上面那几个文件,不得预先创建 `docs/specs/`、`docs/features/`、`docs/prototypes/` 等空目录。** 各目录由拥有它的 skill 在首次真正产出时创建——空目录进不了 git,而提前铺出来会让人以为里面本该有东西。
+**除 D 节经用户确认的 lint 接线与 B 节经用户确认的 `.gitignore` 补行外,只写上面那几个文件,不得预先创建 `docs/specs/`、`docs/features/`、`docs/prototypes/` 等空目录。** 各目录由拥有它的 skill 在首次真正产出时创建——空目录进不了 git,而提前铺出来会让人以为里面本该有东西。
 
 同理:探查发现 `CONTEXT.md`、`docs/adr/` 不存在时**静默继续**,不得提示缺失、不得建议提前创建。它们由 `/domain-modeling` 在术语或决策真正敲定时懒创建。
 
