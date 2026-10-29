@@ -158,3 +158,35 @@ The three extraction commands were run on agentshed's CONTEXT.md under /usr/bin/
 contents, "Session ID", "Live (day, side)" and "Filtering and searching" by name, and "sidebar" by word (Rail).
 
 Phase 2 rerun after the fixes: zero findings.
+
+## Round 3 (2026-10-29): CONTEXT.md and CONTEXT-MAP.md live under docs/
+
+Change: every project keeps its glossary at `docs/CONTEXT.md` (and a multi-context map at `docs/CONTEXT-MAP.md`);
+a file still at the old root location is read where it is and moved under `docs/` before anything is written to it.
+
+### Phase 1
+
+| # | File | Clause | Finding | Result |
+|---|---|---|---|---|
+| L1 | domain-modeling/SKILL.md | 文件结构 | restated CONTEXT-FORMAT's single/multi-context rules and its inference rule (pre-existing, touched now) | fixed: pointer to CONTEXT-FORMAT and ADR-FORMAT |
+| L2 | domain-modeling/CONTEXT-FORMAT.md | single context: `docs/CONTEXT.md` | ok | ok |
+| L3 | 〃 | multi context: `docs/CONTEXT-MAP.md`; each context's `docs/CONTEXT.md` and `docs/adr/` | ok | ok |
+| L4 | 〃 | inference rule with the `docs/` paths | ok | ok |
+| L5 | 〃 | old location: `git mv` into `docs/` before writing; never both; read-only use reads it where it is | criterion stated | ok |
+| L6 | repo-scaffold/docs-layout.md | table row and the read-first bullet name `docs/CONTEXT.md` and `docs/CONTEXT-MAP.md` | ok | ok |
+| L7 | repo-scaffold/scaffolding.md | probe: `docs/` locations and a leftover root file, pointing at L5 | ok | ok |
+| L8 | 〃 | B section default: `docs/CONTEXT.md` | ok | ok |
+
+Phase 1 rerun after the fix: zero findings.
+
+### Phase 2
+
+| Pile | Members | Verdict |
+|---|---|---|
+| Where CONTEXT.md lives | L1–L4, L6–L8; the global instructions' reading section; agentshed's product spec (project-detail::REQ-003) | compatible: one location everywhere, stated once in CONTEXT-FORMAT, pointed at elsewhere |
+| A file still at the old location | L5, L7; the global reading section's clause on the old location | compatible: reading reads it where it is, writing moves it first |
+
+A full search of the skills for root-location wording (`根(目录)?…CONTEXT`, `仓库根…CONTEXT`, `根 CONTEXT`) returns
+nothing after the change; `check-artifact-names.mjs` passes.
+
+Phase 2 rerun: zero findings.

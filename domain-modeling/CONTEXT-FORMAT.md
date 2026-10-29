@@ -73,6 +73,7 @@ _Avoid_: {同义词,如 账单、付款单}
 
 ## 单/多上下文仓库
 
-- **单上下文(绝大多数)**:根目录一个 `CONTEXT.md`。
-- **多上下文**:根目录 `CONTEXT-MAP.md` 列出各上下文(名称、CONTEXT.md 路径、一句职责)与上下文间关系(谁发事件谁消费、共享哪些类型)。各上下文目录内放各自的 `CONTEXT.md` 与 `docs/adr/`(系统级决策放根 `docs/adr/`)。
-- 推断规则:有 CONTEXT-MAP.md 按它找;只有根 CONTEXT.md 即单上下文;都没有则首个术语敲定时懒创建根 CONTEXT.md。多上下文时按当前话题推断归属,不明确就问。
+- **单上下文(绝大多数)**:一份 `docs/CONTEXT.md`。
+- **多上下文**:`docs/CONTEXT-MAP.md` 列出各上下文(名称、CONTEXT.md 路径、一句职责)与上下文间关系(谁发事件谁消费、共享哪些类型)。各上下文目录内放各自的 `docs/CONTEXT.md` 与 `docs/adr/`(系统级决策放仓库根的 `docs/adr/`)。
+- 推断规则:有 `docs/CONTEXT-MAP.md` 按它找;只有 `docs/CONTEXT.md` 即单上下文;都没有则首个术语敲定时懒创建 `docs/CONTEXT.md`。多上下文时按当前话题推断归属,不明确就问。
+- **旧位置**:`CONTEXT.md` 或 `CONTEXT-MAP.md` 还在仓库根(或上下文目录根)时,写入前必须先用 `git mv` 挪进同级的 `docs/`,不得两处并存;只读不写时按全局指令「读项目词汇表 `CONTEXT.md`」读旧位置那份。

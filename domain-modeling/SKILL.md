@@ -12,8 +12,7 @@ description: 主动建立并磨利项目的领域模型——质疑与敲定术�
 
 ## 文件结构
 
-单上下文(绝大多数仓库):根目录 `CONTEXT.md` + `docs/adr/`。
-多上下文仓库以根目录 `CONTEXT-MAP.md` 为准(格式见 [CONTEXT-FORMAT.md](./CONTEXT-FORMAT.md)),按当前话题推断所属上下文,不明确就问。
+文件放在哪、单上下文还是多上下文、怎么推断当前话题所属的上下文,一律以 [CONTEXT-FORMAT.md](./CONTEXT-FORMAT.md) 的「单/多上下文仓库」节为准;ADR 的位置见 [ADR-FORMAT.md](./ADR-FORMAT.md)。
 
 **懒创建**:有东西可写才建文件。第一个术语敲定时建 CONTEXT.md;第一条 ADR 需要时建 `docs/adr/`——**连同 README.md 一起**(规范声明+索引,见 [ADR-FORMAT.md](./ADR-FORMAT.md))。
 
