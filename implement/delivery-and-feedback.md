@@ -13,7 +13,9 @@
 
 按票交付时，必须先执行 [文档同步与记录维护](document-sync.md) 的“核销前的范围复核”，再按 [Ticket 产物与文档同步清单](../to-tickets/ticket-artifacts.md) 的“文档同步清单结构与状态”重判各项状态；存在待处理项时不得交付。必须更新票内文档同步验收项，并按 [SKILL.md](SKILL.md)「验收时点与阶段门禁」处理后置验收；无用户可见行为变化而跳过第 8 步时，仍必须执行此项检查。
 
-遵循 `/github-ops`(commit/push/PR 全程无 AI 署名):push 分支 → 开 PR 后**停下等用户确认——开 PR 不构成合并授权,确认前不执行合并**。用户确认后默认 squash 合并保持 master 线性、合并后删远程分支;合并方式有特殊需要用户会说明。
+遵循 `/github-ops`(commit/push/PR 全程无 AI 署名):push 分支 → 开 PR → 全套 e2e 交给 PR 的 CI 的,按下一段取得 CI 的结论 → **停下等用户确认——开 PR 不构成合并授权,确认前不执行合并**。用户确认后默认 squash 合并保持 master 线性、合并后删远程分支;合并方式有特殊需要用户会说明。
+
+全量把全套 e2e 交给 PR 的 CI 的(判定见 [full-verification-gate.md](full-verification-gate.md)「全套 e2e 交给 PR 的 CI」条),开 PR 后必须按 `/github-ops` 的 [ci-watch.md](../github-ops/ci-watch.md) 用 `watch-ci.sh` 等到 PR 当前提交上的全部 CI 运行结束,等待按全局指令「等待后台工作」进行。全部结论为成功,才可报告交付完成,并把各运行的链接与结论写进交付说明;任一运行不成功的,按全量失败处理:修复后按 [full-verification-gate.md](full-verification-gate.md) 对「全量通过后又改了代码」的规定重跑或沿用全量,推送后再等,结论全部为成功之前不得报告交付完成。
 
 ## 验收反馈回写
 
