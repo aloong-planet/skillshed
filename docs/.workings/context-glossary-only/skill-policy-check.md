@@ -117,3 +117,44 @@ Phase 2 rerun after the fixes: zero findings.
   and electron-testing.md's opening quote and §4/§5 ("agentshed 教训", "agentshed 切隐藏窗口时"); untouched
   clauses, left as they are.
 - github-ops/SKILL.md's description summarises the rules it enforces (skill-policy §4); untouched.
+
+## Round 2 (2026-10-29): a fourth admission test, the second-sentence rule, read the contents first
+
+Change: CONTEXT-FORMAT gains admission test 4 (a term is admitted only when it has a confusable concept named in
+the entry, or a meaning its words do not give away), restricts a definition's second sentence to naming a
+confusable concept or correcting a misreading, and guarantees the structure that the global instructions' new
+"读项目词汇表 CONTEXT.md" section reads by (contents first, one paragraph per entry). implement, tdd and the
+docs-layout seed now read CONTEXT.md that way instead of whole.
+
+### Phase 1
+
+| # | File | Clause | Finding | Result |
+|---|---|---|---|---|
+| R1 | domain-modeling/CONTEXT-FORMAT.md | template: Contents placeholder | restated the 写法 clause on names | fixed: pointer to 写法 |
+| R2 | 〃 | template: term placeholder "至多两句" | restated 写法 #11; introduced in round 1 and missed by its phase 2 | fixed: pointer to 写法 |
+| R3 | 〃 | template: flagged placeholder "至多两句" | restated 写法 #12; introduced in round 1 and missed by its phase 2 | fixed: pointer to 写法 |
+| R4 | 〃 | admission intro "各条" | ok | ok |
+| R5 | 〃 | test 4 | criterion stated (named confusable concept, or a meaning the words do not give away) | ok |
+| R6 | 〃 | 写法: second sentence only for a confusable concept or a misreading | criterion stated | ok |
+| R7 | 〃 | 写法: contents is the first `##` section | read as making a contents section mandatory below 100 lines, against the template | fixed: "有目录时" |
+| R8 | 〃 | 写法: one paragraph per entry, title `**name**:` | checkable; mechanism stated | ok |
+| R9 | implement/SKILL.md | read CONTEXT.md by the global section | pointer | ok |
+| R10 | tdd/SKILL.md | 〃 | pointer | ok |
+| R11 | repo-scaffold/docs-layout.md | 〃 (seed text) | pointer | ok |
+
+Phase 1 rerun after the fixes: zero findings.
+
+### Phase 2
+
+| Pile | Members | Verdict |
+|---|---|---|
+| Contents | template annotation "全文超过 100 行时必有", R1, R7; global section "文件没有目录(不超过 100 行)" | compatible after R7's fix |
+| Definition length and second sentence | R2, R6 | one rule, one pointer |
+| Flagged entries | R3, 写法 #12 | one rule, one pointer |
+| Admission | tests 1–4, forbidden-forms table | compatible: test 4 rejects what the table has no row for, and names the destination (the spec or ADR that uses the term) |
+| How CONTEXT.md is read | global section; R8; R9–R11; features-catalog stage 1 pair 4 (same words in every document); domain-modeling's in-conversation checks; the truncation hook's partial-Read reminder on CONTEXT.md | compatible: the global section reads by paragraph through Bash, never by line range, so the hook stays silent (its three commands were fed to the hook: silent); whole reads remain for edits of CONTEXT.md itself |
+
+The three extraction commands were run on agentshed's CONTEXT.md under /usr/bin/awk (version 20200816): the
+contents, "Session ID", "Live (day, side)" and "Filtering and searching" by name, and "sidebar" by word (Rail).
+
+Phase 2 rerun after the fixes: zero findings.
