@@ -104,3 +104,12 @@ git log --oneline origin/master..HEAD   # 本分支相对 master 到底带了哪
 **commit message、PR 标题与正文、issue 及其评论,凡在 `working-language` 管辖范围内的,一律用该语言书写**——值与管辖范围以 `capabilities.toml` 及 `/repo-scaffold` 的能力登记表为准,读写规则见全局指令的「项目能力声明」节,本节不复述。该项未确认时按全局指令停下问用户,不得自行选语言。引用的标识符、命令、文件路径与报错原文按原样保留,不翻译。
 
 判据:每份将要提交或发到平台的文字,发出前都能说出「已核对,语言与 `working-language` 一致」。
+
+## 7. workflow 里的 action 一律钉到完整 commit(pin every action)
+
+**每个 action 必须写成 `owner/repo@<40 位十六进制 commit> # v<x.y.z>`,同一个 action 在所有 workflow 里钉同一个 commit;不得钉 tag 或分支。** 机理:tag 与分支都能被挪到别的代码上,而门禁 workflow 决定什么能合进默认分支、发版 workflow 握着签名凭据与发布权限——action 在 tag 下被换掉,这两类 job 跑的就是没人审过的代码。
+
+- 升级某个 action 时,到它自己的仓库把目标 release 的 tag 解析成 commit,用到它的 workflow 一起改:`gh api repos/<owner>/<repo>/commits/<tag> --jq .sha`。
+- 「某个 commit 是哪个 release」「它是不是当前大版本」离线查不出,必须在升级时当场解析;离线检查只核形式。
+
+判据:`.github/workflows/` 下每一行 `uses:`,除本地 action(`./` 开头)与 `docker://` 引用外,`@` 后都是 40 位十六进制并在行尾带 `# v<x.y.z>`;同一个 `owner/repo` 在各行的 commit 相同。

@@ -11,7 +11,7 @@
 - `git remote -v` —— 是不是 GitHub 仓库、哪一个
 - 仓库根的 `CLAUDE.md` 与 `AGENTS.md` —— 哪个存在、里面是否已有 `## Agent skills` 段、`AGENTS.md` 是否已有指向 `capabilities.toml` 的引用行
 - 仓库根的 `capabilities.toml` 是否存在
-- 仓库根的 `CONTEXT.md` 与 `CONTEXT-MAP.md`
+- `docs/CONTEXT.md` 与 `docs/CONTEXT-MAP.md`,以及仓库根是否还留着旧位置的 `CONTEXT.md`、`CONTEXT-MAP.md`(旧位置的处理见 `/domain-modeling` 的 `CONTEXT-FORMAT.md`)
 - `docs/` 下已有哪些目录(`adr` `specs` `features` `prototypes` `postmortems` `ops` `.workings`)
 - 仓库 `.gitignore` 是否忽略 `docs/.workings/`,以及 `git ls-files docs/.workings` 有没有输出(已提交的施工记录)
 - `docs/agents/` —— 本 skill 上次的产出是否已存在
@@ -34,7 +34,7 @@
 
 选定后按种子模板写 `docs/agents/issue-tracker.md`。
 
-**B 节 —— 文档布局.** 默认**单上下文**:仓库根一个 `CONTEXT.md`,`docs/adr/` 放决策。这适合绝大多数仓库,**直接写,不必问**。
+**B 节 —— 文档布局.** 默认**单上下文**:一份 `docs/CONTEXT.md`,`docs/adr/` 放决策。这适合绝大多数仓库,**直接写,不必问**。
 
 仅当探查发现 monorepo 迹象(`pnpm-workspace.yaml`、`package.json` 的 `workspaces`、`packages/*` 各自带 `src/`)时,才提供**多上下文**选项。多上下文的格式与推断规则由 `/domain-modeling` 定义,见其 `CONTEXT-FORMAT.md`——**本 skill 不重复定义,只记录选了哪种**。
 

@@ -1,7 +1,7 @@
 # Electron 本地自动测试基建(macOS)
 
 > 配套资产:[assets/quiet-electron.sh](./assets/quiet-electron.sh) · [assets/smoke.sh.template](./assets/smoke.sh.template) · [assets/ci-electron.yml](./assets/ci-electron.yml)
-> 全部结论来自 agentshed 实测回填(2026-08-03/04),每条主张后附"为什么信"。
+> 全部结论来自真实项目的实测回填,每条主张后附"为什么信"。
 > **初始化时装,不要等痛点爆发**——下面每一节都是痛点爆发→排查→误诊→返工之后才补上的,
 > 其中仅"冒烟误红"一项就烧掉三轮排查加一次写进 master 的错误注释。
 
@@ -101,6 +101,12 @@ cp ~/.claude/skills/electron-scaffold/assets/smoke.sh.template <项目>/scripts/
 - **fixture 数据根必传,做成必填参数**:launch 助手的 `home` 用必填签名,靠 typecheck 拦漏传——但**前提是 e2e 目录真的在 tsconfig 里**。agentshed 教训:两个 tsconfig 都不含 `e2e/`,Playwright 运行时只剥类型不检查,整个目录从未被 typecheck,必填守卫形同虚设还自以为有;纳入后既有代码 0 错误,成本为零。**初始化时就把 `e2e/**/*.ts` 和 `playwright.config.ts` 写进 tsconfig include。**
 - **`workers: 1`(保守默认)**:userData 已按例隔离时,锁本不互撞;串行防的是多 Electron 实例并行的资源抖动放大时序 flake。若有任何用例共享 userData 或读真实数据根,则**必须**串行。
 - **globalSetup 接静音**:darwin 上跑 `quiet-electron.sh` 并设 `ELECTRON_OVERRIDE_DIST_PATH`(worker 继承 env);launch 的 env 里注入 `<APP>_NO_FOREGROUND`。Linux/CI 无 Dock,守卫住 platform 即天然空操作。
+- **关闭 app 必须有时限,超时杀整个进程组**:Playwright 的 `close()` 无上限地等进程退出及其 stdio
+  管道关闭,而 CPU 负载下 Electron 在 app 自身退出之后的原生退出可拖到数分钟,用例于是超时在清理阶段。
+  所有 launch 处必须经同一个关闭助手:超过时限即杀 app 的进程组(Playwright 以独立进程组启动 app,其
+  pid 即组号)——只杀主进程不够,组内其余进程仍占着管道——并给该用例加注、打一行警告。代价是挂住的退出
+  不再让用例失败、只剩那行警告,所以未加负载的运行里出现该警告必须当缺陷查。**判据**:e2e 代码里没有
+  绕过关闭助手的 `close()` 调用。
 - **隐藏窗口的有效性边界**:DOM 文本/布局几何/计算样式/`toBeVisible` 都走 layout 与 CDP,与窗口是否上屏无关(`toBeVisible` 在 CI 的 xvfb 里从来就是 DOM 级语义)。**例外是真焦点语义**——`document.hasFocus()`、autofocus、`:focus` 在隐藏窗口下不同;写输入框类用例时要么经 CDP 显式聚焦,要么该用例单独去掉静音变量,不许沉默依赖窗口聚焦。
 
 ## 5. 换测试运行体制后的有效性验证法
@@ -131,3 +137,18 @@ cp ~/.claude/skills/electron-scaffold/assets/ci-electron.yml <项目>/.github/wo
 
 smoke **不进 CI**:macOS 本地专用(BSD stat、进程路径),价值在开发机真实数据形态,容器里等于 e2e 劣化版。
 把 workflow 设为必需检查 → **github-ops 的 [checks-gate.md](../github-ops/checks-gate.md)**(单一出处,此处不复制;要点:GitHub 侧三项缺一不生效,且门禁必须证明"能红")。
+
+## 7. 主进程读文件的耗时只认 Electron 下的实测
+
+同一段读文件代码,在 Electron 主进程里可比 Node 下慢一个数量级:实测每个 64 KB 流分块比 Node 多约 3 ms
+(前提:Electron 43、macOS、文件已在页缓存;机理未剖析,同进程的 worker 线程同样慢)。vitest 这类跑在
+node 下的工具看不到这个差。
+
+- 关于主进程读文件耗时的数字,必须用 Electron 二进制跑同一份代码测得;Node 下的数字必须标注为「Node 下
+  实测」,不得用来判断主进程。主进程有批量读文件路径(扫描、建索引)的项目,必须有一个把被测代码打包后
+  交给 Electron 二进制运行、并能切到 Node 做对照的基准脚本。
+- 流式读取的分块大小必须显式设定,不得依赖运行时默认值,测试也必须显式传入分块大小。取值必须按整轮冷扫描
+  选,不得只按最大的那个文件选:大文件随分块增大一直变快,而每次读取都要付一个分块大小的缓冲,大量小文件
+  组成的整轮扫描在某个中间值最快。
+
+**判据**:报出的每个主进程读文件耗时,都写得出它是在哪个二进制下测的。
