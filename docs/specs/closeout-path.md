@@ -10,7 +10,7 @@ Measured once, on the closeout of a two-ticket feature with no product code: abo
 
 ## Solution
 
-A closeout ticket runs its own path in `/implement`. The full-feature closeout in `/features-catalog` stays its body. With no executable change, the code and test reviews and the pre-review run give way to one independent claim check of the factual statements the ticket writes into the repository. An executable change made during the closeout still takes the full steps.
+A closeout ticket runs its own path in `/implement`. The full-feature closeout in `/features-catalog` stays its body. With no executable change, the code and test reviews and the pre-review run give way to one claim check of the factual statements the ticket writes into the repository. The closeout's own session runs that check, with no subagent, because it is a new session that did none of the feature's earlier work. An executable change made during the closeout still takes the full steps.
 
 Separately, the first post-implementation check of any ticket is skipped when nothing executable changed.
 
@@ -18,7 +18,7 @@ Separately, the first post-implementation check of any ticket is skipped when no
 
 ### closeout-path::REQ-001 The closeout path (direct acceptance)
 
-A ticket that states it is a closeout ticket runs `/implement`'s closeout path. Every ticket it is blocked by must be merged first. The path runs `/features-catalog`'s closeout, decides by the fork point, runs the claim check and delivers.
+A ticket that states it is a closeout ticket runs `/implement`'s closeout path. It runs in a new session: one that aligned the feature's requirements, cut its tickets or implemented another of them stops and reports. Every ticket it is blocked by must be merged first. The path runs `/features-catalog`'s closeout, decides by the fork point, runs the claim check and delivers.
 
 ### closeout-path::REQ-002 What decides the reviews
 
@@ -28,11 +28,11 @@ A ticket that states it is a closeout ticket runs `/implement`'s closeout path. 
 
 ### closeout-path::REQ-003 The claim check
 
-- closeout-path::REQ-003/AC-01: An independent subagent derives its lines from the commit range's diff: every added or rewritten sentence stating a product fact, wherever it is written in the repository. No sampling.
+- closeout-path::REQ-003/AC-01: The closeout's session, with no subagent, derives its lines from the commit range's diff: every added or rewritten sentence stating a product fact, wherever it is written in the repository. No sampling.
 - closeout-path::REQ-003/AC-02: Each line gets a location, an evidence location and one of three conclusions: holds, false, not enough evidence. A ticket or another document is not evidence.
 - closeout-path::REQ-003/AC-03: A negative statement lists every way into the state and shows evidence for each. A statement of how a state ends rests on a reading taken from that state.
-- closeout-path::REQ-003/AC-04: The reviewer changes nothing and measures nothing new; the main agent gathers missing evidence.
-- closeout-path::REQ-003/AC-05: A fix that adds or rewrites a statement sends those lines to an incremental check. Evidence gathered for a statement left as it is, the main agent rejudges itself, and a fix that only deletes a statement needs no check.
+- closeout-path::REQ-003/AC-04: Every line is judged and recorded before any finding is handled, so the record keeps what each statement got wrong. Missing evidence is gathered when the finding is handled.
+- closeout-path::REQ-003/AC-05: A fix that adds or rewrites a statement has those lines checked again by the same session. Evidence gathered for a statement left as it is rejudges that line, and a fix that only deletes a statement needs no check.
 
 ### closeout-path::REQ-004 The full run (direct acceptance)
 
@@ -50,23 +50,24 @@ Before a first post-implementation check, on any ticket, `change-scope.mjs` runs
 4. **The script errors (exit 2).** Treated as an executable change, as the gate treats it (REQ-002/AC-02).
 5. **The closeout writes no factual statement.** The check records the command and the empty result, and ends (REQ-003/AC-01).
 6. **A closeout finds a defect in the product.** The fix is an executable change and takes the full steps (REQ-002/AC-02); the statements still go through the claim check.
-7. **A finding needs a new decision.** It goes to the user; the main agent does not decide it (`claim-check.md`, handling).
-8. **The tool cannot spawn a subagent.** The main agent runs the check and the record says it was not independent, as for the post-implementation check.
+7. **A finding needs a new decision.** It goes to the user; the session does not decide it (`claim-check.md`, handling).
+8. **The session worked on this feature before.** It stops and reports, and the owner starts a new one (REQ-001).
 9. **The project's CI does not run the e2e suite.** The general gate rules run it locally: a command the workflow does not carry cannot be skipped (REQ-004).
 
 ## Implementation Decisions
 
 - The path sits in `implement/SKILL.md` beside the light path for small changes, in the same form, and the claim check has its own reference file, loaded only by this path.
-- The reviewer reads `claim-check.md` itself, not a skill. The rules for the reviewer's execution period and handback are the post-implementation check's, by pointer.
+- The claim check runs in the closeout's own session rather than a subagent, by the owner's choice: the new session already did none of the feature's earlier work.
 - A closeout ticket's process acceptance has three items of its own in `ticket-artifacts.md`: the claim check, document sync, and a conditional review of executable changes.
 
 ## Testing Decisions
 
 - Static: `node scripts/check-artifact-names.mjs` and `node scripts/check-prototype-copies.mjs` exit 0, and the `/skill-policy` two-stage self-check converges on every changed clause.
-- Stated gap: no rehearsal was run. The first real closeout ticket after this change is the path's first run.
+- Stated gap: the one rehearsal, on a real closeout, ran the earlier form with the check in a subagent. The check as written here, in the closeout's own session, has not run, so the first real closeout ticket after this change is its first run.
 
 ## Out of Scope
 
-- The feature checklist and the regression report in the claim check. They are working records outside the repository, verified by the main agent under `/features-catalog`, and checking them independently would mean reading most cases and logs a second time. This leaves them with no independent reader, by the owner's choice.
+- The feature checklist and the regression report in the claim check. They are working records outside the repository, verified under `/features-catalog`, and the owner chose to check only what is written into the repository.
+- A second reader of the statements a closeout writes. The session checks sentences it wrote itself, so a mistake made while writing can repeat in the check. The owner accepts this cost.
 - A local run of the whole e2e suite for a closeout with no executable change. The cost is that the cases only the shipped platform runs do not run for that ticket, by the owner's choice.
 - A claim check on tickets other than closeouts.
