@@ -45,15 +45,16 @@ Applies to: the clauses that define the handback. They name what the reviewer's 
 
 Listed in the order a step 6 round runs.
 
-1. **No findings.** The handback states none and gives the path, with no identifiers; the record's Findings subsection states none (REQ-001).
-2. **Many findings.** The handback lists every finding of the round, one line each; it does not summarise or merge them to stay short (US-001/AC-01).
-3. **Incremental round.** New findings get identifiers not used earlier in the record; the handback lists only this round's findings. How the earlier rounds' findings were handled stays where the record already keeps it (REQ-001).
-4. **Reviewer stops before handing back** (crash, interruption, context exhausted). There is no handback, so the check is not complete even if the Findings subsection is already written; the main agent does not start fixing from a half-written record (REQ-002).
-5. **Handback and record disagree.** The record governs; the mismatch is recorded as an untrue record (US-001/AC-04).
-6. **The tool cannot spawn a subagent.** The main agent runs the check itself, as today; there is no handback, and REQ-001 still applies to the record.
-7. **Working language.** A `zh` project writes 「发现」, an `en` project the registered English name; neither invents its own (REQ-001, `/repo-scaffold`'s artifact-name rules).
-8. **A ticket continued from records written before this rule.** Earlier rounds are not rewritten; each round run from now on writes its own Findings subsection (REQ-001).
-9. **Design review.** The main agent runs it in step 4 with no handback; its section still carries a Findings subsection (REQ-001).
+1. **Nothing executable changed.** The first check does not run, so there is no reviewer and no handback; the record states the skip and its basis ([closeout-path::REQ-005](closeout-path.md)).
+2. **No findings.** The handback states none and gives the path, with no identifiers; the record's Findings subsection states none (REQ-001).
+3. **Many findings.** The handback lists every finding of the round, one line each; it does not summarise or merge them to stay short (US-001/AC-01).
+4. **Incremental round.** New findings get identifiers not used earlier in the record; the handback lists only this round's findings. How the earlier rounds' findings were handled stays where the record already keeps it (REQ-001).
+5. **Reviewer stops before handing back** (crash, interruption, context exhausted). There is no handback, so the check is not complete even if the Findings subsection is already written; the main agent does not start fixing from a half-written record (REQ-002).
+6. **Handback and record disagree.** The record governs; the mismatch is recorded as an untrue record (US-001/AC-04).
+7. **The tool cannot spawn a subagent.** The main agent runs the check itself, as today; there is no handback, and REQ-001 still applies to the record.
+8. **Working language.** A `zh` project writes 「发现」, an `en` project the registered English name; neither invents its own (REQ-001, `/repo-scaffold`'s artifact-name rules).
+9. **A ticket continued from records written before this rule.** Earlier rounds are not rewritten; each round run from now on writes its own Findings subsection (REQ-001).
+10. **Design review.** The main agent runs it in step 4 with no handback; its section still carries a Findings subsection (REQ-001).
 
 ## Implementation Decisions
 

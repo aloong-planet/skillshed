@@ -4,7 +4,7 @@
 
 Template headings and the other fixed names in the templates follow the artifact-name tables for [this file](../repo-scaffold/artifact-names/to-tickets.ticket-templates.md), for [the requirement identifiers](../repo-scaffold/artifact-names/to-spec.requirement-identifiers.md) and for [the feature catalogue](../repo-scaffold/artifact-names/features-catalog.md).
 
-必须仅在实际需要时生成技术前提区；票内引用文本是注明来源 commit 参考的摘录，需求改变后必须按 [feature-checklist.md](feature-checklist.md)「变更与当前验证」条对齐，不得将摘录作为另一份需求权威。模板中的 Test 可按 [SKILL.md](SKILL.md)「Every acceptance criterion must name what guarantees it」改选适当保障层级。收口票的“产品验收”区及其跨票组合条目仅在该组合已由 spec 定义且本票承兑时生成。
+必须仅在实际需要时生成技术前提区；票内引用文本是注明来源 commit 参考的摘录，需求改变后必须按 [feature-checklist.md](feature-checklist.md)「变更与当前验证」条对齐，不得将摘录作为另一份需求权威。模板中的 Test 可按 [SKILL.md](SKILL.md)「Every acceptance criterion must name what guarantees it」改选适当保障层级。收口票的“产品验收”区及其跨票组合条目仅在该组合已由 spec 定义且本票承兑时生成。收口票不得把项目的全量验证命令写成验收项：全量及其可跳过的命令由 `/implement` 的全量验证网关判定，写成验收项会绕过该判定。
 
 必须将以下三种票模板中的产物与流程验收占位指令，按 [Ticket 产物与文档同步清单](ticket-artifacts.md) 展开为实际路径、验收项及 Evidence 位置；成品票不得残留占位指令，也不得要求票的读者访问本机 skill 才能理解验收条件。
 
@@ -56,7 +56,7 @@ Template headings and the other fixed names in the templates follow the artifact
 
 ## 流程验收
 
-<必须按上方模板生成规则先展开产物声明及三项最终流程验收，再保留下列收口专属项。>
+<必须按上方模板生成规则先展开产物声明及收口票的三项最终流程验收，再保留下列收口专属项。>
 
 - [ ] 按 /features-catalog 完成全 feature 文档与行为回归
   — **Evidence**：<checklist.md 中本轮逐项查证记录，以及 final-regression.md 中引用该记录的收口结论和文档回归表>

@@ -9,7 +9,7 @@ description: 审测试本身而不是被测代码——查这些测试到底能�
 
 ## 审查时点与产出
 
-测试审查必须分两个时点执行:先做设计审查,再做实现后复核。
+测试审查必须分两个时点执行:先做设计审查,再做实现后复核。按 `/implement` 编排且其判定某时点跳过的(设计审查见其第 4 步第 4 项,实现后复核见其 [post-implementation-check.md](../implement/post-implementation-check.md)「首轮判定」条),不执行该时点。
 
 ### 设计审查
 
