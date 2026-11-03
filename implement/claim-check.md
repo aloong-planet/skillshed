@@ -1,15 +1,12 @@
 # 陈述核对
 
-本文适用于 `/implement`「收口票路径」第 4 项:执行收口票的 session 把写进仓库的事实陈述逐句对照证据核对,再处置发现。入口:[SKILL.md](SKILL.md)「收口票路径」节。
+本文适用于 `/implement`「收口票路径」第 4 项:把收口票写进仓库的事实陈述逐句对照证据核对,再处置发现。入口:[SKILL.md](SKILL.md)「收口票路径」节。
 
 本文的固定名称写进记录时,必须按 [本文的小表](../repo-scaffold/artifact-names/implement.claim-check.md) 书写,「发现」按 [review-tests 的小表](../repo-scaffold/artifact-names/review-tests.md) 书写。
 
-## 前提
-
-1. 工作区有未提交的仓库改动时不得开始核对:核对对象由 commit 范围确定,未提交的陈述不在其中。
-2. 必须由执行本票的 session 自己核对,不得把核对交给子 agent 或其他 session。
-
 ## 核对的执行
+
+工作区有未提交的仓库改动时不得开始核对:下面第 2 项的行集取自 commit 范围,未提交的陈述不在其中。
 
 1. 必须完整读取 [false-greens.md](../review-code/false-greens.md)。
 2. **行集**:必须从相对「收口票路径」第 3 项那个分叉点的 commit 范围的 diff 机械派生,列出范围内新增或改写的每一句陈述产品事实的话,即行为、边界、数值、阈值、测试保障或「没有测试」的说法,不论它写在 spec、features、ADR、词汇表、README、界面字典还是代码与测试的注释里。不得抽查。施工记录不进仓库,不在行集内。行集为空的,必须写明所用命令及其输出,跳到第 7 项。
