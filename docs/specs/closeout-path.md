@@ -32,7 +32,7 @@ A ticket that states it is a closeout ticket runs `/implement`'s closeout path. 
 - closeout-path::REQ-003/AC-02: Each line gets a location, an evidence location and one of three conclusions: holds, false, not enough evidence. A ticket or another document is not evidence.
 - closeout-path::REQ-003/AC-03: A negative statement lists every way into the state and shows evidence for each. A statement of how a state ends rests on a reading taken from that state.
 - closeout-path::REQ-003/AC-04: The reviewer changes nothing and measures nothing new; the main agent gathers missing evidence.
-- closeout-path::REQ-003/AC-05: A fix that adds or rewrites a statement, or gathers evidence for one, sends those lines to an incremental check; a fix that only deletes one does not.
+- closeout-path::REQ-003/AC-05: A fix that adds or rewrites a statement sends those lines to an incremental check. Evidence gathered for a statement left as it is, the main agent rejudges itself, and a fix that only deletes a statement needs no check.
 
 ### closeout-path::REQ-004 The full run (direct acceptance)
 
