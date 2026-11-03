@@ -16,7 +16,7 @@
 - 仓库 `.gitignore` 是否忽略 `docs/.workings/`,以及 `git ls-files docs/.workings` 有没有输出(已提交的施工记录)
 - `docs/agents/` —— 本 skill 上次的产出是否已存在
 - 技术栈与包管理器,既有的 linter 配置与 `lint` 脚本,项目的全量验证脚本,`.github/workflows/` 下的检查 workflow
-- 是不是客户端应用、用哪个框架:依赖里有没有 `electron`、`@tauri-apps/*`,仓库根有没有 `src-tauri/`
+- 是不是客户端应用、用哪个框架:依赖里有没有 `electron`、`@tauri-apps/*`,仓库根有没有 `src-tauri/`,有没有产出原生客户端的工程(判据见登记表「默认值与推荐答案」节)
 
 ## 2. 逐节确认
 
@@ -133,4 +133,4 @@ Windows 上不得用 symlink 代替导入——创建 symlink 需要管理员权
 
 告诉用户配置已写好、哪些 skill 会读它,以及 `docs/agents/*.md` 与 `capabilities.toml` 可以直接手改——只有换 tracker 或要重铺时才需要重跑本 skill;`capabilities.toml` 的更新时机按全局指令的「项目能力声明」节,不经本 skill。
 
-`client-framework` 为 `"electron"` 时,告诉用户 Electron 项目的一次性基础设施由 `/electron-scaffold` 铺;为 `"tauri"` 时,告诉用户 Tauri 还没有对应的 scaffold skill。
+`client-framework` 为 `"electron"` 时,告诉用户 Electron 项目的一次性基础设施由 `/electron-scaffold` 铺;为 `"tauri"` 时,告诉用户 Tauri 还没有对应的 scaffold skill;为 `"native"` 时,告诉用户原生客户端还没有对应的 scaffold skill。
