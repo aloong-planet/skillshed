@@ -37,7 +37,7 @@ enforced-by = ["pnpm lint"]
 
 凡向用户问某个 ID 取什么值——`/repo-scaffold` 建立或补写声明时,或其他 skill 因该 ID 未确认而停下来问时——推荐答案一律按下列规则给出:
 
-- `client-framework`:按仓库的依赖与目录给。依赖里有 `electron` → `"electron"`;依赖里有 `@tauri-apps/*` 或仓库根有 `src-tauri/` → `"tauri"`;都没有 → 默认值 `"none"`;两种框架的迹象都有时不给推荐,列出两边的证据请用户定。
+- `client-framework`:按仓库的依赖与目录给。依赖里有 `electron` → `"electron"`;依赖里有 `@tauri-apps/*` 或仓库根有 `src-tauri/` → `"tauri"`;都没有、但仓库有产出原生客户端的工程(如 `*.xcodeproj`、`*.xcworkspace`,或 `Package.swift` 加 app 的 `Info.plist`)→ `"native"`;以上都没有 → 默认值 `"none"`;出现两种及以上迹象时不给推荐,列出各方的证据请用户定。
 - 其余 ID:默认值。
 
 推荐答案只用于提问,未经用户确认不得写入,也不得据此替用户判断能力是否启用。文件里缺失的 ID 如何处理,以全局指令的「项目能力声明」节为准。
@@ -46,7 +46,7 @@ enforced-by = ["pnpm lint"]
 
 | ID | 形态 | 取值类型,或 `enabled = true` 的含义 | 前提 | 默认值 |
 |---|---|---|---|---|
-| `client-framework` | 顶层值 | 枚举:项目是不是客户端应用、用哪个框架。`"none"`:不是客户端应用;`"electron"`:Electron 客户端;`"tauri"`:Tauri 客户端 | 无 | `"none"` |
+| `client-framework` | 顶层值 | 枚举:项目是不是客户端应用、用哪个框架。`"none"`:不是客户端应用;`"electron"`:Electron 客户端;`"tauri"`:Tauri 客户端;`"native"`:直接用平台原生工具链构建、不经跨平台框架的客户端(如 Swift/AppKit) | 无 | `"none"` |
 | `working-language` | 顶层值 | 语言标签:仓库工作语言;中文一律写 `"zh"`,不写 `"zh-Hans"`、`"zh-CN"` 等带文字或地区子标签的形式。管辖源码注释、工程文档、测试名、终端输出、commit message、PR 标题与正文、issue;不管辖面向用户的产品文案与 release note。skill 写进项目的固定名称、种子文本与资产随它书写的规则见 [artifact-names.md](./artifact-names.md) | 无 | `"en"` |
 | `i18n` | 段 | 产品界面支持多种语言,用户可见文案集中在字典里;`source` 指字典目录 | 无 | `enabled = false` |
 | `enumeration-wording-gate` | 段 | 有门禁检查文案不把可枚举维度的成员当全集列出;覆盖哪些维度以门禁脚本里的规则为准,`source` 指门禁脚本 | 无 | `enabled = false` |
@@ -54,7 +54,7 @@ enforced-by = ["pnpm lint"]
 | `e2e-suite` | 段 | 有端到端测试且已接入验证网关;`source` 指端到端测试的配置文件 | 无 | `enabled = false` |
 | `mutation-testing` | 段 | 对测试做变异检验;条文与适用范围见 review-tests 的 [mutation-testing.md](../review-tests/mutation-testing.md)。`source` 指记录项目采用这一做法的文档(如 ADR);这一做法靠人守,`enforced-by` 写 `[]` | 无 | `enabled = false` |
 | `theming` | 段 | 界面颜色由主题变量驱动,且至少有一个主题维度(明暗、多套配色、对比度等);有哪些维度以主题样式文件为准,`source` 指主题样式文件 | 无 | `enabled = false` |
-| `macos-distribution` | 段 | 项目对外分发 macOS 安装包;怎么打包按下文的实现指南分派,`source` 指项目的签名与公证运维手册,`enforced-by` 填发布门禁命令。专属子表见下 | `client-framework` 为 `"electron"` 或 `"tauri"` | `enabled = false` |
+| `macos-distribution` | 段 | 项目对外分发 macOS 安装包;怎么打包按下文的实现指南分派,`source` 指项目的签名与公证运维手册,`enforced-by` 填发布门禁命令。专属子表见下 | `client-framework` 为 `"electron"`、`"tauri"` 或 `"native"` | `enabled = false` |
 
 ### 前提
 
@@ -68,6 +68,7 @@ enforced-by = ["pnpm lint"]
 |---|---|
 | `"electron"` | electron-scaffold 的 [macos-signing.md](../electron-scaffold/macos-signing.md);其中第 1 节是分发政策 |
 | `"tauri"` | 暂无。需要它的 skill 必须停下来告诉用户「Tauri 项目的 macOS 打包没有指南」,不得改用 Electron 的指南 |
+| `"native"` | 暂无。需要它的 skill 必须停下来告诉用户「原生客户端的 macOS 打包没有指南」,不得改用 Electron 的指南 |
 
 ### `macos-distribution` 的专属子表
 
