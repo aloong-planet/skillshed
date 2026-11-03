@@ -28,11 +28,12 @@ description: 按 spec、ticket 或判为小改动的要求实施开发、交付�
 票写明自己是收口票时(定义与判据见 `/features-catalog`「全 feature 收口」节),必须依次执行本节各项;下文各节与第 4 步各项,只执行本节指向的部分。
 
 1. 票 Blocked by 的每张票都必须已合并进默认分支;有未合并的,必须停下报告,不得开工。随后必须执行第 4 步第 1 项(分支)。
-2. 必须调 `/features-catalog`,执行其「文档一致性收口」与「全 feature 收口」两节,并把票点名的决定与边界写进 spec 与 features。写进仓库的每条产品事实都必须有证据(命令与输出、日志、截图)留在施工记录里。写进仓库的改动必须提交为 commit。
-3. 必须先拉取远端,取 `git merge-base HEAD origin/<默认分支>` 得到的分叉点,再按下列三支判定,所用命令、完整输出与退出码必须写进陈述核对记录(路径见 [Ticket 产物与文档同步清单](../to-tickets/ticket-artifacts.md)):
+2. 必须调 `/features-catalog`,执行其「文档一致性收口」与「全 feature 收口」两节,并把票点名的决定与边界写进 spec,其中用户可见的部分同时写进 features。写进仓库的每条产品事实都必须有证据留在施工记录里,证据的形态见 [claim-check.md](claim-check.md)「核对的执行」第 3 项。需要可执行改动([change-scope.mjs](change-scope.mjs) 会判为 `changed` 的改动)的,必须按第 4 步第 0 项起走到第 7 步的顺序写它,其中第 4 步第 1 项不重做,不得先写后补;走完必须按 `/features-catalog`「全 feature 收口」的「判定收口」条重核受影响项。写进仓库的改动必须提交为 commit。
+3. 必须先拉取远端,取 `git merge-base HEAD origin/<默认分支>` 得到的分叉点,再按下列各支判定,所用命令、完整输出与退出码必须写进陈述核对记录(路径见 [Ticket 产物与文档同步清单](../to-tickets/ticket-artifacts.md)):
    - 相对分叉点 `git diff` 为空的:不得开 PR,跳过下面两项,把收口结论报告给用户。
    - 相对分叉点运行 [change-scope.mjs](change-scope.mjs),退出码为 0 的:即没有可执行改动,不得执行第 5、6 步与全量验证网关的复核前运行。
-   - 退出码为其他值的:必须对这些改动从第 4 步第 0 项起走到第 7 步。
+   - 退出码为 1 的:即有可执行改动。`/review-code` 与 `/review-tests` 的记录写明的范围已包含被判为 `changed` 的每个文件的,继续执行下面两项;未包含的,必须撤出这些文件的改动,按第 2 项重做,再重新执行本项。
+   - 上述命令出错或退出码为其他值的:必须排除错误后重新执行本项,排除不了的必须报告用户。
 4. 必须按 [claim-check.md](claim-check.md) 逐句核对写进仓库的事实陈述,并处置发现。
 5. 必须执行「交付」节。
 

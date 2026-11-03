@@ -23,7 +23,7 @@ A ticket that states it is a closeout ticket runs `/implement`'s closeout path. 
 ### closeout-path::REQ-002 What decides the reviews
 
 - closeout-path::REQ-002/AC-01: With `change-scope.mjs` exiting 0 against the fork point, the code review, the test reviews and the pre-review run do not run.
-- closeout-path::REQ-002/AC-02: With any other exit code, those changes take steps 4 to 7 in full.
+- closeout-path::REQ-002/AC-02: An executable change is written through steps 4 to 7 in full, on the same branch, and the closeout then re-judges what it affects. With exit 1, a changed file the review records do not cover has its change taken out and redone that way. A failed command or any other exit code is fixed before the judgement runs again, and goes to the user if it cannot be.
 - closeout-path::REQ-002/AC-03: With no difference from the fork point at all, no PR is opened and the closeout conclusion goes to the user.
 
 ### closeout-path::REQ-003 The claim check
@@ -32,7 +32,7 @@ A ticket that states it is a closeout ticket runs `/implement`'s closeout path. 
 - closeout-path::REQ-003/AC-02: Each line gets a location, an evidence location and one of three conclusions: holds, false, not enough evidence. A ticket or another document is not evidence.
 - closeout-path::REQ-003/AC-03: A negative statement lists every way into the state and shows evidence for each. A statement of how a state ends rests on a reading taken from that state.
 - closeout-path::REQ-003/AC-04: Every line is judged and recorded before any finding is handled, so the record keeps what each statement got wrong. Missing evidence is gathered when the finding is handled.
-- closeout-path::REQ-003/AC-05: A fix that adds or rewrites a statement has those lines checked again. Evidence gathered for a statement left as it is rejudges that line, and a fix that only deletes a statement needs no check.
+- closeout-path::REQ-003/AC-05: A fix that adds or rewrites a statement has those lines checked again. Evidence gathered for a statement left as it is rejudges that line, and a fix that only deletes a statement needs no check. An executable fix does not restart the check: lines already judged stay as they are.
 
 ### closeout-path::REQ-004 The full run (direct acceptance)
 
@@ -47,9 +47,9 @@ Before a first post-implementation check, on any ticket, `change-scope.mjs` runs
 1. **A blocking ticket is not merged.** The closeout stops and reports; it does not start (REQ-001).
 2. **Only product code changed and no test was written.** The first check still runs: the judgement is on the whole change, not on test files, because this is the case that check most needs to catch (REQ-005).
 3. **A test file changed only in comments.** `change-scope.mjs` reads it as `same`, so it counts as no executable change (REQ-002, REQ-005).
-4. **The script errors (exit 2).** Treated as an executable change, as the gate treats it (REQ-002/AC-02).
+4. **The script errors (exit 2).** It cannot list the files, so the error is fixed and the judgement runs again, or the user is told if it cannot be fixed (REQ-002/AC-02).
 5. **The closeout writes no factual statement.** The check records the command and the empty result, and ends (REQ-003/AC-01).
-6. **A closeout finds a defect in the product.** The fix is an executable change and takes the full steps (REQ-002/AC-02); the statements still go through the claim check.
+6. **A closeout finds a defect in the product.** The fix is an executable change, so it is written through the full steps (REQ-002/AC-02); the statements still go through the claim check.
 7. **A finding needs a new decision.** It goes to the user to decide (`claim-check.md`, handling).
 8. **The project's CI does not run the e2e suite.** The general gate rules run it locally: a command the workflow does not carry cannot be skipped (REQ-004).
 
@@ -62,7 +62,7 @@ Before a first post-implementation check, on any ticket, `change-scope.mjs` runs
 ## Testing Decisions
 
 - Static: `node scripts/check-artifact-names.mjs` and `node scripts/check-prototype-copies.mjs` exit 0, and the `/skill-policy` two-stage self-check converges on every changed clause.
-- Stated gap: the one rehearsal, on a real closeout, ran the earlier form with the check in a subagent. The check as written here, with no subagent, has not run, so the first real closeout ticket after this change is its first run.
+- Stated gap: no rehearsal finished, so the first real closeout ticket after this change is the path's first run.
 
 ## Out of Scope
 
