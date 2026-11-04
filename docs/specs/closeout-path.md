@@ -42,6 +42,10 @@ The closeout follows the general gate rules in `full-verification-gate.md`, with
 
 Before a first post-implementation check, on any ticket, `change-scope.mjs` runs against the fork point. On exit 0 no reviewer is sent, and the test review record states the skip and its basis.
 
+### closeout-path::REQ-006 Reading what the path already names (direct acceptance)
+
+A closeout knows at the start what it will read. Once the ticket is known to be a closeout, it reads the skills and reference files the path's items name in one request, then what those name along with the specs and shared records the ticket names in the next, and so on layer by layer. What only some cases need waits for the case. A tool that cannot send several calls in one request reads as it can.
+
 ## Failure modes and boundaries
 
 1. **A blocking ticket is not merged.** The closeout stops and reports; it does not start (REQ-001).
@@ -54,6 +58,7 @@ Before a first post-implementation check, on any ticket, `change-scope.mjs` runs
 8. **The project's CI does not run a test command, such as its e2e suite or a local smoke test.** With no executable change it skips like the others, so it does not run for this ticket. With an executable change it runs locally, as every command does (REQ-004).
 9. **The fork point has no CI run, or one that did not pass.** It cannot be the base, so the first full run skips no test command (REQ-004).
 10. **A test command is known to read a document.** Under the gate rules it does not count as a test command, so it still runs (REQ-004).
+11. **The session does not yet know the ticket is a closeout.** Reading the ticket comes first, since the layers depend on it (REQ-006).
 
 ## Implementation Decisions
 
@@ -61,12 +66,14 @@ Before a first post-implementation check, on any ticket, `change-scope.mjs` runs
 - `claim-check.md` names no subagent, by the owner's choice: a closeout already runs in a new session that did none of the feature's earlier work, and nothing uses a subagent unless a rule asks for one.
 - A closeout ticket's process acceptance has three items of its own in `ticket-artifacts.md`: the claim check, document sync, and a conditional review of executable changes.
 - REQ-004's exception sits in the gate's base step, directly after the limit it lifts, so the skip has one home and the closeout path states no skip rule of its own.
+- REQ-006 names no file list. A list would restate what each item already points at and go stale when a file is added, so the layers are derived from the path.
 
 ## Testing Decisions
 
 - Static: `node scripts/check-artifact-names.mjs` and `node scripts/check-prototype-copies.mjs` exit 0, and the `/skill-policy` two-stage self-check converges on every changed clause.
 - One rehearsal finished, on the closeout of a two-ticket feature in a local clone. It took the exit 0 branch and ran no reviewer, no subagent and no pre-review run.
 - Stated gap: that rehearsal predates REQ-004's exception and ran the smoke test and the site's tests, so the first real closeout ticket after this change is the exception's first run. The empty-diff and exit 1 branches, the PR's CI conclusion and the post-merge write-back have not run either.
+- Stated gap: REQ-006 is unmeasured on a closeout. A simulation on the rehearsal suggested far fewer requests, but a replay of a comparable rule on a whole code ticket measured 28% fewer requests and 24% fewer tokens before the first review, and 11% and 3% over the ticket, so the simulation is not taken as the expected effect.
 
 ## Out of Scope
 
