@@ -36,7 +36,7 @@ A ticket that states it is a closeout ticket runs `/implement`'s closeout path. 
 
 ### closeout-path::REQ-004 The full run (direct acceptance)
 
-The closeout follows the general gate rules in `full-verification-gate.md`, with no rule of its own. Its ticket does not name the project's full verification command as an acceptance item, since that would bypass which commands the gate may skip. With no executable change, the test commands skip when the fork point's CI passed, and the whole e2e suite runs on the PR's CI when the workflow carries it.
+The closeout follows the general gate rules in `full-verification-gate.md`, with one exception. Its ticket does not name the project's full verification command as an acceptance item, since that would bypass which commands the gate may skip. With no executable change, once the fork point's CI has passed, every test command skips, including one the CI workflow does not carry, such as a smoke test that can only run locally. A script chaining a test command with other commands is split as the gate rules say, so the other commands still run. The whole e2e suite runs on the PR's CI when the workflow carries it.
 
 ### closeout-path::REQ-005 The first post-implementation check
 
@@ -51,22 +51,26 @@ Before a first post-implementation check, on any ticket, `change-scope.mjs` runs
 5. **The closeout writes no factual statement.** The check records the command and the empty result, and ends (REQ-003/AC-01).
 6. **A closeout finds a defect in the product.** The fix is an executable change, so it is written through the full steps (REQ-002/AC-02); the statements still go through the claim check.
 7. **A finding needs a new decision.** It goes to the user to decide (`claim-check.md`, handling).
-8. **The project's CI does not run the e2e suite.** The general gate rules run it locally: a command the workflow does not carry cannot be skipped (REQ-004).
+8. **The project's CI does not run a test command, such as its e2e suite or a local smoke test.** With no executable change it skips like the others, so it does not run for this ticket. With an executable change it runs locally, as every command does (REQ-004).
+9. **The fork point has no CI run, or one that did not pass.** It cannot be the base, so the first full run skips no test command (REQ-004).
+10. **A test command is known to read a document.** Under the gate rules it does not count as a test command, so it still runs (REQ-004).
 
 ## Implementation Decisions
 
 - The path sits in `implement/SKILL.md` beside the light path for small changes, in the same form, and the claim check has its own reference file, loaded only by this path.
 - `claim-check.md` names no subagent, by the owner's choice: a closeout already runs in a new session that did none of the feature's earlier work, and nothing uses a subagent unless a rule asks for one.
 - A closeout ticket's process acceptance has three items of its own in `ticket-artifacts.md`: the claim check, document sync, and a conditional review of executable changes.
+- REQ-004's exception sits in the gate's base step, directly after the limit it lifts, so the skip has one home and the closeout path states no skip rule of its own.
 
 ## Testing Decisions
 
 - Static: `node scripts/check-artifact-names.mjs` and `node scripts/check-prototype-copies.mjs` exit 0, and the `/skill-policy` two-stage self-check converges on every changed clause.
-- Stated gap: no rehearsal finished, so the first real closeout ticket after this change is the path's first run.
+- One rehearsal finished, on the closeout of a two-ticket feature in a local clone. It took the exit 0 branch and ran no reviewer, no subagent and no pre-review run.
+- Stated gap: that rehearsal predates REQ-004's exception and ran the smoke test and the site's tests, so the first real closeout ticket after this change is the exception's first run. The empty-diff and exit 1 branches, the PR's CI conclusion and the post-merge write-back have not run either.
 
 ## Out of Scope
 
 - The feature checklist and the regression report in the claim check. They are working records outside the repository, verified under `/features-catalog`, and the owner chose to check only what is written into the repository.
 - A second reader of the statements a closeout writes. The check reads sentences written by the same agent, so a mistake made while writing can repeat in it. The owner accepts this cost.
-- A local run of the whole e2e suite for a closeout with no executable change. The cost is that the cases only the shipped platform runs do not run for that ticket, by the owner's choice.
+- A local run of any test command in the full run of a closeout with no executable change. The cost is that a command the CI workflow does not carry does not run for that ticket at all, such as a smoke test that starts the app, and the cases only the shipped platform runs do not run either, by the owner's choice. Tests that `/features-catalog`'s item-by-item verification runs as evidence are not part of the full run, and they stay.
 - A claim check on tickets other than closeouts.
