@@ -28,3 +28,6 @@
 
 # Working records stay on the machine (see the global instructions on working records); never committed.
 /docs/.workings/
+
+# The cloned voice stays on this machine; never committed.
+/video-tutorial/voices/
