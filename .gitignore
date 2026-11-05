@@ -21,6 +21,10 @@
 /xiaohongshu-publisher
 /zhihu-publisher
 
+# Symlinks into the media-studio repository, which owns these skills.
+/diagram-design
+/video-tutorial
+
 # Local backups.
 /.content-studio-backup-*/
 
@@ -28,6 +32,3 @@
 
 # Working records stay on the machine (see the global instructions on working records); never committed.
 /docs/.workings/
-
-# The cloned voice stays on this machine; never committed.
-/video-tutorial/voices/

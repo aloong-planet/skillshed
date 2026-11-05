@@ -1,8 +1,0 @@
-node_modules/
-.cache/
-out/
-public/
-captions/
-voices/
-approved.json
-.DS_Store
