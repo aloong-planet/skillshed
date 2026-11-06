@@ -8,16 +8,21 @@
 // are not ignored, and files staged with `git add -f` although ignored. Prints one line per file that differs,
 // with the verdict the steps below give it (inert, same, or changed with the reason), then the overall verdict.
 //
-// Exit codes: 0 no file is changed (verdict skip); 1 some file is changed (verdict run); 2 usage or git error.
+// Exit codes: 0 no file is changed (verdict skip); 1 some file is changed (verdict run); 2 no verdict: a usage
+// error, or any other error, such as git failing or the TypeScript copy of JS/TS below failing to load.
 //
 // How a file is judged, in order:
 //   1. Renames are compared as a deletion plus an addition (--no-renames): a file moved into an inert path
 //      is still a file deleted outside it.
 //   2. Under docs/ (whole path segments: docs/a.json, not docs-old/a.json) or ending in .md, in any case: inert.
 //   3. Added, deleted, a mode change, a symlink or a submodule: changed.
-//   4. JS/TS (JS_TS below): both versions are parsed with the project's TypeScript, resolved from the working
-//      directory, and printed without comments. TypeScript not resolvable, a parse error in either version, a
-//      changed shebang, or different printed code: changed. Otherwise same.
+//   4. JS/TS (JS_TS below): both versions are parsed with the copy of TypeScript 6.0.3 beside this script
+//      (loadTypeScript below) and printed without comments. A parse error in either version, a changed
+//      shebang, or different printed code: changed. Otherwise same. The project's own typescript package is
+//      never loaded: in its 7.x releases the main entry exports no compiler API, and a verdict that depends on
+//      the project's version differs between projects for the same change. No release after 6.0 has the
+//      compiler API, so there is no later compiler for the copy to move to; syntax it cannot parse is a parse
+//      error, which is changed.
 //   5. Python (PYTHON below): both versions are parsed with the ast module of python3, or of the interpreter
 //      that CHANGE_SCOPE_PYTHON names (a project's virtual environment, for syntax newer than the python3 on
 //      PATH), and their dumps compared. Comments are not in the tree; docstrings are, so a changed docstring is
@@ -42,7 +47,6 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { extname, join } from 'node:path'
-import { pathToFileURL } from 'node:url'
 
 // The inert files of implement/full-verification-gate.md; docs/ holds the documentation and process records of the
 // layout /repo-scaffold sets up. implement/SKILL.md forbids the tests that the gateway's test commands run from
@@ -131,14 +135,12 @@ function blobs(shas) {
   return out
 }
 
-function loadTypeScript() {
-  try {
-    const req = createRequire(pathToFileURL(join(process.cwd(), 'noop.js')))
-    return req(req.resolve('typescript'))
-  } catch {
-    return null
-  }
-}
+/**
+ * The TypeScript copy of JS/TS in the header: vendor/typescript/typescript.cjs is lib/typescript.js of the
+ * typescript 6.0.3 npm package, unmodified, with the package's licence files beside it. The .cjs name makes
+ * Node load it as CommonJS whatever package.json encloses it. Throws when the copy cannot be loaded.
+ */
+const loadTypeScript = () => createRequire(import.meta.url)('./vendor/typescript/typescript.cjs')
 
 function scriptKind(ts, path) {
   const e = extname(path)
@@ -155,7 +157,6 @@ function parse(ts, path, text) {
 }
 
 function compareJsTs(ts, path, before, after) {
-  if (!ts) return { verdict: 'changed', reason: 'TypeScript is not resolvable from the working directory' }
   if (ts.getShebang(before) !== ts.getShebang(after)) return { verdict: 'changed', reason: 'shebang changed' }
   const a = parse(ts, path, before)
   const b = parse(ts, path, after)
