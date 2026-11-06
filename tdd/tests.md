@@ -31,7 +31,7 @@ test("checkout calls paymentService.process", async () => {
 });
 ```
 
-红旗:mock 内部协作者;测私有方法;断言调用次数/顺序;重构没改行为测试却碎;测试名描述 HOW 不描述 WHAT;绕过接口验证——
+此例命中 SKILL.md「反模式」节「实现耦合」一条:mock 了内部协作者并断言它被调用,测试名描述的也是 HOW 而非 WHAT。同一条里的旁路验证——
 
 ```typescript
 // BAD: 旁路验证(绕过接口查库)
@@ -65,7 +65,7 @@ test("calculateTotal sums line items", () => {
 });
 ```
 
-## 假通过形态(逐个防;清单开放,新形态照此补)
+## 假通过形态(规则见 SKILL.md「反模式」节「假通过」一条)
 
 **① 恒真断言**——数据量撑不满阈值:
 
@@ -99,9 +99,3 @@ expect(info.version).toBe(PROTOCOL_VERSION);
 // GOOD: 协议规定值写死(外部契约作独立真值)
 expect(info.version).toBe("2.0");
 ```
-
-**④ 守旧路径**——测试锁着废弃常量/已被取代的行为,真不变量裸奔。修法:核对断言对象是否仍是生产代码的**活路径**(grep 生产引用),把护栏挪到现行为上。
-
-变异检验自身的假绿形态(变异没到达被测路径)及其样例见 [review-tests/mutation-testing.md](../review-tests/mutation-testing.md),适用条件以该文开头为准。
-
-**检验法(通用)**:说不出"这个测试在什么情况下会红",它就是嫌疑假通过。
