@@ -3,8 +3,6 @@ name: review-code
 description: 对刚写完的改动做批判式自审,目标是找出真 bug 而非确认无误。实现完成、改动待自审时激活;用户说「review 代码 / 自审代码」时也可单独激活。
 ---
 
-> 坏味道基线清单取自 mattpocock/skills 的 code-review(Fowler 基线)。
-
 # Review 代码(第 5 步)
 
 使用本文件的文档同步规则时，必须完整读取 [文档同步与记录维护](../implement/document-sync.md)。

@@ -3,8 +3,6 @@ name: grilling
 description: Grill the user relentlessly about a plan, decision, or idea. Use when the user wants to stress-test their thinking, or uses any 'grill' trigger phrases.
 ---
 
-> Fork 自 mattpocock/skills(2026-07 快照)。修改:一次一问改为按依赖关系分批提问。
-
 事实与决策分流:能从环境(文件系统、代码、工具)查到的事实自己查,不拿来问用户;**决策全部归用户**,逐项摆到用户面前等答案,不替用户拍板。
 
 ## 分批提问

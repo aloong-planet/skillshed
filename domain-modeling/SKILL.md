@@ -3,8 +3,6 @@ name: domain-modeling
 description: 主动建立并磨利项目的领域模型——质疑与敲定术语、写入 CONTEXT.md、把架构决策落成 ADR。用户要澄清领域词汇、消解同义混用、记录架构决策时激活;/grill-with-docs 与 /triage 在需求对齐过程中也会调用它。只是读 CONTEXT.md 取词汇不算本 skill,那是任何 skill 都该有的习惯——本 skill 用于改变模型,不是消费它。
 ---
 
-> Fork 自 mattpocock/skills(2026-07 快照)。与上游的差异:ADR 格式为 MADR minimal 定制版(五段体、备选项必填、三态);CONTEXT 格式带可选节;`docs/adr/README.md` 由本 skill 生成与维护。
-
 # Domain Modeling
 
 设计过程中**主动**建立并磨利领域模型:质疑术语、发明边界场景、共识一成形立即落盘。
