@@ -1,6 +1,6 @@
 ---
 name: review-code
-description: 对刚写完的改动做批判式自审,目标是找出真 bug 而非确认无误。/implement 在实现完成后编排调用;用户说「review 代码 / 自审代码」时也可单独激活。
+description: 对刚写完的改动做批判式自审,目标是找出真 bug 而非确认无误。实现完成、改动待自审时激活;用户说「review 代码 / 自审代码」时也可单独激活。
 ---
 
 > 坏味道基线清单取自 mattpocock/skills 的 code-review(Fowler 基线)。
@@ -69,5 +69,5 @@ description: 对刚写完的改动做批判式自审,目标是找出真 bug 而�
 
 - 分层标签写进记录时，必须按 [产物固定名称](../repo-scaffold/artifact-names/review-code.md) 书写。
 
-- 必须完整读取 [Ticket 产物与文档同步清单](../to-tickets/ticket-artifacts.md)，按有票、无票或旧票接续入口确定代码审查路径并写入本轮分层报告，注明日期、实现版本与范围；有关联票时必须注明票身份。
+- 必须完整读取 [Ticket 产物与文档同步清单](../to-tickets/ticket-artifacts.md)，按有票、无票或旧票接续入口确定代码审查路径，本轮分层报告的抬头按该文件「身份与路径」节写。
 - 复审记录的维护及审查发现产生的文档同步义务，必须按 [文档同步与记录维护](../implement/document-sync.md)处理；不得将代码修复完成等同于文档同步完成。

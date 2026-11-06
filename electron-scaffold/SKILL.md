@@ -1,7 +1,7 @@
 ---
 name: electron-scaffold
 description: "Electron(electron-builder)桌面项目该一次性铺好的基础设施清单,覆盖安全基线、打包产物治理、macOS 系统权限、分发渠道命名、签名与公证、本地自动化测试基建。装一次以后自动生效的东西,不是日常操作。"
-when_to_use: "初始化 Electron + electron-builder 项目时逐项过一遍。此外安全基线须在这些时刻重过:改动主进程的窗口/会话/协议/IPC 配置、升级 Electron 主版本、新增渲染外部内容的能力。macOS 权限弹不出来、app 不出现在系统隐私列表、首次启动被 Gatekeeper 拦下,或签名公证失败(DMG 被拒、提示「已损坏」「无法验证开发者」、`no usable signature`、票据缺失)时也查本 skill。日常打包发版不走这里——见 /github-ops。"
+when_to_use: "初始化 Electron + electron-builder 项目时逐项过一遍。此外安全基线须在这些时刻重过:改动主进程的窗口/会话/协议/IPC 配置、升级 Electron 主版本、新增渲染外部内容的能力、新增一个打包平台。macOS 权限弹不出来、app 不出现在系统隐私列表、首次启动被 Gatekeeper 拦下,或签名公证失败(DMG 被拒、提示「已损坏」「无法验证开发者」、`no usable signature`、票据缺失)时也查本 skill。日常打包发版不走这里——见 /github-ops。"
 ---
 
 # Electron 新项目基础设施(scaffold)
@@ -16,17 +16,17 @@ when_to_use: "初始化 Electron + electron-builder 项目时逐项过一遍。�
 
 ## 0. 安全清单(必过,单独成篇)
 
-**何时需要**:每个 Electron 项目都要;除初始化外,以下时机**重过一遍**——改主进程窗口/会话/协议/IPC 配置、升级 Electron 主版本、引入"渲染他人内容"的能力(markdown/HTML/外部数据)。
+**何时需要**:每个 Electron 项目都要;除初始化外,必须在 [electron-security.md](./electron-security.md)「何时过这份清单」列出的每个时机**重过一遍**。
 
 **装什么**:两份配套文件——
-- **[electron-security.md](./electron-security.md)**:清单本体。20 条的判据与难度、哪些默认已安全、哪些必须主动做;**版本(#16)只检查不强制**,并列出"版本影响哪些检查项"供旧版项目按此降级台账。
+- **[electron-security.md](./electron-security.md)**:清单本体。官方 20 条加 1 条的判据与难度、哪些默认已安全、哪些必须主动做;**版本(#16)只检查不强制**,并列出"版本影响哪些检查项"供旧版项目按此降级台账。
 - **[electron-security-howto.md](./electron-security-howto.md)**:适配手册。每条**具体怎么改**——可抄的实现骨架、怎么验、踩过的坑;第 18 条(自定义协议,难度最高)给完整五步。
 
 **为什么单独一篇且必须人工过**:这类问题**没有可靠的自动化门禁**——官方运行时 Security Warnings 只覆盖 8 条,源码注释明标第 12~14 条(导航/新窗口/webview)"未实现";Electronegativity 已停止维护,且在"只写了 `setWindowOpenHandler`、没写 `will-navigate`"时静默放行,恰是最常见的漏法。
 
 **怎么接**:安全判定层写成**纯函数 + 单测**(导航放行、外链白名单、IPC sender、CSP 策略、协议路径解析),接线层做成 e2e 断言。清单文件末尾给了必测的绕过向量与参考实现位置。
 
-**验证**:单测覆盖全部绕过向量;e2e 断言打包版 URL 协议 + "文档内链接点击后窗口 URL 不变";打包后跑 fuses 校验脚本(读产物二进制——配置写对≠生效)。
+**验证**:单测覆盖全部绕过向量;e2e 断言打包版 URL 协议 + "文档内链接点击后窗口 URL 不变";打包后跑 fuses 校验脚本(读产物二进制——配置写对≠生效),并实跑产物核对启动入口(第 21 条)。
 
 ---
 

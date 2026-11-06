@@ -6,6 +6,7 @@
 
 - 必须在 `docs/.workings/<slug>/` 下，使用同一个 `ticket-<id>-` 前缀命名本票的 `review-code.md`、`review-tests.md` 和 `doc-sync.md`；`<slug>` 必须取本 feature 已使用的施工目录标识，第三份产物的标题必须写为“文档同步清单”。本地票的 `<id>` 必须使用现有编号（例如 `06`）；tracker 票必须使用可作文件名的实际标识，标识需转换时必须在票中记录原标识与前缀的对应关系，并确认在本 feature 内唯一。
 - 收口票的产物改为同一前缀的 `claim-check.md`（标题写为“陈述核对”）和 `doc-sync.md`；`review-code.md`、`review-tests.md` 只在 `/implement`「收口票路径」第 3 项判为有可执行改动时才必须存在。
+- 代码审查记录与测试审查记录（含无票时的 `review-code.md`、`review-tests.md`）的每轮报告，抬头必须注明日期、实现版本与范围；有关联票时必须注明票身份。
 - 必须在票中声明上述产物路径；跨 feature 引用票时，必须同时记录 feature slug 与票标识。不得只用裸票号指向其它 feature 的票。
 - 必须保留 feature 级 `checklist.md` 与 `final-regression.md` 的名称和共享职责；不得以本票文档同步清单替代需求覆盖清单或交叉回归报告。
 

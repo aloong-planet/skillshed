@@ -40,6 +40,8 @@ if (process.env['ELECTRON_RENDERER_URL']) {
 `const home = process.env['MYAPP_HOME_OVERRIDE'] ?? homedir()`。e2e 靠它喂 fixture,
 否则用例结果取决于跑测试的人机器上有多少真实数据(自己机器绿、CI 红)。
 
+**这些 env seam 只属于未打包的运行**:打包版见到它们必须拒绝启动([electron-security.md](./electron-security.md) 第 21 条)。seam 变量名必须统一带项目前缀,拒绝才按前缀覆盖到以后新增的 seam。**判据**:主进程读取的每个 seam 变量名都以该前缀开头。
+
 **为什么静音是"不显示窗口"而不是 activation policy**:实测 `setActivationPolicy('accessory')`
 下仍 12/15 tick 抢前台,加 `dock.hide()` 后 13/15——抢台来自 `BrowserWindow` 默认 show 的
 makeKey+激活,与 Dock 无关。隐藏窗口后 A/B:基线 32 tick 抢台 → 0(78 采样点全程前台未变)。
