@@ -1,21 +1,18 @@
 // Tests for change-scope.mjs. Each case builds a throwaway git repository, changes its working directory
-// and runs the script as the gateway does. Needs python3 on PATH and a TypeScript package the script can resolve:
-//   CHANGE_SCOPE_TEST_TYPESCRIPT=<project>/node_modules/typescript node --test implement/change-scope.test.mjs
+// and runs the script as the gateway does. Needs python3 on PATH:
+//   node --test implement/change-scope.test.mjs
+// The repositories hold no typescript package unless a case writes one, so every JS/TS case also checks
+// that the script needs none from the project.
 import { after, test } from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync, spawnSync } from 'node:child_process'
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdirSync, mkdtempSync, renameSync, rmSync, unlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const SCRIPT = join(dirname(fileURLToPath(import.meta.url)), 'change-scope.mjs')
-const TS_DIR = process.env.CHANGE_SCOPE_TEST_TYPESCRIPT
-// Without TypeScript or python3 every JS/TS or Python case would come out changed for the wrong reason:
-// fail, never skip
-if (!TS_DIR || !existsSync(join(TS_DIR, 'package.json'))) {
-  throw new Error('set CHANGE_SCOPE_TEST_TYPESCRIPT to a typescript package directory, e.g. <project>/node_modules/typescript')
-}
+// Without python3 every Python case would come out changed for the wrong reason: fail, never skip
 if (spawnSync('python3', ['--version']).status !== 0) throw new Error('python3 is not runnable')
 
 const dirs = []
@@ -29,7 +26,7 @@ function write(dir, files) {
 }
 
 /** A repository whose first commit holds `files`; `force` are added despite the ignore rules */
-function repo(files, { withTs = true, force = {} } = {}) {
+function repo(files, { force = {} } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'change-scope-test-'))
   dirs.push(dir)
   const g = (...a) => execFileSync('git', a, { cwd: dir, encoding: 'utf8' })
@@ -38,10 +35,6 @@ function repo(files, { withTs = true, force = {} } = {}) {
   g('config', 'user.name', 'test')
   g('config', 'commit.gpgsign', 'false')
   write(dir, { '.gitignore': 'node_modules\nignored/\n', ...files, ...force })
-  if (withTs) {
-    mkdirSync(join(dir, 'node_modules'))
-    symlinkSync(TS_DIR, join(dir, 'node_modules', 'typescript'))
-  }
   g('add', '-A')
   for (const p of Object.keys(force)) g('add', '-f', p)
   g('commit', '-qm', 'base', '--no-verify')
@@ -253,15 +246,22 @@ test('JS/TS: a changed shebang: run', () => {
   assert.match(out, /changed bin\/cli\.mjs {2}\(shebang changed\)/)
 })
 
-test('JS/TS: without TypeScript in the project, a comment change is changed', () => {
-  const r = repo(BASE, { withTs: false })
+// The shape of the typescript package in its 7.x releases: its main entry exports the version and no compiler API
+const TS_WITHOUT_API = {
+  'node_modules/typescript/package.json': JSON.stringify({ name: 'typescript', version: '7.0.2', type: 'module', exports: { '.': './lib/version.cjs' } }),
+  'node_modules/typescript/lib/version.cjs': 'const { version } = require("../package.json");\nexports.version = version;\nexports.versionMajorMinor = "7.0";\n'
+}
+
+test('JS/TS: a project whose typescript package has no compiler API still has comments compared', () => {
+  const r = repo(BASE)
+  write(r.dir, TS_WITHOUT_API)
   edit(r, 'src/a.ts', (t) => t.replace('add one', 'increment by one'))
-  const { code, out } = scope(r)
-  assert.equal(code, 1, out)
-  assert.match(out, /TypeScript is not resolvable/)
+  const { code, out, err } = scope(r)
+  assert.equal(code, 0, `${out}${err}`)
+  assert.equal(verdictOf(out, 'src/a.ts'), 'same')
 })
 
-test('JS/TS: run from a subdirectory, TypeScript is still found', () => {
+test('JS/TS: run from a subdirectory, a file is still compared', () => {
   const r = repo(BASE)
   edit(r, 'src/a.ts', (t) => t.replace('add one', 'increment by one'))
   const { code, out } = scope(r, { sub: 'src' })
