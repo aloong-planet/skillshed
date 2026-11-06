@@ -181,7 +181,7 @@ CI 的 macOS 打包按**触发方式**分档:
 - **产物全集**:提交 Apple 之前先核对预期产物全集——缺失、重复、多出、版本或架构不符,都必须在等待公证之前失败。有 ZIP 时全集还包括每个架构的 ZIP 与恰好一份更新元数据:元数据必须是本版本的,列出的恰是这些 ZIP,记录的大小与 sha512 与文件一致。
 - **提交前检查**:对最终签名后的每个 DMG,在 `notarytool submit` 之前跑 `hdiutil verify`(镜像完整性)、`codesign --verify --verbose=4` 与下一条的签名内容断言;任一失败不得提交。
 - **签名内容**:`codesign --display --verbose=4` 的输出里断言**签名身份是 Developer ID Application**、**Team ID 匹配**、**Timestamp 非 `none`**(缺安全时间戳的签名会在证书过期后失效)。
-- **启动入口**:每次打包(两种 profile)都必须实跑构建出的 `.app`:带上每个应拒绝的输入启动,进程必须以退出码 64 结束,且命令行指定的程序没有运行;只带设置目录(`--user-data-dir`)启动,进程必须在观察窗口内不退出。崩溃、其他退出码、到时限仍在运行都不算拒绝。没有后一条,一个什么都拒绝的守卫能通过全部输入,而用户打不开它。每次启动必须用独立的临时设置目录,且不得把签名与公证凭据传给被启动的应用。本机跑不了的架构必须报告并跳过,一个都跑不了时必须失败。应拒绝什么、应用侧怎么做见 [electron-security.md](./electron-security.md) 第 21 条。
+- **启动入口**:每次打包(两种 profile)都必须实跑构建出的 `.app`:带上每个应拒绝的输入启动,进程必须以退出码 64 结束,且命令行指定的程序没有运行;只带设置目录(`--user-data-dir=<临时目录>`)启动,进程必须在观察窗口内不退出。崩溃、其他退出码、到时限仍在运行都不算拒绝。没有后一条,一个什么都拒绝的守卫能通过全部输入,而用户打不开它。每次启动必须用独立的临时设置目录,且不得把签名与公证凭据传给被启动的应用。本机跑不了的架构必须报告并跳过,一个都跑不了时必须失败。应拒绝什么、应用侧怎么做见 [electron-security.md](./electron-security.md) 第 21 条。
 - **ZIP 里的 `.app`**:把 ZIP 解压到临时目录(`ditto -x -k`),断言解出的恰好是预期的那一个 `.app`,对它跑 `codesign --verify --deep --strict` 与上一条的签名内容断言,发布时再跑 `stapler validate`;临时目录用完即删,ZIP 本身不动(第 3 节硬约束)。
 - **解析必须结构化**:签名字段取完整字段比对,不做子串匹配;notarytool 的输出按 JSON 解析;stdout 与 stderr 都要捕获——Apple 的命令行工具常把诊断写进 stderr。
 - **公证状态**:`notarytool submit --wait --output-format json` 的 `status` 必须是 `Accepted` 且带有效 submission id。**但 submit 的状态不够**——还要用 `notarytool log <id>` 拉回日志,断言 **jobId 与本次 submission id 一致、状态仍是 Accepted、没有 severity 为 error 的问题**(比较不区分大小写),并把日志**原样(未改动的 JSON)随构建产物留档**,如与产物同级的 `<产物>.notary-log.json`;CI 上随临时产物一并上传。
@@ -205,6 +205,7 @@ xcrun stapler validate "$MP"/<产品>.app                       # ← 必须成�
 codesign --verify --deep --strict --verbose=2 "$MP"/<产品>.app
 spctl --assess --type execute --verbose=4 "$MP"/<产品>.app
 "$MP"/<产品>.app/Contents/MacOS/<产品> --remote-debugging-port=0; echo $?   # ← 必须是 64(启动入口,第 6 节)
+"$MP"/<产品>.app/Contents/MacOS/<产品> ' --remote-debugging-port=0'; echo $? # ← 前面带空格,同样必须是 64
 hdiutil detach "$MP"
 ```
 
