@@ -284,17 +284,27 @@ ipcRenderer.on(EVT.x, cb)
 <!-- asset -->
 ```ts
 // launch-inputs.ts ── Decision layer: pure function, unit-testable ──
-const ACCEPTED_SWITCHES = new Set(['--user-data-dir'])   // moves where the settings live and runs nothing
+// Whole arguments, compared exactly as given (electron-security.md #21): the settings directory, which runs nothing, and
+// the -psn_ token older macOS launches carry, which is not a Chromium switch
+const ACCEPTED_ARGUMENT_STARTS = ['--user-data-dir=', '-psn_']
 const SEAM_PREFIX = 'MYAPP_'                             // every test seam of this project takes this prefix
 const DEV_SERVER_URL = 'ELECTRON_RENDERER_URL'           // whatever the project's template reads in development
 
+// The name only, since a value could hold anything; an argument that is not a switch is not quoted at all
+const refusedName = (arg: string): string => {
+  const trimmed = arg.trimStart()
+  return trimmed.startsWith('-') ? trimmed.split('=')[0] : 'an argument that is not a switch'
+}
+
 export function refusedLaunchInputs(args: readonly string[], env: Readonly<Record<string, string | undefined>>): string[] {
-  const switches = args
-    .filter((arg) => arg.startsWith('-') && !arg.startsWith('-psn_'))   // one dash counts; -psn_ is not a Chromium switch
-    .map((arg) => arg.split('=')[0])                                    // the name only: a value could hold anything
-    .filter((name) => !ACCEPTED_SWITCHES.has(name))
-  const variables = Object.keys(env).filter((name) => name === DEV_SERVER_URL || name.startsWith(SEAM_PREFIX))
-  return [...switches, ...variables]
+  const refusedArguments = args
+    .filter((arg) => !ACCEPTED_ARGUMENT_STARTS.some((start) => arg.startsWith(start)))
+    .map(refusedName)
+  const variables = Object.keys(env).filter((name) => {
+    const upper = name.toUpperCase()                     // Windows reads the environment in any case
+    return upper === DEV_SERVER_URL || upper.startsWith(SEAM_PREFIX)
+  })
+  return [...refusedArguments, ...variables]
 }
 
 // launch-guard.ts ── Wiring: imported first by the main module ──
@@ -310,13 +320,13 @@ if (app.isPackaged) {
 }
 ```
 
-**怎么验**:单测覆盖绕过向量——一个短横线、形似允许项的开关名(更长、大小写不同)、无人列出的开关、裸的 `--`、`-psn_` 与无短横线的参数(不得拒绝)、值里的内容不进结果。接线只能实跑打包产物:打包资产每次打包都做(`macos-signing.md` 第 6 节)。
+**怎么验**:单测覆盖 electron-security.md「固化」节列出的启动入口绕过向量。接线只能实跑打包产物:打包资产每次打包都做(`macos-signing.md` 第 6 节)。
 
 **踩过的坑**
 - ⚠️ **必须在主模块加载时同步判定,不得放进 `whenReady`**。实测(前提:Electron 43.2.0、ESM 主模块):模块加载时调试端口还没开、其他进程还没起,`app.exit` 当场结束进程,其后的代码一行不跑;等到 ready,端口已经开了。
 - ⚠️ **必须用 `app.isPackaged` 判定,不必为符号链接另设防**:实测(前提同上)经名为 `electron` 的符号链接启动、或直接运行 Helper 可执行文件,它都仍为真,守卫照常拒绝。把可执行文件改名的副本会读成未打包,但签名已失效,不再是 macOS 信任的那个应用(未实测)。
 - ⚠️ **`--type=<进程类型>` 到不了这段代码,不得指望它返回 64**:Chromium 在任何 JS 之前读它,加不加守卫都一样崩溃,不开端口、不运行程序(实测,前提同上;没有父进程的管道,子进程起不来)。值为空的 `--type=` 仍进入主进程,按其他开关拒绝。
-- ⚠️ **这条实测于 macOS**。其他平台的开关前缀可能不同,上这些平台前必须按该平台重测绕过向量。
+- ⚠️ **这条实测于 macOS**。新增打包平台时按 electron-security.md「何时过这份清单」重过:Chromium 在各平台认开关的方式不同(第 21 条)。
 - 打包版从此不能经调试端口驱动,也不能注入 fixture 数据根:要驱动发布版代码,必须从该 tag 构建后以未打包方式运行。
 
 ---
