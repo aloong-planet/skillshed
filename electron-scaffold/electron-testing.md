@@ -103,6 +103,10 @@ cp ~/.claude/skills/electron-scaffold/assets/smoke.sh.template <项目>/scripts/
 - **fixture 数据根必传,做成必填参数**:launch 助手的 `home` 用必填签名,靠 typecheck 拦漏传——但**前提是 e2e 目录真的在 tsconfig 里**。agentshed 教训:两个 tsconfig 都不含 `e2e/`,Playwright 运行时只剥类型不检查,整个目录从未被 typecheck,必填守卫形同虚设还自以为有;纳入后既有代码 0 错误,成本为零。**初始化时就把 `e2e/**/*.ts` 和 `playwright.config.ts` 写进 tsconfig include。**
 - **`workers: 1`(保守默认)**:userData 已按例隔离时,锁本不互撞;串行防的是多 Electron 实例并行的资源抖动放大时序 flake。若有任何用例共享 userData 或读真实数据根,则**必须**串行。
 - **globalSetup 接静音**:darwin 上跑 `quiet-electron.sh` 并设 `ELECTRON_OVERRIDE_DIST_PATH`(worker 继承 env);launch 的 env 里注入 `<APP>_NO_FOREGROUND`。Linux/CI 无 Dock,守卫住 platform 即天然空操作。
+- **启动 app 只经同一个 launch 助手**:所有用例必须经同一个 launch 助手启动 app,不得在用例或别的 helper 里直接调用
+  Playwright 的 `_electron.launch`;上面几条对启动的要求(userData 每例隔离、fixture 数据根必传、静音变量)只在
+  这个助手里实现。各处各写一份启动,这几条就要在每一处各守一遍,漏掉一处,就有用例跑在未隔离、未静音或读
+  真实数据根的 app 上。**判据**:e2e 代码里除 launch 助手外没有 `_electron.launch` 调用。
 - **关闭 app 必须有时限,超时杀整个进程组**:Playwright 的 `close()` 无上限地等进程退出及其 stdio
   管道关闭,而 CPU 负载下 Electron 在 app 自身退出之后的原生退出可拖到数分钟,用例于是超时在清理阶段。
   所有 launch 处必须经同一个关闭助手:超过时限即杀 app 的进程组(Playwright 以独立进程组启动 app,其
