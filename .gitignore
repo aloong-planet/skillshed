@@ -3,7 +3,6 @@
 # removed from the lock file so an update cannot overwrite them.
 /codebase-design
 /diagnosing-bugs
-/grill-me
 /handoff
 /improve-codebase-architecture
 /microsoft-foundry
