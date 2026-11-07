@@ -31,4 +31,4 @@ description: Grill the user relentlessly about a plan, decision, or idea. Use wh
 
 ## 共识门
 
-走完决策树每个分支、达成共同理解之前不动手。需求不明确宁可继续问。
+走完决策树每个分支、达成共同理解之前不动手。
