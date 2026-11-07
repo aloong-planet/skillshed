@@ -1,6 +1,6 @@
 ---
 name: domain-modeling
-description: 主动建立并磨利项目的领域模型——质疑与敲定术语、写入 CONTEXT.md、把架构决策落成 ADR。用户要澄清领域词汇、消解同义混用、记录架构决策时激活;/grill-with-docs 与 /triage 在需求对齐过程中也会调用它。只是读 CONTEXT.md 取词汇不算本 skill,那是任何 skill 都该有的习惯——本 skill 用于改变模型,不是消费它。
+description: 主动建立并磨利项目的领域模型——质疑与敲定术语、写入 CONTEXT.md、把架构决策落成 ADR。用户要澄清领域词汇、消解同义混用、记录架构决策时激活;需求对齐过程中要敲定术语或记录决策时同样适用。只是读 CONTEXT.md 取词汇不算本 skill,那是任何 skill 都该有的习惯——本 skill 用于改变模型,不是消费它。
 ---
 
 # Domain Modeling
