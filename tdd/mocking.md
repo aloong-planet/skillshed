@@ -1,7 +1,5 @@
 # 何时 mock
 
-> 基于 mattpocock/skills 的 mocking.md,与上游的差异:多出"能真实注入的不得 mock"一节。
-
 mock 只得用在**系统边界**,即下列四类;这四类上能用真实手段造出所需条件的,仍按下节不得 mock:
 
 - 外部 API(支付、邮件等)
