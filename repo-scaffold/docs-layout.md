@@ -10,13 +10,10 @@
 |---|---|---|
 | `docs/CONTEXT.md` | 术语的准确含义、该避免哪些同义词 | `/domain-modeling` |
 | `docs/adr/` | 为什么这么定、否决了什么 | `/domain-modeling` |
-| `docs/specs/<slug>.md` | 这个功能穷举过哪些边界、哪些明确不做 | `/to-spec` |
-| `docs/features/<slug>.md` | 当前版本用户可见的行为 | `/features-catalog` |
-| `docs/prototypes/` | 界面与状态模型长什么样 | `/prototype` |
+| `docs/specs/<slug>.md` | 这个功能当前版本的行为、定下的边界、哪些明确不做 | `/to-spec` |
+| `docs/prototypes/` | 界面与状态模型的设计参考 | `/prototype` |
 | `docs/postmortems/` | 某次事故的因果链 | `/implement` 第 7 步 |
 | `docs/ops/` | 本项目的运维手册(签名、发布等的实际取值) | 各项目自定 |
-
-`docs/specs/` 与 `docs/features/` 的 **slug 一一对应**:features 里有 `memory-view.md`,spec 就是 `docs/specs/memory-view.md`。
 
 **过程类**——回答「当时是怎么干的」:
 

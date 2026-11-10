@@ -11,3 +11,4 @@
 | 已被后续决定取代 | Superseded by a later decision |
 | 背景 | Background |
 | 明确不做 | Explicitly out of scope |
+| 一句话 | In one line |

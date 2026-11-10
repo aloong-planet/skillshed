@@ -9,6 +9,5 @@
 | 结构依据 | Structure basis |
 | 演示基建 | Demo scaffolding |
 | 待选项 | Pending candidates |
-| 首次画入待定 | Pending first-draw items |
+| 照 app 画入待定 | Pending items drawn from the app |
 | 未覆盖维度 | Uncovered dimensions |
-| 已失效结论 | Invalidated conclusions |

@@ -12,7 +12,7 @@
 - 仓库根的 `CLAUDE.md` 与 `AGENTS.md` —— 哪个存在、里面是否已有 `## Agent skills` 段、`AGENTS.md` 是否已有指向 `capabilities.toml` 的引用行
 - 仓库根的 `capabilities.toml` 是否存在
 - `docs/CONTEXT.md` 与 `docs/CONTEXT-MAP.md`,以及仓库根是否还留着旧位置的 `CONTEXT.md`、`CONTEXT-MAP.md`(旧位置的处理见 `/domain-modeling` 的 `CONTEXT-FORMAT.md`)
-- `docs/` 下已有哪些目录(`adr` `specs` `features` `prototypes` `postmortems` `ops` `.workings`)
+- `docs/` 下已有哪些目录(`adr` `specs` `prototypes` `postmortems` `ops` `.workings`)
 - 仓库 `.gitignore` 是否忽略 `docs/.workings/`,以及 `git ls-files docs/.workings` 有没有输出(已提交的施工记录)
 - `docs/agents/` —— 本 skill 上次的产出是否已存在
 - 技术栈与包管理器,既有的 linter 配置与 `lint` 脚本,项目的全量验证脚本,`.github/workflows/` 下的检查 workflow
@@ -125,7 +125,7 @@ Windows 上不得用 symlink 代替导入——创建 symlink 需要管理员权
 
 ## 5. 不创建目录
 
-**除 D 节经用户确认的 lint 接线与 B 节经用户确认的 `.gitignore` 补行外,只写上面那几个文件,不得预先创建 `docs/specs/`、`docs/features/`、`docs/prototypes/` 等空目录。** 各目录由拥有它的 skill 在首次真正产出时创建——空目录进不了 git,而提前铺出来会让人以为里面本该有东西。
+**除 D 节经用户确认的 lint 接线与 B 节经用户确认的 `.gitignore` 补行外,只写上面那几个文件,不得预先创建 `docs/specs/`、`docs/prototypes/` 等空目录。** 各目录由拥有它的 skill 在首次真正产出时创建——空目录进不了 git,而提前铺出来会让人以为里面本该有东西。
 
 同理:探查发现 `CONTEXT.md`、`docs/adr/` 不存在时**静默继续**,不得提示缺失、不得建议提前创建。它们由 `/domain-modeling` 在术语或决策真正敲定时懒创建。
 
