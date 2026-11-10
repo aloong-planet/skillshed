@@ -57,6 +57,7 @@ The individual skills define the detailed gates and exceptions. For example, `im
 | [review-tests](review-tests/SKILL.md) | Review test design, defect detection, duplication, and shared test resources. |
 | [features-catalog](features-catalog/SKILL.md) | Maintain descriptions of current features and reconcile related project documents. |
 | [github-ops](github-ops/SKILL.md) | Define conventions for branches, commits, pull requests, CI, and releases. |
+| [research](research/SKILL.md) | Investigate a question against primary sources and record the findings with their citations. |
 | [ui-design](ui-design/SKILL.md) | Apply shared requirements to user-facing interface changes. |
 | [i18n](i18n/SKILL.md) | Guide multilingual interfaces, localized wording, and language preferences. |
 | [electron-scaffold](electron-scaffold/SKILL.md) | Establish Electron security, packaging, signing, distribution, and test infrastructure. |
