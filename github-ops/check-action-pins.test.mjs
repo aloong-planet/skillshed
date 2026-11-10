@@ -100,6 +100,12 @@ test('does not check local actions and docker references', () => {
   assert.match(r.out, /2 action reference\(s\) checked, 2 local or docker reference\(s\) not checked/)
 })
 
+test('does not check a same-repository reusable workflow written with $/', () => {
+  const r = run({ 'ci.yml': `jobs:\n  build:\n    uses: $/.github/workflows/build.yml\n` })
+  assert.equal(r.code, 0, r.out + r.err)
+  assert.match(r.out, /0 action reference\(s\) checked, 1 local or docker reference\(s\) not checked/)
+})
+
 test('ignores commented-out steps', () => {
   const r = run({ 'ci.yml': workflow(...PINNED_STEPS, `# - uses: actions/cache@v6`, `# - { uses: actions/cache@v6 }`) })
   assert.equal(r.code, 0, r.out + r.err)
