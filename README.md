@@ -29,7 +29,7 @@ Then choose an entry point that matches the work:
 | Explore an interface, state machine, or uncertain design | [prototype](prototype/SKILL.md) |
 | Turn agreed requirements into a specification | [to-spec](to-spec/SKILL.md) |
 | Split a larger feature into implementable tickets | [to-tickets](to-tickets/SKILL.md) |
-| Implement an agreed specification, ticket, or small change | [implement](implement/SKILL.md) |
+| Implement an agreed specification, a ticket, or a requested change | [implement](implement/SKILL.md) |
 | Review an existing change or its tests | [review-code](review-code/SKILL.md) or [review-tests](review-tests/SKILL.md) |
 
 Read the relevant skill before using it. The skills contain specific prerequisites and links to the instructions needed for each kind of work.
@@ -41,10 +41,10 @@ The collection connects discovery, design, delivery, and maintenance:
 1. **Establish facts and agree on requirements.** Use `grill-with-docs` to investigate the current system and resolve decisions with the user. Use `domain-modeling` for domain vocabulary and architectural decisions.
 2. **Make the design concrete.** Use `prototype` to resolve design questions and `to-spec` to record the agreed behavior, boundaries, and acceptance criteria.
 3. **Divide work when needed.** Use `to-tickets` for work that spans multiple implementation sessions, with dependencies and, for each acceptance item, the gate, test, or evidence that guarantees it.
-4. **Implement and review.** Use `implement` to coordinate development, the runs that follow the change, and one independent review of the code, the tests and the acceptance criteria. `tdd` shapes the tests as they are written; `review-code` and `review-tests` define what the independent reviewer checks.
+4. **Implement and review.** Use `implement` to coordinate development, the runs that follow the change, and the independent review of the code, the tests and the acceptance criteria. `tdd` shapes the tests as they are written; `review-code` and `review-tests` define what the independent reviewer checks.
 5. **Check the documents, then deliver.** Before the delivery, `implement` uses `features-catalog` to hand a sub-agent the check of specifications, decisions, terminology, and the other documents that describe the product against the implementation and against each other. The delivery itself goes to another sub-agent and keeps one record, its delivery note, which becomes the pull request's description.
 
-The individual skills define the detailed gates and exceptions. For example, `implement` has a lighter path for changes judged small; it does not require every task to become a new specification or ticket.
+The individual skills define the detailed gates and exceptions. For example, `implement` gives each change a risk tier, light, standard or core, set by what a mistake in it would cost: a light-tier change is reviewed by the agent itself, and a core-tier change needs a test for every costly failure its spec states about the code it touches, and a second independent review when the fixes to the first change product code. It does not require every task to become a new specification or ticket.
 
 ## Supporting skills
 
