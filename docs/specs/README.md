@@ -10,6 +10,7 @@ Persistent specs of confirmed requirements for these skills; one-off working rec
 | [Closeout path](closeout-path.md) | How a closeout ticket runs, and the check of the statements it writes into the repository |
 | [Project documents](project-documents.md) | What a project's specs hold, when a prototype is required, what tests a change needs, and how the closing document check is handed to a sub-agent |
 | [Delivery flow](delivery-flow.md) | Which runs happen for a change, what goes to sub-agents once the review is handled, and what is written down |
+| [Risk tiers](risk-tiers.md) | Which of three tiers a change takes and who sets it, what the light and the core tier do differently, and when a pull request merges without approval |
 
 ## Invariants
 
