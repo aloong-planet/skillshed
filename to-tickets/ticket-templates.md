@@ -4,9 +4,11 @@
 
 Template headings and the other fixed names in the templates follow the artifact-name tables for [this file](../repo-scaffold/artifact-names/to-tickets.ticket-templates.md) and for [the requirement identifiers](../repo-scaffold/artifact-names/to-spec.requirement-identifiers.md).
 
-必须仅在实际需要时生成技术前提区；票内引用文本是注明来源 commit 参考的摘录，需求改变后必须按 [feature-checklist.md](feature-checklist.md)「变更」条对齐，不得将摘录作为另一份需求权威。模板中的 Test 可按 [SKILL.md](SKILL.md)「Every acceptance criterion must name what guarantees it」改选适当保障层级。收口票的“产品验收”区及其跨票组合条目仅在该组合已由 spec 定义且本票承兑时生成。收口票不得把项目的全量验证命令写成验收项：哪些测试命令要跑由 `/implement` 的运行规则判定，写成验收项会绕过该判定。
+必须仅在实际需要时生成技术前提区；票内引用文本是注明来源 commit 参考的摘录，需求改变后必须按 [feature-checklist.md](feature-checklist.md)「变更」条对齐，不得将摘录作为另一份需求权威。模板中的 Test 可按 [SKILL.md](SKILL.md)「Every acceptance criterion must name what guarantees it」改选适当保障层级。收口票的“产品验收”区及其跨票组合条目仅在该组合已由 spec 定义且本票承兑时生成。收口票不得把项目的全量验证命令写成验收项：哪些测试命令要跑在实施时按改动判定，写成验收项会绕过该判定。
 
 票不记状态：票里不得有勾选框、流程验收项或施工记录的路径，验收项与技术前提写成不带勾选框的列表——票发布后，实施、交付与合并都不改它，写进票里的状态只会过期；成品票不得残留占位指令，也不得要求票的读者访问本机 skill 才能理解验收条件。
+
+票里引用别的 feature 的票时,必须同时写明那个 feature 的 slug 与票的标识,不得只写裸票号。
 
 <local-ticket-template>
 
