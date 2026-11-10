@@ -18,6 +18,3 @@ enabled = false
 
 [theming]
 enabled = false
-
-[docs-auto-merge]
-enabled = false
