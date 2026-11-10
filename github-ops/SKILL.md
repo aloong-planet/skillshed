@@ -112,4 +112,6 @@ git log --oneline origin/main..HEAD   # 本分支相对 main 到底带了哪些 
 - 升级某个 action 时,到它自己的仓库把目标 release 的 tag 解析成 commit,用到它的 workflow 一起改:`gh api repos/<owner>/<repo>/commits/<tag> --jq .sha`。
 - 「某个 commit 是哪个 release」「它是不是当前大版本」离线查不出,必须在升级时当场解析;离线检查只核形式。
 
-判据:`.github/workflows/` 下每一行 `uses:`,除本地 action(`./` 开头)与 `docker://` 引用外,`@` 后都是 40 位十六进制并在行尾带 `# v<x.y.z>`;同一个 `owner/repo` 在各行的 commit 相同。
+判据:`.github/workflows/` 下每一行 `uses:`,除本地 action(`./` 开头)与 `docker://` 引用外,`@` 后都是 40 位小写十六进制并在行尾带 `# v<x.y.z>`;同一个 `owner/repo` 在各行的 commit 相同。
+
+**新增或改动 `.github/workflows/` 下任一文件后、提交前,必须在目标仓库根目录运行本 skill 目录内的 `check-action-pins.mjs`(需要 node),退出码为 0 才得提交。** 它按上面的判据逐行核对,违反处以「文件:行号」列出;退出码 1 即有违反,退出码 2 即没有核对到任何 workflow 文件,两者都不得当作通过。它读不懂的 `uses` 写法(流式映射 `{ uses: ... }`、值折到下一行)同样报为违反,必须改写成单行的块式键。
