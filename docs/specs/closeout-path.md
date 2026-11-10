@@ -6,8 +6,6 @@
 
 A closeout ticket delivers no product behaviour and usually changes no executable line, yet it ran every step meant for code: the code review, the test design review, the pre-review run, the independent test review and a full local run named in the ticket. The test review has no written test to read in that case, and its scope stops at tests, so a false statement written into a spec is outside it unless the statement happens to be tied to an evidence script.
 
-Measured once, on the closeout of a two-ticket feature with no product code: about 26M tokens, about what each code ticket of that feature took (32M and 35M). The independent test review took 17% of the tokens and four findings, none of them on a written test. The one that changed a decision was on a sentence written into a spec.
-
 ## Solution
 
 A closeout ticket runs its own path in `/implement`. The full-feature closeout in `/features-catalog` stays its body. With no executable change, the code and test reviews and the pre-review run give way to one claim check of the factual statements the ticket writes into the repository. An executable change made during the closeout still takes the full steps.
@@ -62,22 +60,13 @@ A closeout knows at the start what it will read. Once the ticket is known to be 
 
 ## Implementation Decisions
 
-- The path sits in `implement/SKILL.md` beside the light path for small changes, in the same form, and the claim check has its own reference file, loaded only by this path.
-- `claim-check.md` names no subagent, by the owner's choice: a closeout already runs in a new session that did none of the feature's earlier work, and nothing uses a subagent unless a rule asks for one.
-- A closeout ticket's process acceptance has three items of its own in `ticket-artifacts.md`: the claim check, document sync, and a conditional review of executable changes.
-- REQ-004's exception sits in the gate's base step, directly after the limit it lifts, so the skip has one home and the closeout path states no skip rule of its own.
-- REQ-006 names no file list. A list would restate what each item already points at and go stale when a file is added, so the layers are derived from the path.
-
-## Testing Decisions
-
-- Static: `node scripts/check-artifact-names.mjs` and `node scripts/check-prototype-copies.mjs` exit 0, and the `/skill-policy` two-stage self-check converges on every changed clause.
-- One rehearsal finished, on the closeout of a two-ticket feature in a local clone. It took the exit 0 branch and ran no reviewer, no subagent and no pre-review run.
-- Stated gap: that rehearsal predates REQ-004's exception and ran the smoke test and the site's tests, so the first real closeout ticket after this change is the exception's first run. The empty-diff and exit 1 branches, the PR's CI conclusion and the post-merge write-back have not run either.
-- Stated gap: REQ-006 is unmeasured on a closeout. A simulation on the rehearsal suggested far fewer requests, but a replay of a comparable rule on a whole code ticket measured 28% fewer requests and 24% fewer tokens before the first review, and 11% and 3% over the ticket, so the simulation is not taken as the expected effect.
+- The claim check runs in the closeout's own session and sends no subagent: a closeout already runs in a new session that did none of the feature's earlier work, and nothing uses a subagent unless a rule asks for one.
+- A closeout ticket's process acceptance has three items of its own: the claim check, document sync, and a conditional review of executable changes.
+- REQ-006 names no file list; the layers are derived from the path.
 
 ## Out of Scope
 
-- The feature checklist and the regression report in the claim check. They are working records outside the repository, verified under `/features-catalog`, and the owner chose to check only what is written into the repository.
-- A second reader of the statements a closeout writes. The check reads sentences written by the same agent, so a mistake made while writing can repeat in it. The owner accepts this cost.
-- A local run of any test command in the full run of a closeout with no executable change. The cost is that a command the CI workflow does not carry does not run for that ticket at all, such as a smoke test that starts the app, and the cases only the shipped platform runs do not run either, by the owner's choice. Tests that `/features-catalog`'s item-by-item verification runs as evidence are not part of the full run, and they stay.
+- The feature checklist and the regression report in the claim check. They are working records outside the repository, verified under `/features-catalog`; the check covers only what is written into the repository.
+- A second reader of the statements a closeout writes. The check reads sentences written by the same agent, so a mistake made while writing can repeat in it.
+- A local run of any test command in the full run of a closeout with no executable change. The cost is that a command the CI workflow does not carry does not run for that ticket at all, such as a smoke test that starts the app, and the cases only the shipped platform runs do not run either. Tests that `/features-catalog`'s item-by-item verification runs as evidence are not part of the full run, and they stay.
 - A claim check on tickets other than closeouts.

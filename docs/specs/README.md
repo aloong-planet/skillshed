@@ -8,6 +8,7 @@ Persistent specs of confirmed requirements for these skills; one-off working rec
 |---|---|
 | [Post-implementation check: handoff and handback](post-implementation-check.md) | What the independent reviewer is given, what it hands back, and where the main agent reads its findings |
 | [Closeout path](closeout-path.md) | How a closeout ticket runs, and the check of the statements it writes into the repository |
+| [Project documents](project-documents.md) | What a project's specs hold, when a prototype is required, what tests a change needs, and how the closing document check is handed to a sub-agent |
 
 ## Invariants
 
