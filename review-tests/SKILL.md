@@ -7,7 +7,7 @@ description: 审测试本身而不是被测代码——查写成的测试到底�
 
 审的是测试写成之后的样子:被审的是一段改动里新写或改动的测试(下称被审测试),以及它们与既有测试的关系。
 
-- **受交接执行独立审查的**(交接给出检出的绝对路径、分叉点与交出的 commit,要求载入本 skill 与 `/review-code`):必须完整读取 [independent-review.md](../review-code/independent-review.md) 并按其执行,被审测试是该文件「审什么」一节所定范围内新写或改动的测试。
+- **受交接执行独立审查的**(交接给出检出的绝对路径、审查范围的起点与交出的 commit,要求载入本 skill 与 `/review-code`):必须完整读取 [independent-review.md](../review-code/independent-review.md) 并按其执行,被审测试是该文件「审什么」一节所定范围内新写或改动的测试。
 - **单独激活的**:被审测试是用户指定的测试;没有指定的,是从分叉点(`git merge-base HEAD origin/<默认分支>`)到 `HEAD` 的范围内与工作区里新写或改动的测试。发现按 independent-review.md「交回」节第 1、2 项写,不得为没有发现的维度写结论。
 
 ## 审查的执行

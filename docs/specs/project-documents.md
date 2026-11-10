@@ -39,8 +39,8 @@ A feature has one document, its spec, and the spec states the user-visible behav
 - project-documents::REQ-003/AC-01: A new entry under "Failure modes and boundaries" is written for a boundary where the product's behaviour had to be decided, or for a failure that real use reaches and whose mishandling is costly: lost data, a wrong figure nobody would notice, a security hole, a blocked main flow. The section is not filled by walking every user operation sequence.
 - project-documents::REQ-003/AC-02: The question of what content brought into the app can do to the host (links, media, scripts, forms, drag and drop, oversized content) is still asked at every point that renders or loads such content, and an entry is written for each thing a user can trigger there.
 - project-documents::REQ-003/AC-03: For a change that involves state or effects, the ways into and out of each state are still listed, and the entries of AC-01 are derived from them.
-- project-documents::REQ-003/AC-04: The cases a change must have are one for each acceptance criterion it delivers, and one for each boundary entry it adds or changes that is costly in the sense of AC-01. Any other entry needs no case. A case that cannot be driven is a stated gap, as before.
-- project-documents::REQ-003/AC-05: The test review checks coverage against the list of AC-04, not against the section entry by entry.
+- project-documents::REQ-003/AC-04: The cases a change must have are one for each acceptance criterion it delivers, and one for each boundary entry it adds or changes that is costly in the sense of AC-01. Any other entry needs no case. A case that cannot be driven is a stated gap, as before. A core-tier change has more cases than these ([risk-tiers::REQ-005/AC-01](risk-tiers.md)).
+- project-documents::REQ-003/AC-05: The test review checks coverage against the list of AC-04, not against the section entry by entry, except for the entries [risk-tiers::REQ-005/AC-01](risk-tiers.md) names for a core-tier change.
 - project-documents::REQ-003/AC-06: Entries and cases that already exist stay. Nothing here asks for a case to be deleted.
 
 ### project-documents::REQ-004 The prototype gate
@@ -91,7 +91,6 @@ The two specs this repository already has lose their testing-decisions sections 
 
 ## Out of Scope
 
-- Tiers by risk.
 - Handing a closeout ticket's full-feature closeout to a sub-agent.
 - Migrating another project's `docs/features/`, or trimming its specs beyond REQ-002/AC-05.
 - A project's own ADRs and gate scripts about prototypes. A project that has decided its prototypes are the baseline keeps that decision until it reverses it.

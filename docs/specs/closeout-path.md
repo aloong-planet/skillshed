@@ -59,7 +59,7 @@ A closeout knows at the start what it will read. Once the ticket is known to be 
 6. **A closeout finds a defect in the product.** The fix is an executable change, so it is written through the full steps (REQ-002/AC-02); the statements still go through the claim check.
 7. **A finding needs a new decision.** It goes to the user to decide (`claim-check.md`, handling).
 8. **The project's CI does not run a test command, such as its e2e suite or a local smoke test.** With no executable change it does not run for this ticket. With an executable change it runs locally once before the delivery ([delivery-flow::REQ-001/AC-03 and AC-06](delivery-flow.md)).
-9. **The fork point has no CI run, or one that did not pass.** It cannot be the base, so the test commands run as [delivery-flow::REQ-001/AC-01 and AC-03](delivery-flow.md) say.
+9. **The fork point has no CI run, or one that did not pass.** With no executable change the test commands still do not run ([delivery-flow::REQ-001/AC-06](delivery-flow.md)).
 10. **A test command is known to read a document.** It does not count as a test command, so it still runs ([delivery-flow::REQ-001/AC-06](delivery-flow.md)).
 11. **The session does not yet know the ticket is a closeout.** Reading the ticket comes first, since the layers depend on it (REQ-006).
 

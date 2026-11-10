@@ -51,6 +51,8 @@ Pick the enumeration technique to fit the change (repo-wide search, exhausting a
 
 Before presenting the breakdown in step 4, draft its acceptance criteria and complete the requirements audit in **The feature checklist** (read [feature-checklist.md](feature-checklist.md) in full first). The change-surface enumeration above must not substitute for that audit.
 
+Before presenting the breakdown in step 4, also read [risk-tiers.md](../implement/risk-tiers.md) in full and assess each ticket's risk tier (风险档位) and its reason as that file says.
+
 **A feature cut into more than one ticket ends with a dedicated closeout ticket** — numbered last, blocked by every other ticket in the feature, and named so nobody has to infer it: the file is `<NN>-feature-closeout.md`, or on a tracker the title opens with `收口:`. **Like wide refactors below, it is an exception to vertical slicing**: it carries the full-feature closeout (see `/features-catalog`), runs `/implement`'s closeout path, and delivers no product behaviour of its own, so it is verifiable but not demoable.
 
 **Never let "the last ticket" be inferred from numbering.** Blocking edges form a graph, not a line: a feature can have several leaf tickets, and which one finishes last depends on execution order rather than slicing order. A step that runs exactly once, at the end, needs a ticket that declares itself — counting cannot identify one, and whoever guesses wrong skips the step in silence.
@@ -66,6 +68,7 @@ Present the proposed breakdown as a numbered list. For each ticket, show:
 - **Title**: short descriptive name
 - **Blocked by**: which other tickets (if any) must complete first
 - **What it delivers**: the end-to-end behaviour this ticket makes work
+- **Risk tier**: the risk tier assessed in step 3 and its reason, for each ticket that step assessed
 
 Ask the user:
 
@@ -77,7 +80,7 @@ Iterate until the user approves the breakdown.
 
 ### 5. Publish the tickets to the configured tracker
 
-Publish the approved tickets. Before writing any ticket, read [ticket-templates.md](ticket-templates.md) in full: every ticket, in either tracker shape, is written from its templates. **How** depends on the tracker `/repo-scaffold` configured — the tickets are the same either way, only the shape of the blocking edges changes:
+Publish the approved tickets. Before writing any ticket, read [ticket-templates.md](ticket-templates.md) in full: every ticket, in either tracker shape, is written from its templates, and each ticket that has a risk tier carries the one the user approved in step 4, with its reason. **How** depends on the tracker `/repo-scaffold` configured — the tickets are the same either way, only the shape of the blocking edges changes:
 
 - **Local files** → write one file per ticket under `docs/.workings/<slug>/issues/<NN>-<ticket-slug>.md`, numbered from `01` in dependency order (blockers first). Each file's "Blocked by" lists the numbers/titles it depends on. Use the per-ticket file template in [ticket-templates.md](ticket-templates.md) — one ticket per file, never a single combined file.
 - **A real issue tracker (GitHub, Linear, …)** → publish one issue per ticket in dependency order (blockers first) so each ticket's blocking edges can reference real identifiers. Use the platform's native blocking / sub-issue relationship where it has one; otherwise set each ticket's "Blocked by" to the blocking issues. Apply the `ready-for-agent` triage label unless instructed otherwise — the tickets are agent-grabbable by construction.
