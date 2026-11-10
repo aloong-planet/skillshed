@@ -1,6 +1,6 @@
 # Risk tiers
 
-> Related: [delivery-flow](delivery-flow.md) · [post-implementation-check](post-implementation-check.md) · [project-documents](project-documents.md) · [closeout-path](closeout-path.md) · `/implement` ([SKILL.md](../../implement/SKILL.md), [post-implementation-check.md](../../implement/post-implementation-check.md), [delivery-and-feedback.md](../../implement/delivery-and-feedback.md)) · `/to-tickets` ([SKILL.md](../../to-tickets/SKILL.md), [ticket-templates.md](../../to-tickets/ticket-templates.md)) · `/review-code` ([independent-review.md](../../review-code/independent-review.md)) · `/tdd` ([SKILL.md](../../tdd/SKILL.md)) · `/github-ops` ([SKILL.md](../../github-ops/SKILL.md)) · `/repo-scaffold` ([capabilities-registry.md](../../repo-scaffold/capabilities-registry.md))
+> Related: [delivery-flow](delivery-flow.md) · [post-implementation-check](post-implementation-check.md) · [project-documents](project-documents.md) · [closeout-path](closeout-path.md) · `/implement` ([SKILL.md](../../implement/SKILL.md), [risk-tiers.md](../../implement/risk-tiers.md), [post-implementation-check.md](../../implement/post-implementation-check.md), [delivery-and-feedback.md](../../implement/delivery-and-feedback.md)) · `/to-tickets` ([SKILL.md](../../to-tickets/SKILL.md), [ticket-templates.md](../../to-tickets/ticket-templates.md)) · `/review-code` ([independent-review.md](../../review-code/independent-review.md)) · `/tdd` ([SKILL.md](../../tdd/SKILL.md)) · `/github-ops` ([SKILL.md](../../github-ops/SKILL.md)) · `/repo-scaffold` ([capabilities-registry.md](../../repo-scaffold/capabilities-registry.md))
 
 ## Problem Statement
 
@@ -27,7 +27,7 @@ Applies to every change carried out through `/implement`, other than a closeout 
 - risk-tiers::REQ-002/AC-02: When tickets are cut, the agent cutting them assesses the tier of each, shows it with the breakdown the user approves, and writes it into the ticket with its reason. A ticket's tier is the one written in it. A ticket that states none is assessed by the agent that implements it.
 - risk-tiers::REQ-002/AC-03: The user may declare the tier: for one change, for a set of tickets, for a project, or for every change. A declaration decides, over the agent's assessment and over the tier written in a ticket. Where more than one declaration covers a change, the narrowest applies.
 - risk-tiers::REQ-002/AC-04: The agent may raise a tier and never lowers one. When the reason for the tier stops holding while the change is being made, because the change reaches what REQ-001/AC-03 describes or a mistake in it is no longer cheap, the change goes on at the higher tier and the agent says so. It takes no tier below the one it assessed at the start or the one written in the ticket.
-- risk-tiers::REQ-002/AC-05: Under a declaration of the user's, the agent keeps the declared tier. Where it would have assessed a higher one, it says so before it starts, and the declared tier still applies.
+- risk-tiers::REQ-002/AC-05: Under a declaration of the user's, the agent keeps the declared tier. Where it would have assessed a higher one, it says so, before it starts where that already shows and otherwise as soon as it shows, and the declared tier still applies.
 - risk-tiers::REQ-002/AC-06: The delivery note states the tier and where it came from: the agent's assessment, the ticket, or the user's declaration.
 
 ### risk-tiers::REQ-003 Alignment is decided apart from the tier
@@ -48,8 +48,8 @@ Applies to every change carried out through `/implement`, other than a closeout 
 
 - risk-tiers::REQ-005/AC-01: A core-tier change has a case for every entry under "Failure modes and boundaries" that states a costly failure in the sense of [project-documents::REQ-003/AC-01](project-documents.md) and concerns the code the change touched. The entries are those of the specs of the features that code implements, whether or not the change added or rewrote them. An entry that cannot be driven is a stated gap. The agent names these entries in its list of planned cases ([delivery-flow::REQ-004/AC-01](delivery-flow.md)).
 - risk-tiers::REQ-005/AC-02: The handoff to the reviewer says that the change is core tier. The reviewer checks AC-01 entry by entry: an entry with neither a case nor a stated gap is a finding. Its handback gives the number of entries it checked, beside the two numbers of [post-implementation-check::REQ-007/AC-03](post-implementation-check.md).
-- risk-tiers::REQ-005/AC-03: When the findings are handled and the run after the fixes has passed, the main agent looks at what the commits made since the one handed to the reviewer changed. Where they changed product code, anything other than tests and the data tests read, those commits are handed once to an independent reviewer that does not inherit the conversation, with the commit handed over the first time as the start of the range. It reviews that range as [post-implementation-check::REQ-005](post-implementation-check.md) says and hands back as REQ-007 there says, and its findings are handled as REQ-008 there says.
-- risk-tiers::REQ-005/AC-04: A change has two reviews at most. What is changed after the second review is not reviewed, and neither are fixes after the first review that changed only tests or the data tests read. The delivery note states the range that was not reviewed ([post-implementation-check::REQ-008/AC-07](post-implementation-check.md)).
+- risk-tiers::REQ-005/AC-03: When the findings are handled and the run after the fixes has passed, the main agent looks at what the commits made since the one handed to the reviewer changed. Where they changed product code, a file whose executable content changed and that is neither a test nor data a test reads, those commits are handed once to an independent reviewer that does not inherit the conversation, with the commit handed over the first time as the start of the range. It reviews that range as [post-implementation-check::REQ-005](post-implementation-check.md) says and hands back as REQ-007 there says, and its findings are handled as REQ-008 there says.
+- risk-tiers::REQ-005/AC-04: A change has two reviews at most. What is changed after the second review is not reviewed, and neither are fixes after the first review that changed no product code. The delivery note states the range that was not reviewed ([post-implementation-check::REQ-008/AC-07](post-implementation-check.md)).
 - risk-tiers::REQ-005/AC-05: In everything else a core-tier change is treated as a standard-tier change.
 
 ### risk-tiers::REQ-006 Merging without approval where nothing executable changed
@@ -59,6 +59,7 @@ Applies to every change carried out through `/implement`, other than a closeout 
 - risk-tiers::REQ-006/AC-03: Where any of them does not hold, the merge waits for the user's approval ([delivery-flow::REQ-002/AC-06](delivery-flow.md)).
 - risk-tiers::REQ-006/AC-04: The delivery note of such a change says, before the pull request is opened, that the change holds no executable content and will be merged once its CI passes, under the project's declaration. After the merge the main agent tells the user the pull request's address, that it was merged without approval, and the merge commit.
 - risk-tiers::REQ-006/AC-05: The merge is made the way an approved merge is made.
+- risk-tiers::REQ-006/AC-06: The project's declaration is read only for a change whose executable content equals its fork point. A change with executable content waits for the owner whatever the project declares, and a project that has not declared the capability is not asked about it for such a change.
 
 ## Failure modes and boundaries
 
@@ -66,7 +67,7 @@ Applies to every change carried out through `/implement`, other than a closeout 
 2. **The user declares a tier below the one the agent would assess.** The declared tier is taken. The agent says beforehand which tier it would have assessed, and the delivery note records the declaration (REQ-002/AC-05, AC-06).
 3. **A ticket's tier and a declaration of the user's differ.** The declaration applies (REQ-002/AC-03).
 4. **A ticket states no tier**, because it was cut before tiers existed or was written by hand. The agent that implements it assesses the tier (REQ-002/AC-02).
-5. **The fixes after the review change only tests.** No second review (REQ-005/AC-03).
+5. **The fixes after the review change only tests, documents or comments.** No second review (REQ-005/AC-03).
 6. **A fix made after the second review, or to a CI failure after it.** It is not reviewed, and the delivery note says so (REQ-005/AC-04).
 7. **The tool cannot send a sub-agent.** The main agent runs both reviews itself and the delivery note says they were not independent ([post-implementation-check::REQ-004/AC-04](post-implementation-check.md)).
 8. **A light-tier ticket of a feature cut into several tickets.** The main agent checks its acceptance items (REQ-004/AC-03). The feature's closeout, where it has one, checks the whole feature as before.
@@ -75,9 +76,11 @@ Applies to every change carried out through `/implement`, other than a closeout 
 11. **A repository with no CI that pull requests trigger.** REQ-006/AC-02 cannot hold, and every pull request waits for the owner.
 12. **A CI run fails on a pull request that qualified under REQ-006.** It is not merged. After the fix the conditions are judged again on the new head; a fix that changed executable content waits for the owner.
 13. **A change edits the capability declaration.** The script counts it as executable content, so it is never merged under REQ-006 and waits for the owner.
+14. **A light-tier change decides behaviour for a feature that has no spec.** The decided behaviour is stated in the delivery note; writing that feature's spec is a change of its own (REQ-003/AC-02).
 
 ## Implementation Decisions
 
+- The tier rules have one home, a reference file of `/implement` that `/to-tickets` also has the cutting agent read.
 - `/implement` opens by settling the tier: a declaration of the user's where one covers the change, otherwise the tier written in the ticket, otherwise the agent's own assessment. Its small-change path becomes the light-tier path.
 - `/to-tickets` shows each ticket's tier in the breakdown it puts to the user, and the ticket templates carry a line for the tier and its reason.
 - The reviewer's entry-by-entry check is in the reference file of `/review-code` that both review skills have the reviewer read. `/tdd`'s list of planned cases names the entries of REQ-005/AC-01.
