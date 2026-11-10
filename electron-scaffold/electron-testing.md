@@ -128,11 +128,13 @@ cp ~/.claude/skills/electron-scaffold/assets/smoke.sh.template <项目>/scripts/
 
 <!-- example -->
 ```bash
-cp ~/.claude/skills/electron-scaffold/assets/ci-electron.yml <项目>/.github/workflows/ci.yml
-# 填一处:checks job 里项目自有的额外检查;分支名留 master/main 中实际用的
+# 1. 按 github-ops 的 checks-gate.md §2 放好 assets/ci-routing/ 的全部文件,workflow 是 .github/workflows/ci.yml
+# 2. 用 ci-electron.yml 的 checks 与 e2e 两个 job 替换 ci.yml 里的 app-checks;routing.json 的 app 范围
+#    写成 ["checks", "e2e"],ci-gate 的 needs 里 app-checks 换成这两个 id
+# 3. 填一处:checks job 里项目自有的额外检查;分支名写项目实际的默认分支
 ```
 
-模板里四个"抄错才知道"的点,已按事故写好:
+这两个 job 里四个"抄错才知道"的点,已按事故写好:
 
 | 要点 | 不这么写会怎样 |
 |---|---|
@@ -142,7 +144,7 @@ cp ~/.claude/skills/electron-scaffold/assets/ci-electron.yml <项目>/.github/wo
 | ubuntu 而非 macos runner | 私有仓库 macOS 按 10 倍计费;e2e 断言平台无关,macOS 专属面归发版流程 |
 
 smoke **不进 CI**:macOS 本地专用(BSD stat、进程路径),价值在开发机真实数据形态,容器里等于 e2e 劣化版。
-把 workflow 设为必需检查 → **github-ops 的 [checks-gate.md](../github-ops/checks-gate.md)**(单一出处,此处不复制;要点:GitHub 侧三项缺一不生效,且门禁必须证明"能红")。
+必需检查只登记 `CI gate`,`e2e(Electron)` 与 `typecheck + unit tests` 经它强制,不单独登记 → **github-ops 的 [checks-gate.md](../github-ops/checks-gate.md)**(单一出处,此处不复制)。
 
 ## 7. 主进程读文件的耗时只认 Electron 下的实测
 

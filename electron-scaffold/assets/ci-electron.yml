@@ -1,21 +1,11 @@
-name: CI
-
-on:
-  push:
-    branches: [master, main]   # keep whichever the project actually uses
-  pull_request:
-    branches: [master, main]
-
-# A new push to the same branch cancels the previous run that has not finished
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
+# The Electron product jobs of the CI workflow started from the github-ops skill's assets/ci-routing/ci.yml;
+# how they join it: the electron-scaffold skill, electron-testing.md section 6.
 jobs:
   # Fast checks: feedback in seconds; if they fail there is no need to wait for e2e
   checks:
-    # Note: this name is the string entered when setting the required check; renaming it means updating the ruleset too
     name: typecheck + unit tests
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
     steps:
       # every action at a full commit with its release in a comment (the github-ops skill: pin every action)
@@ -35,6 +25,8 @@ jobs:
   # The macOS-only surface (signing, notarisation, TCC permissions) is outside e2e anyway, guarded by local verification and the release flow.
   e2e:
     name: e2e(Electron)
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
     steps:
       # every action at a full commit with its release in a comment (the github-ops skill: pin every action)
@@ -62,6 +54,3 @@ jobs:
 # smoke does not run in CI: scripts/smoke.sh is local to macOS (BSD stat, macOS process paths),
 # and its value lies in the developer machine's real data shape; in a CI container it is a degraded e2e.
 # Migration scenarios are covered by e2e with its isolated userData and seeded fixtures.
-#
-# Making this workflow master's required check → see the github-ops skill's checks-gate.md
-# (Enforcement / Target / check name: all three are needed, and the gate must prove it can turn red).

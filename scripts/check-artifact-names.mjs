@@ -39,7 +39,7 @@ const TEMPLATES = [
 // Copied into projects whole: every file under ASSET_DIRS, and every file under ASSET_SKILL_DIRS but its
 // Markdown documents and dotfiles, read from the directory so that an asset added there is checked without
 // a change here.
-const ASSET_DIRS = ['electron-scaffold/assets']
+const ASSET_DIRS = ['electron-scaffold/assets', 'github-ops/assets']
 const ASSET_SKILL_DIRS = ['prototype']
 // Documents whose code blocks may be copied into projects; every Chinese-bearing block must be classified.
 const ASSET_DOC_DIRS = ['electron-scaffold', 'prototype']

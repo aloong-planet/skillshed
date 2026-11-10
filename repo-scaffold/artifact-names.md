@@ -26,5 +26,5 @@ skill 条文与模板以中文规范名给出、要写进项目产物的固定�
 
 原样复制进项目的文件与代码块一律以英文书写,不含中文:复制后源注释、终端输出与界面文案直接符合 `working-language` 为 `en` 的项目;项目工作语言为其他语言时,复制时按该语言改写;原型 skill 的复制来源标记除外,它按 [prototype/SKILL.md](../prototype/SKILL.md)「本 skill 的文件」节原样保留。
 
-- 资产文件:`electron-scaffold/assets/` 下全部文件,`prototype/` 下除 Markdown 文档与以 `.` 开头的隐藏文件外的全部文件。
+- 资产文件:`electron-scaffold/assets/` 与 `github-ops/assets/` 下全部文件,`prototype/` 下除 Markdown 文档与以 `.` 开头的隐藏文件外的全部文件。
 - 资产代码块:`electron-scaffold/`、`prototype/` 下的文档与 `github-ops/checks-gate.md` 中,会被复制进项目的代码块在围栏前一行标注 `<!-- asset -->`,必须零中文;只作讲解、不进入项目的代码块若含中文,标注 `<!-- example -->`。这两处文档里含中文的代码块缺标注即为未归类。
