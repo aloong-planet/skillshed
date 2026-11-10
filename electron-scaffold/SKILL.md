@@ -207,7 +207,7 @@ Mac App Store 线由商店分发,不走 Gatekeeper 的票据路径,不适用本�
 | 主进程测试 seam(静音 + 数据根注入 + 单实例锁 + 防孤儿) | 可抄骨架 ~20 行(文档第 1 节) | 测试可注入、不抢前台;e2e 结果不随开发机数据变 |
 | [assets/quiet-electron.sh](./assets/quiet-electron.sh) | 复制进项目 scripts/ | Dock 图标零闪现(图标在原生引导期按 plist 注册,JS 追不上) |
 | [assets/smoke.sh.template](./assets/smoke.sh.template) | 复制后填「项目填空」块(核心三处+命名,未填空会自报) | dev 冒烟:双隔离、失败留证、就绪产物判据 |
-| [assets/ci-electron.yml](./assets/ci-electron.yml) | 复制进 .github/workflows/ | ubuntu+xvfb 的 e2e 门禁,四个"抄错才知道"的坑已排 |
+| [assets/ci-electron.yml](./assets/ci-electron.yml) | 两个 job 替换 github-ops 门禁骨架里的 `app-checks`(electron-testing.md 第 6 节) | ubuntu+xvfb 的 e2e,四个"抄错才知道"的坑已排 |
 
 主进程有批量读文件路径(扫描、建索引)的项目,另按文档第 7 节配基准脚本。
 

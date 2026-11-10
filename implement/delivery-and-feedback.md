@@ -15,7 +15,7 @@
 
 必须按 `/github-ops` 推送分支、开 PR 与合并;全套 e2e 交给 PR 的 CI 的,开 PR 后先按下一段取得 CI 的结论。
 
-全量把全套 e2e 交给 PR 的 CI 的(判定见 [full-verification-gate.md](full-verification-gate.md)「全套 e2e 交给 PR 的 CI」条),开 PR 后必须按 `/github-ops` 等到 PR 当前提交上的全部 CI 运行结束。全部结论为成功,才可报告交付完成,并把各运行的链接与结论写进交付说明;任一运行不成功的,按全量失败处理:修复后按 [full-verification-gate.md](full-verification-gate.md) 对「全量通过后又改了代码」的规定重跑或沿用全量,推送后再等,结论全部为成功之前不得报告交付完成。
+全量把全套 e2e 交给 PR 的 CI 的(判定见 [full-verification-gate.md](full-verification-gate.md)「全套 e2e 交给 PR 的 CI」条),开 PR 后必须按 `/github-ops` 等到 PR 当前提交上的全部 CI 运行结束。运行能力 `e2e-suite` 的 `enforced-by` 命令的那个 job,在这些运行里被跳过或没有出现的,全套 e2e 没有由 CI 承担:必须在 PR 当前提交上本地运行全套 e2e,结果按 [full-verification-gate.md](full-verification-gate.md) 对日志的要求写成日志,全绿才可继续。全部结论为成功,才可报告交付完成,并把各运行的链接与结论写进交付说明;任一运行不成功的,按全量失败处理:修复后按 [full-verification-gate.md](full-verification-gate.md) 对「全量通过后又改了代码」的规定重跑或沿用全量,推送后再等,结论全部为成功之前不得报告交付完成。
 
 ## 验收反馈回写
 

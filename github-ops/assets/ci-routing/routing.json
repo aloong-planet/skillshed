@@ -1,0 +1,10 @@
+{
+  "scopes": {
+    "app": ["app-checks"]
+  },
+  "rules": [
+    { "reason": "Shared input", "select": "all", "paths": ["package.json", "pnpm-lock.yaml"] },
+    { "reason": "Documentation", "select": [], "paths": ["README.md", "README.*.md", "LICENSE", "AGENTS.md", "CLAUDE.md", "docs/**/*.md"] },
+    { "reason": "Application", "select": ["app"], "paths": ["src/**", "test/**", "tsconfig.json"] }
+  ]
+}

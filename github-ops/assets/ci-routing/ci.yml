@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]   # the repository's default branch
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A newer push to the same ref cancels the unfinished run. On the default branch this is safe only because
+# ci-scope.mjs selects every scope for a push.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # The job id must stay `changes`: ci-gate.mjs reads the scopes from it.
+  changes:
+    name: Changed scopes
+    runs-on: ubuntu-latest
+    outputs:
+      # one line per scope of .github/ci/routing.json
+      app: ${{ steps.scope.outputs.app }}
+    steps:
+      # every action at a full commit with its release in a comment (the github-ops skill: pin every action)
+      - uses: actions/checkout@<40-hex commit> # v<x.y.z>
+        with:
+          fetch-depth: 0             # a pull request is compared from its merge base
+          persist-credentials: false
+      - id: scope
+        run: node .github/ci/ci-scope.mjs
+
+  # Always runs, so no scope lists it and the gate always requires it. Checks that read the whole repository
+  # (language, links, documents) belong here.
+  repo-policy:
+    name: Repository policy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@<40-hex commit> # v<x.y.z>
+      - uses: actions/setup-node@<40-hex commit> # v<x.y.z>
+        with:
+          node-version: 22
+      - run: node --test .github/ci/*.test.mjs
+
+  # One job per product check, each listed under its scope in routing.json.
+  app-checks:
+    name: Application checks
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@<40-hex commit> # v<x.y.z>
+      # pnpm must come before setup-node: setup-node's cache: 'pnpm' calls pnpm to find the store path
+      - uses: pnpm/action-setup@<40-hex commit> # v<x.y.z>
+      - uses: actions/setup-node@<40-hex commit> # v<x.y.z>
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+  # The one required check. `needs` lists every other job of this workflow; `always()` makes it run after a
+  # failure or a skip upstream, which `!cancelled()` or the default `success()` would not.
+  ci-gate:
+    name: CI gate
+    needs: [changes, repo-policy, app-checks]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@<40-hex commit> # v<x.y.z>
+        with:
+          persist-credentials: false
+      - name: Verify the selected jobs
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: node .github/ci/ci-gate.mjs
