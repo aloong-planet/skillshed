@@ -8,7 +8,7 @@ Every change that was not judged small took the same path: one independent revie
 
 ## Solution
 
-A change takes one of three tiers, set by what a mistake in it would cost. The agent assesses the tier and says why; when tickets are cut, each ticket is assessed then and carries its tier. The user may declare the tier instead, for one change or for everything, and a declaration decides. A light-tier change is reviewed by the main agent itself. A standard-tier change gets the one independent review. A core-tier change also has a test for every costly failure the spec states about the code it touches, and its fixes get a second review when they change product code. A project may also declare that a pull request which changes only documents is merged once its CI passes, without waiting for its owner.
+A change takes one of three tiers, set by what a mistake in it would cost. The agent assesses the tier and says why; when tickets are cut, each ticket is assessed then and carries its tier. The user may declare the tier instead, for one change or for everything, and a declaration decides. A light-tier change is reviewed by the main agent itself. A standard-tier change gets the one independent review. A core-tier change also has a test for every costly failure the spec states about the code it touches, and its fixes get a second review when they change product code. A project may also declare that a pull request which changes no executable content is merged once its CI passes, without waiting for its owner.
 
 ## Functional Requirements
 
@@ -52,14 +52,14 @@ Applies to every change carried out through `/implement`, other than a closeout 
 - risk-tiers::REQ-005/AC-04: A change has two reviews at most. What is changed after the second review is not reviewed, and neither are fixes after the first review that changed no product code. The delivery note states the range that was not reviewed ([post-implementation-check::REQ-008/AC-07](post-implementation-check.md)).
 - risk-tiers::REQ-005/AC-05: In everything else a core-tier change is treated as a standard-tier change.
 
-### risk-tiers::REQ-006 Merging a documents-only pull request without approval
+### risk-tiers::REQ-006 Merging without approval where nothing executable changed
 
-- risk-tiers::REQ-006/AC-01: A project may declare in its capability declaration that a pull request which changes only documents is merged without waiting for its owner. A project that declares this off waits for the owner on every pull request.
-- risk-tiers::REQ-006/AC-02: The main agent merges a pull request itself, without asking, when all of these hold: the project declares the capability on; the script that judges executable content finds every file the delivered commit changed since its fork point to be a document, which for the script is a file under `docs/` or a Markdown file; the repository has CI that pull requests trigger, and every CI run on the pull request's head succeeded; the pull request's head is the commit that was handed over for delivery; and the user has not asked to see this change before it merges.
+- risk-tiers::REQ-006/AC-01: A project may declare in its capability declaration that a pull request which changes no executable content is merged without waiting for its owner. A project that declares this off waits for the owner on every pull request.
+- risk-tiers::REQ-006/AC-02: The main agent merges a pull request itself, without asking, when all of these hold: the project declares the capability on; the script that judges executable content finds the delivered commit the same as its fork point; the repository has CI that pull requests trigger, and every CI run on the pull request's head succeeded; the pull request's head is the commit that was handed over for delivery; and the user has not asked to see this change before it merges.
 - risk-tiers::REQ-006/AC-03: Where any of them does not hold, the merge waits for the user's approval ([delivery-flow::REQ-002/AC-06](delivery-flow.md)).
-- risk-tiers::REQ-006/AC-04: The delivery note of such a change says, before the pull request is opened, that the change is of documents alone and will be merged once its CI passes, under the project's declaration. After the merge the main agent tells the user the pull request's address, that it was merged without approval, and the merge commit.
+- risk-tiers::REQ-006/AC-04: The delivery note of such a change says, before the pull request is opened, that the change holds no executable content and will be merged once its CI passes, under the project's declaration. After the merge the main agent tells the user the pull request's address, that it was merged without approval, and the merge commit.
 - risk-tiers::REQ-006/AC-05: The merge is made the way an approved merge is made.
-- risk-tiers::REQ-006/AC-06: The project's declaration is read only for a change of documents alone. A change of anything else waits for the owner whatever the project declares, and a project that has not declared the capability is not asked about it for such a change.
+- risk-tiers::REQ-006/AC-06: The project's declaration is read only for a change whose executable content equals its fork point. A change with executable content waits for the owner whatever the project declares, and a project that has not declared the capability is not asked about it for such a change.
 
 ## Failure modes and boundaries
 
@@ -71,8 +71,8 @@ Applies to every change carried out through `/implement`, other than a closeout 
 6. **A fix made after the second review, or to a CI failure after it.** It is not reviewed, and the delivery note says so (REQ-005/AC-04).
 7. **The tool cannot send a sub-agent.** The main agent runs both reviews itself and the delivery note says they were not independent ([post-implementation-check::REQ-004/AC-04](post-implementation-check.md)).
 8. **A light-tier ticket of a feature cut into several tickets.** The main agent checks its acceptance items (REQ-004/AC-03). The feature's closeout, where it has one, checks the whole feature as before.
-9. **A repository whose Markdown is its product**, such as skills or instructions for agents. The script counts their Markdown as documents, so a change to them would qualify under REQ-006; the repository leaves that capability off, and every pull request waits for its owner (REQ-006/AC-01).
-10. **A change of comments only, in code files.** It is not a change of documents alone, although for JavaScript, TypeScript and Python files the script finds the executable content unchanged: a comment can be read by a tool, such as a test runner's environment line, a bundler's annotation or a coverage marker. It waits for the owner (REQ-006/AC-02).
+9. **A repository whose Markdown is its product**, such as skills or instructions for agents. The script finds no executable content in a change to them, so such a change would qualify under REQ-006; the repository leaves that capability off, and every pull request waits for its owner (REQ-006/AC-01).
+10. **A change of comments only, in JavaScript, TypeScript or Python files.** The script finds the executable content unchanged, and REQ-006 applies to it as to a change of documents. In a file of any other type the script counts a changed comment as executable content. A comment that a tool reads, such as a test runner's environment line, a bundler's annotation or a coverage marker, is read by the script as a comment like any other: a change of such a comment alone merges under REQ-006 where the project declares the capability, and the pull request's CI is the check it passes.
 11. **A repository with no CI that pull requests trigger.** REQ-006/AC-02 cannot hold, and every pull request waits for the owner.
 12. **A CI run fails on a pull request that qualified under REQ-006.** It is not merged. After the fix the conditions are judged again on the new head; a fix that changed executable content waits for the owner.
 13. **A change edits the capability declaration.** The script counts it as executable content, so it is never merged under REQ-006 and waits for the owner.
@@ -94,5 +94,6 @@ Applies to every change carried out through `/implement`, other than a closeout 
 - A second reader of the agent's assessment of the tier. The user sees the tier in the reply and in the ticket breakdown, and may declare another.
 - A smaller model for the reviewer in any tier.
 - Running every test locally before a core-tier change is reviewed. The pull request's CI carries the full run.
-- Merging without approval a pull request that changes anything other than documents, at any tier.
+- Merging without approval a pull request that changes executable content, at any tier.
+- Telling a comment that a tool reads from any other comment when judging executable content.
 - The tier of an executable change a closeout ticket makes. [closeout-path](closeout-path.md) decides its path.
