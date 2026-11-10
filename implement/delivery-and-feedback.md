@@ -18,7 +18,7 @@
 
 不经 PR 交付的(如仓库没有远端),不交出交付,本节与「核对交回」不适用:交付说明即给用户的报告,合并按「合并」节。
 
-1. **交出前**:改动必须已全部提交,检出里 `git status --porcelain` 的输出为空;交付说明必须已写全 [SKILL.md](SKILL.md)「交付说明」节「内容」条所列的各项。这时的 `git rev-parse HEAD` 即交出的 commit。这个 commit 以分叉点(`git merge-base HEAD origin/<默认分支>`)为基线按 [full-verification-gate.md](full-verification-gate.md)「可执行内容变没变」条判定、退出码为 0 的,必须再判「合并」节「不经批准的合并」一条的第 2、5 项与仓库有没有由 PR 触发的 CI 工作流;都成立的,交付说明必须写明:这次改动不含可执行内容,按项目的能力声明 `docs-auto-merge`,CI 通过后即合并,不等批准。再次交出时不再都成立的,必须删去这句话。退出码不是 0 的,不判这几项,也不读该能力。
+1. **交出前**:改动必须已全部提交,检出里 `git status --porcelain` 的输出为空;交付说明必须已写全 [SKILL.md](SKILL.md)「交付说明」节「内容」条所列的各项。这时的 `git rev-parse HEAD` 即交出的 commit。这个 commit 以分叉点(`git merge-base HEAD origin/<默认分支>`)为基线按 [full-verification-gate.md](full-verification-gate.md)「可执行内容变没变」条判定、退出码为 0 且它列出的每个文件都判为 `inert` 的,必须再判「合并」节「不经批准的合并」一条的第 2、5 项与仓库有没有由 PR 触发的 CI 工作流;都成立的,交付说明必须写明:这次改动只改了文档,按项目的能力声明 `docs-auto-merge`,CI 通过后即合并,不等批准。再次交出时不再都成立的,必须删去这句话。判定结果不是这样的,不判这几项,也不读该能力。
 2. **交给谁**:当前工具能派子 agent 时,必须把交付交给一个不继承本次对话的子 agent(下称交付方),由它自己按当前工具的 skill 机制载入 `/github-ops` 并按其受委派交付的规则执行,不得在自己的会话里推送、开 PR 或等 CI。当前工具能为子 agent 指定模型时,必须指定最新一代里最小的一档:工具给的是档位别名的,取最小档的别名;只能填具体型号的,取最新一代的最小型号,不得因为更便宜而取旧一代的型号。当前工具不能派子 agent 的,主 agent 必须自己按 `/github-ops` 推送分支、以交付说明为描述开 PR 并等 PR 上的 CI。
 3. **交接写什么**:交给交付方的指示必须写明下列各项,缺任一项不得交出:
    1. 检出的绝对路径与要推送的分支名。
@@ -43,7 +43,7 @@
 
 - 合并必须等用户批准,按 `/github-ops`「合并需要人明确授权」节执行;用户对交付的验收不构成合并授权。唯一的例外是下一条。
 - **不经批准的合并**:按「核对交回」报告交付完成之后,必须依次判定下列各项,有一项不成立的不再判后面的各项,按上一条等用户批准;全部成立的,主 agent 必须自己合并,不问用户,即 `/github-ops`「合并需要人明确授权」节的例外:
-  1. 先拉取远端,在检出的 `HEAD` 是 PR 头的 commit、`git status --porcelain` 无输出时,以 `git merge-base HEAD origin/<默认分支>` 得到的分叉点为基线,按 [full-verification-gate.md](full-verification-gate.md)「可执行内容变没变」条判定,退出码为 0。
+  1. 先拉取远端,在检出的 `HEAD` 是 PR 头的 commit、`git status --porcelain` 无输出时,以 `git merge-base HEAD origin/<默认分支>` 得到的分叉点为基线,按 [full-verification-gate.md](full-verification-gate.md)「可执行内容变没变」条判定,退出码为 0,且它列出的每个文件都判为 `inert`,即这个 PR 只改动了文档。有文件判为 `same` 的(只改了注释或排版的代码文件),本项不成立:注释可以被别的工具读取。
   2. 项目能力 `docs-auto-merge` 已启用。
   3. 仓库有由 PR 触发的 CI 工作流,且 PR 头上全部 CI 运行的结论都是成功。
   4. PR 头的 commit 就是交出交付的 commit。

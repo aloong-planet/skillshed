@@ -51,7 +51,7 @@ Pick the enumeration technique to fit the change (repo-wide search, exhausting a
 
 Before presenting the breakdown in step 4, draft its acceptance criteria and complete the requirements audit in **The feature checklist** (read [feature-checklist.md](feature-checklist.md) in full first). The change-surface enumeration above must not substitute for that audit.
 
-Before presenting the breakdown in step 4, also read [risk-tiers.md](../implement/risk-tiers.md) in full and assess each ticket's risk tier (档位) and its reason as that file says.
+Before presenting the breakdown in step 4, also read [risk-tiers.md](../implement/risk-tiers.md) in full and assess each ticket's risk tier (风险档位) and its reason as that file says.
 
 **A feature cut into more than one ticket ends with a dedicated closeout ticket** — numbered last, blocked by every other ticket in the feature, and named so nobody has to infer it: the file is `<NN>-feature-closeout.md`, or on a tracker the title opens with `收口:`. **Like wide refactors below, it is an exception to vertical slicing**: it carries the full-feature closeout (see `/features-catalog`), runs `/implement`'s closeout path, and delivers no product behaviour of its own, so it is verifiable but not demoable.
 

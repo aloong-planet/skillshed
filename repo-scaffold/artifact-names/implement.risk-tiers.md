@@ -4,7 +4,7 @@
 
 | 中文规范名 | en |
 |---|---|
-| 档位 | Risk tier |
+| 风险档位 | Risk tier |
 | 轻档 | light |
 | 标准档 | standard |
 | 核心档 | core |

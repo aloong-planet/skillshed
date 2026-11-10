@@ -53,7 +53,7 @@ enforced-by = ["pnpm lint"]
 | `lint` | 段 | 有 linter 且已接入验证网关;`source` 指 linter 配置文件 | 无 | `enabled = false` |
 | `e2e-suite` | 段 | 有端到端测试且已接入验证网关;`source` 指端到端测试的配置文件 | 无 | `enabled = false` |
 | `mutation-testing` | 段 | 对测试做变异检验;条文与适用范围见 review-tests 的 [mutation-testing.md](../review-tests/mutation-testing.md)。`source` 指记录项目采用这一做法的文档(如 ADR);这一做法靠人守,`enforced-by` 写 `[]` | 无 | `enabled = false` |
-| `docs-auto-merge` | 段 | 不改动可执行内容的 PR,在其 CI 全部通过等条件成立时不等用户批准即合并;条件与做法见 implement 的 [delivery-and-feedback.md](../implement/delivery-and-feedback.md)「合并」节「不经批准的合并」一条。`source` 指记录项目采用这一做法的文档(如 ADR);没有命令守它,`enforced-by` 写 `[]` | 无 | `enabled = false` |
+| `docs-auto-merge` | 段 | 只改动文档的 PR,在其 CI 全部通过等条件成立时不等用户批准即合并;条件与做法见 implement 的 [delivery-and-feedback.md](../implement/delivery-and-feedback.md)「合并」节「不经批准的合并」一条。`source` 指记录项目采用这一做法的文档(如 ADR);没有命令守它,`enforced-by` 写 `[]` | 无 | `enabled = false` |
 | `theming` | 段 | 界面颜色由主题变量驱动,且至少有一个主题维度(明暗、多套配色、对比度等);有哪些维度以主题样式文件为准,`source` 指主题样式文件 | 无 | `enabled = false` |
 | `macos-distribution` | 段 | 项目对外分发 macOS 安装包;怎么打包按下文的实现指南分派,`source` 指项目的签名与公证运维手册,`enforced-by` 填发布门禁命令。专属子表见下 | `client-framework` 为 `"electron"`、`"tauri"` 或 `"native"` | `enabled = false` |
 

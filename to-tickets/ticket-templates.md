@@ -20,7 +20,7 @@ Template headings and the other fixed names in the templates follow the artifact
 
 **Status:** ready-for-agent
 
-**档位:** <轻档、标准档或核心档> — <理由:本票出错的代价>
+**风险档位:** <轻档、标准档或核心档> — <理由:本票出错的代价>
 
 ## 需求来源
 
@@ -71,7 +71,7 @@ A reference to the parent issue on the tracker (if the source was an existing is
 
 The end-to-end behaviour this ticket makes work, from the user's perspective — not layer-by-layer implementation.
 
-## 档位
+## 风险档位
 
 <轻档、标准档或核心档> — <理由:本票出错的代价>
 
