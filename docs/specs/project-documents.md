@@ -53,15 +53,15 @@ A feature has one document, its spec, and the spec states the user-visible behav
 
 ### project-documents::REQ-005 The closing document check runs in a sub-agent
 
-Applies to the document check that ends a change (step 8 of the flow), not to the full-feature closeout of a closeout ticket.
+Applies to the document check that ends a change, not to the full-feature closeout of a closeout ticket.
 
 - project-documents::REQ-005/AC-01: Where the tool can send a sub-agent, the main agent hands the check to one that does not inherit the conversation and that loads the skill itself. Where it cannot, the main agent runs the check.
 - project-documents::REQ-005/AC-02: Where the tool lets the sub-agent's model be chosen, it is the tier one below the main session's, of the latest generation: the tier's alias where the tool takes aliases, the latest model of that tier where it takes model names, never an older generation because it is cheaper. A main session already on the smallest tier uses that tier.
 - project-documents::REQ-005/AC-03: Where the tool lets the sub-agent's reasoning effort be chosen, it is the level named `high`; where no level has that name, the first level above the tool's default.
 - project-documents::REQ-005/AC-04: The main agent commits the change before it hands over. If the working tree then still holds changes that are not the change's, it does not hand over and tells the user. The handoff carries the checkout's absolute path, the fork point and that commit, the slugs of the specs the change touched, the directory of the change's working records, the ticket when there is one, the events of the change that no file records (a rule newly decided, the user's acceptance feedback, a change of work status), the commit range of the fix when the check is handed over again after one, and the instruction to load the skill and run the check. It carries no judgement of what is or is not consistent.
 - project-documents::REQ-005/AC-05: The sub-agent may rewrite documents to make them true, a document being a Markdown file, in the checkout or in the change's working records, that no test reads. It does not change code, tests, data a test reads, interface dictionaries or package metadata, does not commit, and hands back a finding that needs any of these.
-- project-documents::REQ-005/AC-06: The handback is the conclusion, the files it changed, the path of the regression report, and one line for each finding it could not settle. The findings' detail is in the report.
-- project-documents::REQ-005/AC-07: On the handback the main agent first checks that the checkout is on the branch it handed over and that the commit of AC-04 is still in its history; if not, it changes nothing and tells the user. It undoes any commit the sub-agent made, keeping its changes in the working tree, then lists what changed in the working tree since the commit of AC-04. A changed path that is not a document is restored from that commit and reported to the user. The main agent then reads the report's findings, commits the document changes that remain, and only then acts on a finding. A report with no record of the round, or without a stage's table, sends the check out once more; if that fails too, the main agent stops and tells the user.
+- project-documents::REQ-005/AC-06: The handback is the conclusion, the documents it changed, the number of statements it judged with the searches it ran to find them, and each finding it could not settle, stated in full. No report is written.
+- project-documents::REQ-005/AC-07: On the handback the main agent first checks that the checkout is on the branch it handed over and that the commit of AC-04 is still in its history; if not, it changes nothing and tells the user. It undoes any commit the sub-agent made, keeping its changes in the working tree, then lists what changed in the working tree since the commit of AC-04. A changed path that is not a document is restored from that commit and reported to the user. The main agent then reads the findings in the handback, commits the document changes that remain, and only then acts on a finding. A handback without the number and the searches sends the check out once more; if that fails too, the main agent stops and tells the user.
 - project-documents::REQ-005/AC-08: The main agent reads only the rules for handing over and for checking the handback. The rules of the check itself are in a file the sub-agent reads.
 - project-documents::REQ-005/AC-09: Before the main agent commits the document changes a sub-agent left, it reads the sub-agent's changes to the documents in the checkout and judges each added, rewritten or deleted statement against what the change did and decided, reading the code or document the statement is about where that does not settle it. A statement left untrue is corrected, a deleted one that still holds is restored, and the user is told which. It judges only those statements and does not run the check again. This does not apply when the main agent ran the check itself.
 
@@ -84,14 +84,14 @@ The two specs this repository already has lose their testing-decisions sections 
 ## Implementation Decisions
 
 - The `features-catalog` skill keeps its name and keeps the closing document check; its selector describes the check only. Renaming it is left to the redesign of the flow.
-- In that skill, the rules for handing over and for checking the handback open `SKILL.md`, and the three-stage regression moves to a reference file the sub-agent reads in full. The full-feature closeout stays where a closeout ticket's own session reads it.
+- In that skill, the rules for handing over and for checking the handback open `SKILL.md`, and the three-stage regression moves to a reference file the sub-agent reads in full. The three ways a statement goes untrue stay the sub-agent's method for finding what to judge; it writes none of it down. The full-feature closeout stays where a closeout ticket's own session reads it.
 - The wording for the model tier follows the rule already used for handing the CI wait to a sub-agent, and the wording for effort follows the rule already used for evidence gathering, so the three rules read alike.
 - The fixed names that existed only for catalogue pages leave the artifact-name tables; "In one line" moves to `/to-spec`'s table with the specs index template. `scripts/check-artifact-names.mjs` is adjusted to match.
 - The owner's global instructions name the catalogue, the exhaustive section and the prototype rule in their outline of the flow. That file is outside this repository and is changed by the owner's session when this change merges.
 
 ## Out of Scope
 
-- The rest of the flow's redesign: tiers by risk, the working records, the scope of verification.
+- Tiers by risk.
 - Handing a closeout ticket's full-feature closeout to a sub-agent.
 - Migrating another project's `docs/features/`, or trimming its specs beyond REQ-002/AC-05.
 - A project's own ADRs and gate scripts about prototypes. A project that has decided its prototypes are the baseline keeps that decision until it reverses it.

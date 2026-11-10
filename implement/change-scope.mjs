@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Change scope for the full verification gateway in implement/full-verification-gate.md: whether any file changed
-// since a baseline commit in a way that can change what the gateway's test commands do.
+// Change scope for the run rules in implement/full-verification-gate.md: whether any file changed
+// since a baseline commit in a way that can change what the project's test commands do.
 //
 // Usage, from anywhere inside the repository:
 //   node change-scope.mjs --base <commit>
@@ -31,8 +31,8 @@
 //   6. Any other type: changed.
 //
 // A comment is compared as a comment whatever reads it, so the changes below come out same although they can
-// change what a test command does. The gateway never skips lint or typecheck, and reusing a result requires both
-// to pass, so the comments those tools read are checked; the rest are left to the pull request's CI:
+// change what a test command does. The run rules never skip lint or typecheck on this script's verdict, so the
+// comments those tools read are checked; the rest are left to the pull request's CI:
 //   - Comments other tools read: a test runner's environment (@vitest-environment), bundler annotations
 //     (#__PURE__, webpackChunkName), coverage ignores (c8 ignore, # pragma: no cover).
 //   - A file a test reads as text, where comments and spacing are content.
@@ -49,8 +49,8 @@ import { tmpdir } from 'node:os'
 import { extname, join } from 'node:path'
 
 // The inert files of implement/full-verification-gate.md; docs/ holds the documentation and process records of the
-// layout /repo-scaffold sets up. implement/SKILL.md forbids the tests that the gateway's test commands run from
-// reading them, and the gateway never skips a command that reads one.
+// layout /repo-scaffold sets up. implement/SKILL.md forbids the tests that a test command runs from reading them,
+// and a command that reads one does not count as a test command, so it is never skipped.
 const isInert = (path) => path === 'docs' || path.startsWith('docs/') || extname(path).toLowerCase() === '.md'
 
 const JS_TS = new Set(['.js', '.jsx', '.mjs', '.cjs', '.ts', '.tsx', '.mts', '.cts'])

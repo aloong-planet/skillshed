@@ -1,45 +1,63 @@
-# Post-implementation check: handoff and handback
+# Post-implementation review: one independent pass
 
-> Related: `/implement` step 6 ([post-implementation-check.md](../../implement/post-implementation-check.md)) · `/review-tests` ([SKILL.md](../../review-tests/SKILL.md))
+> Related: [delivery-flow](delivery-flow.md) · [closeout-path](closeout-path.md) · [project-documents](project-documents.md) · `/implement` ([post-implementation-check.md](../../implement/post-implementation-check.md)) · `/review-code` ([SKILL.md](../../review-code/SKILL.md), [independent-review.md](../../review-code/independent-review.md)) · `/review-tests` ([SKILL.md](../../review-tests/SKILL.md))
 
 ## Problem Statement
 
-`/implement` step 6 hands the written tests to an independent reviewer. The reviewer writes every dimension's conclusions and findings into the test review record, and then hands back a full report as its final message. That report repeats what the record already holds and stays in the main agent's context for the rest of the session, once per review round. Two copies of the same findings can also disagree, and nothing says which one the main agent must act on. The record has no fixed place where a round's findings are listed, so a short handback has nothing stable to point at.
+Once a change's tests passed, three checks followed one another. The main agent reviewed its own code and wrote a conclusion for every layer of the review. An independent reviewer then read the tests, wrote a conclusion for every dimension into a record, and came back for another round on the fix to the round before. Last, the main agent checked the spec clause by clause. The author of a change judges it by its own understanding of it, so its review can file a real defect as harmless. The later rounds of the test review mostly found weak assertions in the previous fix and mistakes in the record itself, and nobody read the records after the change merged.
 
 ## Solution
 
-The record lists each time point's findings in one numbered Findings subsection. The reviewer's handback shrinks to a pointer: the conclusion, the record's path, and each finding's identifier with a one-line title. The main agent reads the findings from the record, never from the handback. The handoff to the reviewer stays as it is.
-
-## User Stories
-
-### post-implementation-check::US-001 Act on findings from one source
-
-As the main agent running step 6, I want the reviewer to hand back only where its findings are, so that the findings live in one place, I act on the version that is kept, and the session does not carry a second copy of every round's report.
-
-- post-implementation-check::US-001/AC-01: After a post-implementation check (first or incremental), the reviewer's handback holds only the conclusion (whether this round has findings), the test review record's path, and, for each finding of this round, its identifier and a one-line title.
-- post-implementation-check::US-001/AC-02: The handback holds no finding body, no dimension conclusion, no evidence and no account of how the check was done.
-- post-implementation-check::US-001/AC-03: Before handling any finding, the main agent reads this round's Findings subsection of the record in full; it does not handle a finding from its handback title.
-- post-implementation-check::US-001/AC-04: When the handback and the record disagree (an identifier in one and not the other, or a title that does not match the finding), the record governs, and the main agent records the mismatch as an untrue record before handling the findings.
+One reviewer that did not see the conversation reads the change once. It reviews the code, reviews the tests, and checks that each acceptance criterion the change delivers is implemented and has a test guarding it. It hands back its findings and nothing else. The main agent decides what happens to each finding, makes the fixes, checks them itself and runs the tests they touch. There is no second round. Every finding and what was done about it reaches the user in the delivery note.
 
 ## Functional Requirements
 
-### post-implementation-check::REQ-001 One numbered Findings subsection per time point (direct acceptance)
+### post-implementation-check::REQ-002 Completion is signalled by the handback (direct acceptance)
 
-In the test review record, each time point's section (design review, post-implementation check, and each incremental post-implementation check) lists all of that round's findings under one subsection named with the fixed name 「发现」 (written per the project's `working-language`), each finding with an identifier that no other finding in the same record uses; a round with no findings still has the subsection and states that it found none.
+The review is complete only when the reviewer has handed back. Nothing the reviewer writes or runs before that is a completion signal.
 
-### post-implementation-check::REQ-002 Completion is still signalled by the handback (direct acceptance)
+### post-implementation-check::REQ-004 One review, once
 
-The check is complete only when the reviewer has handed back; the Findings subsection appearing or being written is not a completion signal.
+- post-implementation-check::REQ-004/AC-01: When the run of [delivery-flow::REQ-001/AC-01](delivery-flow.md) has passed, the main agent commits the change and hands it to one reviewer that does not inherit the conversation and loads the review skills itself.
+- post-implementation-check::REQ-004/AC-02: The review runs once for a delivery. What is changed after it, the fixes to its findings or anything else, is not reviewed again. A change made after a delivery was reported complete is a new delivery with its own review.
+- post-implementation-check::REQ-004/AC-03: While the reviewer runs, the main agent changes no code, no test and no data a test reads in that checkout.
+- post-implementation-check::REQ-004/AC-04: Where the tool cannot send a sub-agent, the main agent runs the review itself, and the delivery note says the review was not independent.
+- post-implementation-check::REQ-004/AC-05: A change judged small gets no independent review. The main agent reviews its own code by the layers `/review-code` defines, fixes what it finds, and writes each finding with its outcome into the delivery note.
 
-### post-implementation-check::REQ-003 An incremental check reads part of the record (direct acceptance)
+### post-implementation-check::REQ-005 What the reviewer checks
 
-In an incremental post-implementation check, the reviewer reads in the test review record only the test design table with its increments and the previous round's conclusions, findings and their handling, finding them by section heading, and gets the identifiers already used by searching. Its document-sync check of the record covers only those parts. Earlier rounds hold conclusions on earlier versions, which the check carries over rather than judges again.
+- post-implementation-check::REQ-005/AC-01: The code of the change, by the layers `/review-code` defines.
+- post-implementation-check::REQ-005/AC-02: The tests the change wrote or changed, by the dimensions `/review-tests` defines. Coverage is judged against the list of [project-documents::REQ-003/AC-04](project-documents.md).
+- post-implementation-check::REQ-005/AC-03: Each acceptance criterion the change delivers: the ticket's acceptance items where there is a ticket, otherwise the criteria of the spec text the change added or rewrote. For each one the reviewer finds where it is implemented and what guards it: a test, or the gate the ticket names for it. A criterion with no implementation, or with neither guard, is a finding, unless the ticket names evidence gathered by hand as its guarantee or the test file states it as a gap that cannot be driven. Behaviour the change adds that no criterion asks for is a finding, and so is an implementation that differs from what the spec states.
+- post-implementation-check::REQ-005/AC-04: The three are one pass by one reviewer over the same commit range.
+
+### post-implementation-check::REQ-006 The reviewer changes nothing
+
+- post-implementation-check::REQ-006/AC-01: The reviewer changes no file in the checkout or in the working records, and makes no commit.
+- post-implementation-check::REQ-006/AC-02: It may run the tests the change wrote or changed, commands that only collect tests without running them, and commands of its own that reproduce a finding. Files it needs for that are created outside the checkout. Where the project declares mutation testing enabled, the temporary changes that takes are restored before the handback.
+
+### post-implementation-check::REQ-007 What the reviewer hands back
+
+- post-implementation-check::REQ-007/AC-01: For each finding, an identifier, a one-line title and the failure it describes: what a user does, what data arrives or what change to the code produces the wrong result, and, for a missing guard, why no test would go red. A finding about behaviour that can be run gives the command that reproduces it and the output it got.
+- post-implementation-check::REQ-007/AC-02: A finding carries no patch, no draft of a fix and no draft of a test. It may name the direction of a fix in one sentence.
+- post-implementation-check::REQ-007/AC-03: After the findings, the handback gives the number of acceptance criteria checked and the number of tests reviewed. With no finding it says so and gives the two numbers. Where a check was skipped because the project's capability declaration leaves the capability off, not applicable or unconfirmed, a line says so for each.
+- post-implementation-check::REQ-007/AC-04: The handback holds no conclusion for a layer or dimension that produced no finding, no account of how the review was done and no table. No review record is written anywhere.
+
+### post-implementation-check::REQ-008 What the main agent does with a finding
+
+- post-implementation-check::REQ-008/AC-01: The main agent writes every finding of the handback into the delivery note before it acts on any, and gives each one of three outcomes there: fixed; left for the user to decide; not fixed, with the reason.
+- post-implementation-check::REQ-008/AC-02: A finding is left for the user to decide when settling it needs something the spec does not state and would change behaviour that can be observed: who else can change the data, where the product runs, which of two defensible behaviours is wanted. The main agent keeps the current behaviour where the work can go on without the decision, implements the behaviour it recommends and marks it provisional where it cannot, and writes neither into the spec before the user decides. Such a finding does not hold up the delivery.
+- post-implementation-check::REQ-008/AC-03: A finding the main agent disagrees with is not dropped. It is listed as not fixed, with the finding and the main agent's reason side by side.
+- post-implementation-check::REQ-008/AC-04: The main agent writes its own fix. It does not apply a patch or a test handed to it.
+- post-implementation-check::REQ-008/AC-05: For each fix the main agent checks, before running anything: the product code against the spec text it implements; each new or changed assertion against the false-green forms; that each branch and exit of a changed function is driven by a test or named as a gap; and the other users of a shared test helper it changed. A problem this finds is fixed. Nothing is written about the check.
+- post-implementation-check::REQ-008/AC-06: The fixes then pass the run of [delivery-flow::REQ-001/AC-02](delivery-flow.md).
+- post-implementation-check::REQ-008/AC-07: The delivery note gives the commit range of what was changed in code, tests or test data after the handover, and states that it was not independently reviewed.
 
 ## Constraints
 
-### post-implementation-check::CON-001 The handoff to the reviewer is unchanged (direct acceptance)
+### post-implementation-check::CON-001 What the reviewer is given (direct acceptance)
 
-Applies to: the first and the incremental post-implementation check. The reviewer is still given only the global instruction files, the spec and test review record paths, the commit range(s), and the gate and targeted log paths; no diff file or other package is generated for it, and no judgment about the tests is written into the handoff.
+Applies to: the handoff. The reviewer is given the checkout's absolute path, the fork point and the commit handed over, the slugs of the specs the change touches, the ticket where there is one, and the instruction to load the review skills and run the review. It is given no judgement of the code or the tests, no account of how the change was made, and not the list of cases the author planned.
 
 ### post-implementation-check::CON-002 Tool-independent wording (direct acceptance)
 
@@ -47,25 +65,23 @@ Applies to: the clauses that define the handback. They name what the reviewer's 
 
 ## Failure modes and boundaries
 
-Listed in the order a step 6 round runs.
-
-1. **Nothing executable changed.** The first check does not run, so there is no reviewer and no handback; the record states the skip and its basis ([closeout-path::REQ-005](closeout-path.md)).
-2. **No findings.** The handback states none and gives the path, with no identifiers; the record's Findings subsection states none (REQ-001).
-3. **Many findings.** The handback lists every finding of the round, one line each; it does not summarise or merge them to stay short (US-001/AC-01).
-4. **Incremental round.** New findings get identifiers not used earlier in the record; the handback lists only this round's findings. How the earlier rounds' findings were handled stays where the record already keeps it (REQ-001).
-5. **Reviewer stops before handing back** (crash, interruption, context exhausted). There is no handback, so the check is not complete even if the Findings subsection is already written; the main agent does not start fixing from a half-written record (REQ-002).
-6. **Handback and record disagree.** The record governs; the mismatch is recorded as an untrue record (US-001/AC-04).
-7. **The tool cannot spawn a subagent.** The main agent runs the check itself; there is no handback, and REQ-001 still applies to the record.
-8. **Working language.** A `zh` project writes 「发现」, an `en` project the registered English name; neither invents its own (REQ-001, `/repo-scaffold`'s artifact-name rules).
-9. **A ticket continued from records written before this rule.** Earlier rounds are not rewritten; each round run from now on writes its own Findings subsection (REQ-001).
-10. **Design review.** The main agent runs it in step 4 with no handback; its section still carries a Findings subsection (REQ-001).
+1. **Nothing executable changed.** The review does not run, and the delivery note states the skip and its basis ([closeout-path::REQ-005](closeout-path.md)).
+2. **No finding.** The handback says so and gives the two numbers (REQ-007/AC-03).
+3. **The reviewer stops before handing back** (crash, interruption, context exhausted), **or hands back without the two numbers.** The review is not complete (REQ-002). The main agent sends it out once more with the same handoff; if that one does not hand back either, it runs the review itself and the delivery note says the review was not independent.
+4. **The reviewer changed a file or made a commit.** On the handback the main agent compares the checkout with the commit it handed over, undoes a commit the reviewer made, restores a changed file from that commit, tells the user, and still uses the findings (REQ-006/AC-01).
+5. **A fix turns out large.** There is still no second review; the delivery note's statement of REQ-008/AC-07 is what tells the user.
+6. **The handback carries a patch all the same.** It is not applied (REQ-008/AC-04).
+7. **A finding needs the user's decision.** It does not hold up the delivery and is in the note (REQ-008/AC-02).
+8. **The change has no ticket and adds or rewrites no acceptance criterion**, such as a fix that restores behaviour the spec already states. The reviewer checks the changed code against the spec text it implements, and the handback gives zero criteria checked (REQ-005/AC-03, REQ-007/AC-03).
 
 ## Implementation Decisions
 
-- The handback's content is defined in `/review-tests`, under the same condition as its run-evidence clause (when run on `/implement` step 6's handoff): the reviewer loads `/review-tests`, not `/implement`'s reference files, so a rule kept only in the latter would never reach it.
-- 「发现」 is a registered fixed name; its English name is Findings, the name records already use.
+- The reviewer loads `/review-code` and `/review-tests`. What it checks, what it may not change and what it hands back are stated once, in a reference file of `/review-code` that both skills have the reviewer read, since it does not load `/implement`'s reference files. The rules for handing over and for handling the findings are in `/implement`'s reference file, which only the main agent reads.
+- `/review-code`'s subject is a commit range, read without the author's context. Run in the session that wrote the change, for a small change or at the user's request, it reviews that session's change and reports the same way.
 
 ## Out of Scope
 
-- A review package (commit list, stat and diff written to a file for the reviewer): a full diff of a ticket's range is many times what reviewers read through targeted `git diff`, because the range also carries records, prototypes and documents, and a lighter list (commits, stat, changed paths) would replace only a few tool calls per review.
-- A read budget for the reviewer (outside the fix range, read only for a named risk): in a first check `/review-tests` itself requires reading the test files, the spec, the records and the logs, and several searches (live-path checks, shared setup, import relations). In incremental checks there is little to cut beyond the one read REQ-003 narrows: reads tied to none of the fix range, the material needed to check it (the spec, code the changed tests import or the changed lines name, shared setup), finding the scope, or reads the rules require anyway are few.
+- A second round, or any independent review of fixes.
+- A second reader for the findings the main agent leaves unfixed. The user reads them in the delivery note instead.
+- A smaller model for the reviewer. It runs on the model the tool gives it.
+- A package of the diff written to a file for the reviewer. The reviewer reads the range through git itself.

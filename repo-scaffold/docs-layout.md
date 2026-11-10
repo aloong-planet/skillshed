@@ -12,14 +12,14 @@
 | `docs/adr/` | 为什么这么定、否决了什么 | `/domain-modeling` |
 | `docs/specs/<slug>.md` | 这个功能当前版本的行为、定下的边界、哪些明确不做 | `/to-spec` |
 | `docs/prototypes/` | 界面与状态模型的设计参考 | `/prototype` |
-| `docs/postmortems/` | 某次事故的因果链 | `/implement` 第 7 步 |
+| `docs/postmortems/` | 某次事故的因果链 | `/implement` |
 | `docs/ops/` | 本项目的运维手册(签名、发布等的实际取值) | 各项目自定 |
 
 **过程类**——回答「当时是怎么干的」:
 
 | 位置 | 内容 |
 |---|---|
-| `docs/.workings/<slug>/` | 施工票、`review-code.md`、`review-tests.md` |
+| `docs/.workings/<slug>/` | 本地票、需求对齐记录、feature checklist、每次交付的交付说明 |
 
 **`docs/.workings/` 不进仓库(仓库 `.gitignore` 忽略整个目录),内容保留、不删,但不得被任何 skill 当作可靠依据。** 用 worktree 工作时写在哪个检出里,见全局指令「施工记录存储」节。 读它只为回答「这件事当时为什么这么做」,不得据以推断现状。与结论类文档冲突时一律以结论类为准,**且不必回头修改施工记录**——它就该保持当时的样子。它是隐藏目录,不参与文档发布,也不被 `docs/**/*.md` 这类 glob 匹配。
 

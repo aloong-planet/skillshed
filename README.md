@@ -40,8 +40,8 @@ The collection connects discovery, design, delivery, and maintenance:
 
 1. **Establish facts and agree on requirements.** Use `grill-with-docs` to investigate the current system and resolve decisions with the user. Use `domain-modeling` for domain vocabulary and architectural decisions.
 2. **Make the design concrete.** Use `prototype` to resolve design questions and `to-spec` to record the agreed behavior, boundaries, and acceptance criteria.
-3. **Divide work when needed.** Use `to-tickets` for work that spans multiple implementation sessions, with dependencies and acceptance evidence attached to each ticket.
-4. **Implement and verify.** Use `implement` to coordinate development, targeted verification, code review, test review, and delivery. `tdd` and `review-tests` address both test design and whether tests actually detect defects.
+3. **Divide work when needed.** Use `to-tickets` for work that spans multiple implementation sessions, with dependencies and, for each acceptance item, the gate, test, or evidence that guarantees it.
+4. **Implement and verify.** Use `implement` to coordinate development, the runs that follow the change, one independent review of the code, the tests and the acceptance criteria, and a delivery handed to a sub-agent. `tdd` shapes the tests as they are written; `review-code` and `review-tests` define what the independent reviewer checks. A delivery keeps one record, its delivery note, which becomes the pull request's description.
 5. **Check the documents at the end of a change.** Use `features-catalog` to hand a sub-agent the check of specifications, decisions, terminology, and the other documents that describe the product against the implementation and against each other.
 
 The individual skills define the detailed gates and exceptions. For example, `implement` has a lighter path for changes judged small; it does not require every task to become a new specification or ticket.
@@ -53,10 +53,10 @@ The individual skills define the detailed gates and exceptions. For example, `im
 | [repo-scaffold](repo-scaffold/SKILL.md) | Establish the project conventions and capability declarations used by the workflow. |
 | [domain-modeling](domain-modeling/SKILL.md) | Clarify terminology, maintain the domain glossary, and record architectural decisions. |
 | [tdd](tdd/SKILL.md) | Develop through test-driven slices with tests that remain useful through refactoring. |
-| [review-code](review-code/SKILL.md) | Review assumptions, runtime behavior, security, and consistency in a change. |
-| [review-tests](review-tests/SKILL.md) | Review test design, defect detection, duplication, and shared test resources. |
+| [review-code](review-code/SKILL.md) | Review assumptions, runtime behavior, security, and consistency in a commit range, and define the independent review's handback. |
+| [review-tests](review-tests/SKILL.md) | Review written tests for coverage, false greens, duplication, placement, and shared test resources. |
 | [features-catalog](features-catalog/SKILL.md) | Check project documents against the implementation and each other at the end of a change. |
-| [github-ops](github-ops/SKILL.md) | Define conventions for branches, commits, pull requests, CI, and releases. |
+| [github-ops](github-ops/SKILL.md) | Define conventions for branches, commits, pull requests, CI, and releases, and carry out a delegated delivery. |
 | [research](research/SKILL.md) | Investigate a question against primary sources and record the findings with their citations. |
 | [ui-design](ui-design/SKILL.md) | Apply shared requirements to user-facing interface changes. |
 | [i18n](i18n/SKILL.md) | Guide multilingual interfaces, localized wording, and language preferences. |

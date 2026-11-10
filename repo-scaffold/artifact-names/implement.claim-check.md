@@ -11,3 +11,4 @@
 | 成立 | Holds |
 | 不成立 | False |
 | 证据不足 | Not enough evidence |
+| 发现 | Findings |

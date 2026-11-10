@@ -8,5 +8,4 @@
 | 全 feature 验收与文档回归 | full-feature acceptance and documentation regression |
 | 这是收口票。 | This is the closeout ticket. |
 | 核对 commit | Checked commit |
-| 本票产物与流程验收 | Ticket artifacts and process acceptance |
 | 产品验收 | Product acceptance |

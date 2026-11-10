@@ -1,5 +1,5 @@
 // Tests for change-scope.mjs. Each case builds a throwaway git repository, changes its working directory
-// and runs the script as the gateway does. Needs python3 on PATH:
+// and runs the script as implement/full-verification-gate.md says to. Needs python3 on PATH:
 //   node --test implement/change-scope.test.mjs
 // The repositories hold no typescript package unless a case writes one, so every JS/TS case also checks
 // that the script needs none from the project.

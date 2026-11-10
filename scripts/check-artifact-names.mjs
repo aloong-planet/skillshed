@@ -23,15 +23,11 @@ const TABLE_DIR = 'repo-scaffold/artifact-names'
 const CJK = /[㐀-鿿豈-﫿]/
 const CJK_G = /[㐀-鿿豈-﫿]/g
 
-// Where templates live. `fence`: fenced blocks with these info strings; `tag`: <tag>…</tag> blocks;
-// `tables`: the header row of the tables whose first header cell is in `headerOf`, and the first column of
-// the body rows of those in `firstColumnOf`.
+// Where templates live. `fence`: fenced blocks with these info strings; `tag`: <tag>…</tag> blocks.
 const TEMPLATES = [
   { file: 'to-spec/SKILL.md', kind: 'fence', langs: ['md'] },
   { file: 'to-tickets/feature-checklist.md', kind: 'tag', tags: ['checklist-template'] },
   { file: 'to-tickets/ticket-templates.md', kind: 'tag', tags: ['local-ticket-template', 'closeout-ticket-template', 'issue-template'] },
-  // Only the parts written into tickets: the sync checklist's header row and the process-acceptance item names
-  { file: 'to-tickets/ticket-artifacts.md', kind: 'tables', headerOf: ['同步事项及触发时点'], firstColumnOf: ['验收项'] },
   { file: 'domain-modeling/ADR-FORMAT.md', kind: 'fence', langs: ['md'] },
   { file: 'domain-modeling/CONTEXT-FORMAT.md', kind: 'fence', langs: ['md'] },
   { file: 'repo-scaffold/scaffolding.md', kind: 'fence', langs: ['markdown'] }
@@ -62,7 +58,7 @@ function parseTable(text) {
   }
   return rows
 }
-/** `to-spec.md` → `to-spec/SKILL.md`; `to-tickets.ticket-artifacts.md` → `to-tickets/ticket-artifacts.md` */
+/** `to-spec.md` → `to-spec/SKILL.md`; `to-tickets.feature-checklist.md` → `to-tickets/feature-checklist.md` */
 function definingFileOf(table) {
   const stem = table.replace(/\.md$/, ''), dot = stem.indexOf('.')
   return dot < 0 ? `${stem}/SKILL.md` : `${stem.slice(0, dot)}/${stem.slice(dot + 1)}.md`
@@ -121,17 +117,6 @@ function mask(text) {
 }
 function blocksOf(t) {
   const lines = read(t.file).split('\n'), out = []
-  if (t.kind === 'tables') {
-    lines.forEach((l, i) => {
-      if (!/^\|/.test(l) || !/^\|[\s:|-]+\|$/.test(lines[i + 1] ?? '')) return
-      const first = l.split('|')[1].trim()
-      if (t.headerOf.includes(first)) out.push({ start: i + 1, lines: [l] })
-      if (t.firstColumnOf.includes(first)) {
-        for (let j = i + 2; j < lines.length && lines[j].startsWith('|'); j++) out.push({ start: j + 1, lines: [`| ${lines[j].split('|')[1].trim()} |`] })
-      }
-    })
-    return out
-  }
   let cur = null
   lines.forEach((l, i) => {
     if (t.kind === 'fence') {
