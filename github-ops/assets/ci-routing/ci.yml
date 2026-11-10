@@ -63,7 +63,7 @@ jobs:
       - run: pnpm test
       - run: pnpm build
 
-  # The one required check. `needs` lists every other job of this workflow; `always()` makes it run after a
+  # The one required check. `needs` must list every other job of this workflow; `always()` makes it run after a
   # failure or a skip upstream, which `!cancelled()` or the default `success()` would not.
   ci-gate:
     name: CI gate

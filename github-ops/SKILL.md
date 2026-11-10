@@ -93,7 +93,7 @@ git log --oneline origin/main..HEAD   # 本分支相对 main 到底带了哪些 
 
 - **门禁 = 检查 workflow + 把它的 `CI gate` 设为必需的分支规则**,缺一不可。发版 workflow 不算门禁——它只在打 tag 时触发。判据是 checks-gate.md 第 1 节「存在性判据」那条检索,无输出即没有门禁。
 - **门禁 workflow 至少跑 typecheck + test + build**,子包全覆盖;子包有独立 lockfile 的要单独 install。
-- **从 `assets/ci-routing/` 起步**:产品 job 由 PR 的改动路径决定是否运行,默认分支的 push 全部运行;分类与判定脚本不改代码,项目只写 `routing.json` 与它的用例。workflow 级 `paths` 过滤一律不写。
+- **从 `assets/ci-routing/` 起步**:产品 job 由 PR 的改动路径决定是否运行,默认分支的 push 全部运行;分类与判定脚本不改代码,项目只写 `routing.json` 与它的用例。门禁 workflow 不写 workflow 级 `paths` 过滤。
 - **Node 版本不能照抄打包 workflow**:打包时产物跑的是运行时自带的 node,检查时测试跑在 runner 的 node 上,`node:sqlite` 这类版本敏感的内置模块由后者提供。
 - **门禁必须证明「能红」**:一道从未失败过的门禁与没有门禁在证据上等价。本地能完整跑通的门禁先本地变异(改—跑—直接捕获退出码—还原);只有依赖 CI 环境才能复现的才开一次性 PR,变异要打不同步骤并预写预期失败步骤,验完关闭删分支、绝不合并。
 - **GitHub 侧三项缺一不生效**:Enforcement 改 Active(默认 Disabled)、Target branches 非空、添加 `CI gate`(取 job 的 `name`,未设则取 job id)。别把 Cloudflare Pages / Vercel 这类部署检查设为必需——不触及该目录的 PR 会因它从不运行而永久卡住。

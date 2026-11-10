@@ -49,11 +49,11 @@ grep -rln "node:sqlite\|node:test" src/    # 项目用到的版本敏感内置�
 
 ## 2. 固定名称的 gate 与按改动范围路由
 
-本节约束门禁 workflow 的 job 结构,以及用 [assets/ci-routing/](assets/ci-routing/) 按 PR 的改动路径决定哪些产品 job 运行。分类与判定的固定行为写在 `ci-scope.mjs` 与 `ci-gate.mjs` 的文件头,本节不复述。
+本节约束分支规则登记哪些必需检查、门禁 workflow 的 job 结构,以及用 [assets/ci-routing/](assets/ci-routing/) 按 PR 的改动路径决定哪些产品 job 运行。分类与判定的固定行为写在 `ci-scope.mjs` 与 `ci-gate.mjs` 的文件头,本节不复述。
 
 ### 必需检查只登记 gate
 
-- 分支规则的必需检查必须只登记门禁 workflow 的 `CI gate`,加上别的 workflow 各自独立运行的检查;不得登记任何产品 job,只有一个产品的仓库同样不得。机理:必需检查按名字匹配,登记了产品 job 的仓库,日后拆分 job 或开始路由时,必须先让新名报出成功、再改线上规则、最后删旧 job,其间顺序错一步,要么所有 PR 卡在等待一个不再运行的检查,要么门禁静默失效。
+- 分支规则的必需检查必须只登记门禁 workflow 的 `CI gate`,加上别的 workflow 里在每个 PR 上都运行、且不是部署类的检查(§4「不选部署类检查」);不得登记任何产品 job,只有一个产品的仓库同样不得。机理:必需检查按名字匹配,登记了产品 job 的仓库,日后拆分 job 或开始路由时就得改必需检查的名字(§4「改必需检查的名字」),其间顺序错一步,要么所有 PR 卡在等待一个不再运行的检查,要么门禁静默失效;只登记 gate,这些改动都不碰必需检查。
 - 门禁 workflow 不得写 workflow 级的 `paths` 或 `paths-ignore`:整个 workflow 不运行时,必需检查停在等待、PR 合不了;路由只能落在 job 级的 `if` 上,被跳过的 job 才会报告为跳过。
 
 ### 资产怎么放
@@ -72,7 +72,7 @@ grep -rln "node:sqlite\|node:test" src/    # 项目用到的版本敏感内置�
 
 ### job 与 routing.json 对齐
 
-每次改门禁 workflow 或 `routing.json`,必须枚举 workflow 的全部 job id,逐个按下表核对,任一项不符即违反:
+每次新建或改动门禁 workflow 或 `routing.json`,必须枚举 workflow 的全部 job id,逐个按下表核对,任一项不符即违反:
 
 | job | 必须满足 |
 |---|---|
@@ -86,14 +86,14 @@ grep -rln "node:sqlite\|node:test" src/    # 项目用到的版本敏感内置�
 
 ### 写 routing.json
 
-- 规则取第一条命中的,所以必须依次写:跨产品的共享输入(根依赖与锁文件、lint 与类型检查的共用配置、共用的测试工具)、只被仓库规范检查读取的文档、各产品自己的目录。
+- 规则取第一条命中的,所以必须依次写:跨产品的输入——共享输入(根依赖与锁文件、lint 与类型检查的共用配置、共用的测试工具,选中全部范围)与下面枚举出的跨产品读取——、只被仓库规范检查读取的文档、各产品自己的目录。
 - 文档规则只得列出没有任何产品的构建、测试或检查会读取的路径;不得写 `**/*.md` 或整个 `docs/**` 这类按扩展名或按目录整体豁免的模式:产品目录里的 Markdown 可以是界面内容或 fixture,`docs/` 下可以有被检查脚本读取的原型。**判据**:对每条文档模式,在各产品的代码、测试与构建配置里检索它第一个 `*` 之前的部分(没有 `*` 的检索整条模式),无命中才可列为文档。
-- 写各产品的规则前,必须枚举跨产品读取:对每个产品,在它的代码、测试与构建配置里检索指向其他产品目录的路径——其他产品的目录名字面量,与越出本产品根目录的相对路径(`../`)各检索一次;命中的每个被读文件,都写进一条排在文档规则之前、同时选中读写两方范围的规则。不做这次检索,一个改动经由这类文件弄坏另一个产品时,PR 上那个产品的检查不会运行,要到合并后默认分支的 run 才会红。
+- 写各产品的规则前,必须枚举跨产品读取:对每个产品,在它的代码、测试与构建配置里检索指向其他产品目录的路径——其他产品的目录名字面量,与越出本产品根目录的相对路径(`../`)各检索一次;命中的每个被读文件,都写进跨产品的输入里一条同时选中读写两方范围的规则。不做这次检索,一个改动经由这类文件弄坏另一个产品时,PR 上那个产品的检查不会运行,要到合并后默认分支的 run 才会红。
 - `routing-rules.test.mjs` 必须为 `routing.json` 的每个模式写至少一行用例:路径取自仓库实际跟踪的文件,期望的范围写成字面量;模板最后那条「每个模式都被某行用例命中」的断言不得删。
 
 ### 首次上线
 
-上线时必须从下列三次 run 各读出并核对,任一项不符即门禁未生效:
+上线时必须从下列三次 run 各读出并核对;任一项不符的,必须修好门禁,并在下一次同类 run 上重新核对该项:
 
 | run | 核对 |
 |---|---|
@@ -152,7 +152,9 @@ gh api "repos/<owner>/<repo>/commits/<sha>/check-runs" \
 
 **不选部署类检查。** 下拉里会同时出现部署类检查(Cloudflare Pages、Vercel 等)。把部署检查设为必需的后果:不触及被部署目录的 PR 因为它从不运行,会永久卡在「等待检查」而合不了。
 
-**改必需检查的名字**,必须依次:让新名字在一次 run 里报出成功;改线上规则,并按下面「核验实际生效的配置」读回;最后才删旧 job。先删旧 job,所有 PR 卡在等待它;先改规则而新名字还没报过,同样卡住。
+### 改必需检查的名字
+
+必须依次:让新名字在一次 run 里报出成功;改线上规则,并按下面「核验实际生效的配置」读回;最后才删旧 job。先删旧 job,所有 PR 卡在等待它;先改规则而新名字还没报过,同样卡住。
 
 ### 两个附加选项的取舍
 
@@ -193,7 +195,7 @@ gh api repos/<owner>/<repo>/rulesets/<id> --jq '{
 }'
 ```
 
-四项全部对上才算配好:`enforcement=active`、`include` 非空、`rules` 含 `required_status_checks`、`checks` 是门禁那条。
+四项全部对上才算配好:`enforcement=active`、`include` 非空、`rules` 含 `required_status_checks`、`checks` 恰好是 §2「必需检查只登记 gate」规定登记的那几条。
 
 **多条 ruleset 并存时逐个查**。`enforcement=disabled` 且 `include=[]` 的是建了没配完的残留,删除前先确认它的规则集是现存规则的子集:
 
@@ -216,7 +218,7 @@ remote: - Required status check "checks" is expected.
  ! [remote rejected] <branch> -> master (push declined due to repository rule violations)
 ```
 
-这改变 SKILL.md §3 标准发版流程的第 1–3 步:**改 version 的 commit 不能直推默认分支,必须走 PR**。
+所以发版时改 version 的 commit 按 [release.md](release.md)「标准发版流程」第 3 步走 PR。
 
 不受影响的:**tag 推送**。ruleset 的 target 是 branch,`git push origin v1.2.0` 照常触发发版 workflow。
 
