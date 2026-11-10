@@ -1,6 +1,6 @@
 # Closeout path
 
-> Related: `/implement` ([SKILL.md](../../implement/SKILL.md), [claim-check.md](../../implement/claim-check.md), [post-implementation-check.md](../../implement/post-implementation-check.md)) · `/features-catalog` ([SKILL.md](../../features-catalog/SKILL.md)) · `/to-tickets` ([ticket-artifacts.md](../../to-tickets/ticket-artifacts.md))
+> Related: `/implement` ([SKILL.md](../../implement/SKILL.md), [claim-check.md](../../implement/claim-check.md), [post-implementation-check.md](../../implement/post-implementation-check.md)) · `/features-catalog` ([SKILL.md](../../features-catalog/SKILL.md)) · `/to-tickets` ([ticket-templates.md](../../to-tickets/ticket-templates.md))
 
 ## Problem Statement
 

@@ -7,5 +7,4 @@
 | 直接验收 | direct acceptance |
 | 需求来源 | Requirement sources |
 | 技术前提 | Technical prerequisites |
-| 流程验收 | Process acceptance |
 | 不受本轮影响 | Not affected this round |

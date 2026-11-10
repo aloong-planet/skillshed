@@ -5,8 +5,6 @@ description: Breaks a plan, spec, or conversation into independently deliverable
 
 # To Tickets
 
-使用本文件的文档同步规则时，必须完整读取 [文档同步与记录维护](../implement/document-sync.md)。
-
 Break a plan, spec, or conversation into a set of **tickets** — tracer-bullet vertical slices, each declaring the tickets that **block** it.
 
 The issue tracker and the agent-grabbable label string should have been provided to you in `docs/agents/issue-tracker.md` — run `/repo-scaffold` if not.
@@ -43,7 +41,7 @@ Break the work into **tracer bullet** tickets.
 
 </vertical-slice-rules>
 
-Give each ticket its **blocking edges** — the other tickets that must complete before it can start. A ticket with no blockers can start immediately.
+Give each ticket its **blocking edges** — the other tickets that must be complete before it can start; a ticket is complete once the change that names it is in the default branch. A ticket with no blockers can start immediately.
 
 **Once the slices are drafted, verify coverage by enumeration.** Mechanically enumerate the full set of things the change touches, then map every item to a ticket. Anything left without an owning ticket is a gap: add or widen a ticket, then re-check.
 
@@ -51,13 +49,13 @@ Give each ticket its **blocking edges** — the other tickets that must complete
 
 Pick the enumeration technique to fit the change (repo-wide search, exhausting a type, walking a directory, listing call sites). One criterion decides whether it counts: **the result must be a reproducible listing, not a recollection.**
 
-Before presenting the breakdown in step 4, draft its acceptance criteria and complete the requirements audit in **The feature checklist** (read [feature-checklist.md](feature-checklist.md) in full first). The change-surface enumeration above must not substitute for that audit. 必须完整读取 [Ticket 产物与文档同步清单](ticket-artifacts.md)，将其中的产物声明、同步项计划与最终流程验收纳入草案和双向审核；不得因此提前发布 tickets。
+Before presenting the breakdown in step 4, draft its acceptance criteria and complete the requirements audit in **The feature checklist** (read [feature-checklist.md](feature-checklist.md) in full first). The change-surface enumeration above must not substitute for that audit.
 
 **A feature cut into more than one ticket ends with a dedicated closeout ticket** — numbered last, blocked by every other ticket in the feature, and named so nobody has to infer it: the file is `<NN>-feature-closeout.md`, or on a tracker the title opens with `收口:`. **Like wide refactors below, it is an exception to vertical slicing**: it carries the full-feature closeout (see `/features-catalog`), runs `/implement`'s closeout path, and delivers no product behaviour of its own, so it is verifiable but not demoable.
 
 **Never let "the last ticket" be inferred from numbering.** Blocking edges form a graph, not a line: a feature can have several leaf tickets, and which one finishes last depends on execution order rather than slicing order. A step that runs exactly once, at the end, needs a ticket that declares itself — counting cannot identify one, and whoever guesses wrong skips the step in silence.
 
-A feature cut into a single ticket gets no closeout ticket: with one ticket there is no cross-ticket combination to check, and that ticket's own step 8 already spans its whole range.
+A feature cut into a single ticket gets no closeout ticket: with one ticket there is no cross-ticket combination to check, and that ticket's own closing document check already spans its whole range.
 
 **Wide refactors are the exception to vertical slicing.** A **wide refactor** is one mechanical change — rename a column, retype a shared symbol — whose **blast radius** fans across the whole codebase, so a single edit breaks thousands of call sites at once and no vertical slice can land green. Don't force it into a tracer bullet; sequence it as **expand–contract**. First expand: add the new form beside the old so nothing breaks. Then migrate the call sites over in batches sized by blast radius (per package, per directory), each batch its own ticket blocked by the expand, keeping CI green batch to batch because the old form still exists. Finally contract: delete the old form once no caller remains, in a ticket blocked by every migrate batch. When even the batches can't stay green alone, keep the sequence but let them share an integration branch that all block a final integrate-and-verify ticket — green is promised only there.
 
@@ -86,11 +84,9 @@ Publish the approved tickets. Before writing any ticket, read [ticket-templates.
 
 **Write each ticket's prose — title and body, in either tracker shape — in the repository's working language**: the `working-language` value in `capabilities.toml` (field format in `/repo-scaffold`'s capability registry; read and write rules in the global instructions' 「项目能力声明」 section). If it is undeclared, stop and ask the user; never pick a language yourself.
 
-Work the **frontier**: any ticket whose blockers are all done. For a purely linear chain that means top to bottom.
+Work the **frontier**: any ticket whose blockers are all complete. For a purely linear chain that means top to bottom.
 
-发布 tickets 时，必须按 [Ticket 产物与文档同步清单](ticket-artifacts.md) 创建已确认的同步清单并填入各票的产物声明；tracker 标识只有发布后才可取得时，必须取得真实标识后再补齐对应路径，不得猜号。
-
-切票发布期间不得关闭或修改父 issue；后续实施与验收中的关联状态回写必须遵守 [文档同步与记录维护](../implement/document-sync.md)，不得将切票授权当作父 issue 修改授权。
+切票发布期间不得关闭或修改父 issue;切票的授权不是修改父 issue 的授权。
 
 ## Every acceptance criterion must name what guarantees it
 
@@ -98,13 +94,13 @@ Each criterion must state which of three tiers backs it. A criterion carrying no
 
 - **Gate** — enforced by automation: failing it turns something red and the implementer cannot route around it. Name which gate.
 - **Test** — covered by a specific case. On completion the case must be nameable.
-- **Evidence** — human verification only. On completion a reviewable artifact must exist: screenshot, command output, measurement. A criterion whose evidence is a search returning nothing must record **the search command together with its empty output** — an empty result is also the shape of a search that never read the target, so the command is what makes the two distinguishable.
+- **Evidence** — human verification only. Name the reviewable artifact completion must produce: a screenshot, a command with its output, a measurement. A criterion whose evidence is a search returning nothing must name **the search command**, not only the expectation that nothing is found — an empty result is also the shape of a search that never read the target, so the command is what makes the two distinguishable.
 
 **There is no fourth tier.** A criterion fitting none of them is either too vague to verify — rewrite it — or not an acceptance criterion at all but a design note — move it into the body.
 
-The reason is mechanical: **a checkbox is not evidence.** It records that someone claimed completion, never what that completion rested on. A fully ticked list whose items cannot each name their guarantee is worth no more than no list at all.
+Acceptance items carry no checkboxes ([ticket-templates.md](ticket-templates.md)), for a mechanical reason: **a checkbox is not evidence.** It records that someone claimed completion, never what that completion rested on, and ticking it is an edit to the ticket after the work. A list whose items cannot each name their guarantee is worth no more than no list at all.
 
-When no verification mechanism can be named, first check whether the expected result is explicit, whether a suitable seam exists, and whether the required tools and environment are available. Record the actual gap; do not infer a missing injectable seam from unverifiability alone. If a new seam is necessary, confirm it with the user and include the approved seam work in the same ticket as a technical prerequisite, following “技术前提与流程验收” in the shared requirement standard.
+When no verification mechanism can be named, first check whether the expected result is explicit, whether a suitable seam exists, and whether the required tools and environment are available. Record the actual gap; do not infer a missing injectable seam from unverifiability alone. If a new seam is necessary, confirm it with the user and include the approved seam work in the same ticket as a technical prerequisite, following 「技术前提」 in the shared requirement standard.
 
 When the same criterion recurs across several tickets, back it with **one mechanism** and have those tickets reference it, rather than confirming it by hand in each. Once the mechanism exists, verify separately that it can actually fail — a check that has never failed is, on the evidence, indistinguishable from no check.
 

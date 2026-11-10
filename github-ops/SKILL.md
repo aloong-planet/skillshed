@@ -14,6 +14,7 @@ when_to_use: "Activate for any git branch creation / commit / push / PR / releas
 
 - 发版(改版本号、打 tag、写 Release note):[release.md](release.md);写 Release note 时同时读 [release-note-template.md](release-note-template.md),发版中等 CI 结果时同时读 [ci-watch.md](ci-watch.md)。
 - 等 CI 运行结果、判断某次运行的结论:[ci-watch.md](ci-watch.md)。
+- 作为被派来执行交付的子 agent(委派方给出检出、分支、交出的 commit 与交付说明文件,要求推送、开 PR 并等 CI):[delivery.md](delivery.md),等 CI 时同时读 [ci-watch.md](ci-watch.md)。
 - 新建、查看、评论、改标签或关闭 Issue:[issues.md](issues.md)。
 - 新建 GitHub 仓库、首次推送,或给已有本地历史的目录接 remote:[first-push.md](first-push.md)。
 
