@@ -4,8 +4,7 @@
 // For each `uses:` line in the workflow files under .github/workflows of the current directory:
 //   - the reference must be `owner/repo[/path]@<40 lower-case hex digits>`, and the line must end with `# v<x.y.z>`;
 //   - one `owner/repo` must be pinned to the same commit on every line, across all files;
-//   - references into the same repository (`./...`, and `$/...` for a reusable workflow) and `docker://`
-//     references are not checked.
+//   - references into the same repository (`./...` and `$/...`) and `docker://` references are not checked.
 //
 // The check is line-based on purpose: the release comment is not part of the YAML data, so a YAML parser
 // cannot see it. A `uses` key written in a form the line reader does not understand (a flow mapping such as
