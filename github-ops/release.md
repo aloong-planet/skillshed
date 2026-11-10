@@ -38,7 +38,7 @@
 2. **本地验证全绿**再发:typecheck + test + build(用项目实际脚本)。
 3. commit(**无 AI 署名**)+ push。**默认分支若配了 required status checks,直推会被拒**(见 [SKILL.md](SKILL.md) 第 5 节),此时版本号变更也走 PR,合并后再打 tag。
 4. 打 tag + push tag(正式版 tag 或预发布 tag,见本文「发版 / Release 标准」)。tag 推送不受分支规则影响。
-5. **盯 CI 到完成**:跑本 skill 自带的 `watch-ci.sh`(用法与原理见 [ci-watch.md](ci-watch.md))。不得手写轮询循环。
+5. **盯 CI 到完成**:必须按 [ci-watch.md](ci-watch.md) 执行。
 6. **下载 Release 产物独立验证**(不只信 CI 绿):逐个平台的产物下载下来实际检查。macOS 安装包按本文「发版 / Release 标准」开头的能力开关处理——启用时按 macOS 指南中发版时的 macOS 步骤验。
 7. **写 Release note(约定:CI 验证通过后主动做,不等用户开口)**:
    - CI `conclusion=success` 且第 6 步产物验证通过后,**主动提醒用户**"该更新 release note 了"。
