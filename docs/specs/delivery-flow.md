@@ -8,7 +8,7 @@ Once the tests of a change passed, much of what followed kept records in step in
 
 ## Solution
 
-The main agent writes the change and its tests, runs the tests the change touches, and deals with the findings of the one review. What only it knows, it writes into the spec, an ADR or the glossary. The rest goes to sub-agents: the document check and the delivery. A test command runs in full once for a delivery, in the pull request's CI where the CI carries it. One record is kept, the delivery note, and nothing is written after the merge.
+The main agent writes the change and its tests, runs the tests the change touches, and deals with the findings of the review. What only it knows, it writes into the spec, an ADR or the glossary. The rest goes to sub-agents: the document check and the delivery. A test command runs in full once for a delivery, in the pull request's CI where the CI carries it. One record is kept, the delivery note, and nothing is written after the merge.
 
 ## Functional Requirements
 
@@ -38,7 +38,7 @@ Applies to the runs that verify a change once it is written. The runs made while
 
 ### delivery-flow::REQ-003 What is written down
 
-- delivery-flow::REQ-003/AC-01: A delivery has one record, its delivery note: what changed and why; each finding of the review with its outcome; each command that ran with its result; the evidence for each acceptance item that a ticket guarantees by evidence gathered by hand; what was not verified; what waits for the user's decision; the screenshots [project-documents::REQ-004/AC-02](project-documents.md) asks for; and what is left for someone else to do.
+- delivery-flow::REQ-003/AC-01: A delivery has one record, its delivery note: what changed and why; the change's risk tier and where it came from, except for a closeout ticket, which has none ([risk-tiers::REQ-002/AC-06](risk-tiers.md)); each finding of the review with its outcome; each command that ran with its result; the evidence for each acceptance item that a ticket guarantees by evidence gathered by hand; what was not verified; what waits for the user's decision; the screenshots [project-documents::REQ-004/AC-02](project-documents.md) asks for; and what is left for someone else to do.
 - delivery-flow::REQ-003/AC-02: The note is drafted in a file in the change's working-record directory from the moment the review hands back. It becomes the description of the pull request, and is the report to the user where there is no pull request.
 - delivery-flow::REQ-003/AC-03: No skill writes or requires a code review record, a test review record, a table of planned test cases, a document sync checklist, a regression report, a log of a run, a copy of a command's output, or a table of verification status. The one exception is the claim check of a closeout ([closeout-path::REQ-003](closeout-path.md)).
 - delivery-flow::REQ-003/AC-04: Where the note rests a statement on a command, such as a search that found nothing or a test that failed before a fix, it gives the command and what it returned.

@@ -40,7 +40,7 @@ The review is complete only when the reviewer has handed back. Nothing the revie
 
 - post-implementation-check::REQ-007/AC-01: For each finding, an identifier, a one-line title and the failure it describes: what a user does, what data arrives or what change to the code produces the wrong result, and, for a missing guard, why no test would go red. A finding about behaviour that can be run gives the command that reproduces it and the output it got.
 - post-implementation-check::REQ-007/AC-02: A finding carries no patch, no draft of a fix and no draft of a test. It may name the direction of a fix in one sentence.
-- post-implementation-check::REQ-007/AC-03: After the findings, the handback gives the number of acceptance criteria checked and the number of tests reviewed. For a core-tier change it also gives the number of entries checked ([risk-tiers::REQ-005/AC-02](risk-tiers.md)). With no finding it says so and gives the two numbers. Where a check was skipped because the project's capability declaration leaves the capability off, not applicable or unconfirmed, a line says so for each.
+- post-implementation-check::REQ-007/AC-03: After the findings, the handback gives the number of acceptance criteria checked and the number of tests reviewed. For a core-tier change it also gives the number of entries checked ([risk-tiers::REQ-005/AC-02](risk-tiers.md)). With no finding it says so and gives these numbers. Where a check was skipped because the project's capability declaration leaves the capability off, not applicable or unconfirmed, a line says so for each.
 - post-implementation-check::REQ-007/AC-04: The handback holds no conclusion for a layer or dimension that produced no finding, no account of how the review was done and no table. No review record is written anywhere.
 
 ### post-implementation-check::REQ-008 What the main agent does with a finding
@@ -51,13 +51,13 @@ The review is complete only when the reviewer has handed back. Nothing the revie
 - post-implementation-check::REQ-008/AC-04: The main agent writes its own fix. It does not apply a patch or a test handed to it.
 - post-implementation-check::REQ-008/AC-05: For each fix the main agent checks, before running anything: the product code against the spec text it implements; each new or changed assertion against the false-green forms; that each branch and exit of a changed function is driven by a test or named as a gap; and the other users of a shared test helper it changed. A problem this finds is fixed. Nothing is written about the check.
 - post-implementation-check::REQ-008/AC-06: The fixes then pass the run of [delivery-flow::REQ-001/AC-02](delivery-flow.md).
-- post-implementation-check::REQ-008/AC-07: The delivery note gives the commit range of what was changed in code, tests or test data after the handover, and states that it was not independently reviewed.
+- post-implementation-check::REQ-008/AC-07: The delivery note gives the commit range of what was changed in code, tests or test data after the last handover to a reviewer, and states that it was not independently reviewed.
 
 ## Constraints
 
 ### post-implementation-check::CON-001 What the reviewer is given (direct acceptance)
 
-Applies to: the handoff. The reviewer is given the checkout's absolute path, the fork point and the commit handed over, the slugs of the specs the change touches, the ticket where there is one, for a core-tier change that it is core tier, and the instruction to load the review skills and run the review. It is given no judgement of the code or the tests, no account of how the change was made, and not the list of cases the author planned.
+Applies to: the handoff. The reviewer is given the checkout's absolute path, the start of the range (the fork point, or for the second review of a core-tier change the commit first handed over) and the commit handed over, the slugs of the specs the change touches, the ticket where there is one, for a core-tier change that it is core tier, and the instruction to load the review skills and run the review. It is given no judgement of the code or the tests, no account of how the change was made, and not the list of cases the author planned.
 
 ### post-implementation-check::CON-002 Tool-independent wording (direct acceptance)
 
@@ -66,8 +66,8 @@ Applies to: the clauses that define the handback. They name what the reviewer's 
 ## Failure modes and boundaries
 
 1. **Nothing executable changed.** The review does not run, and the delivery note states the skip and its basis ([closeout-path::REQ-005](closeout-path.md)).
-2. **No finding.** The handback says so and gives the two numbers (REQ-007/AC-03).
-3. **The reviewer stops before handing back** (crash, interruption, context exhausted), **or hands back without the two numbers.** The review is not complete (REQ-002). The main agent sends it out once more with the same handoff; if that one does not hand back either, it runs the review itself and the delivery note says the review was not independent.
+2. **No finding.** The handback says so and gives the two numbers, and for a core-tier change the number of entries checked (REQ-007/AC-03).
+3. **The reviewer stops before handing back** (crash, interruption, context exhausted), **or hands back without the two numbers, or, for a core-tier change, without the number of entries checked.** The review is not complete (REQ-002). The main agent sends it out once more with the same handoff; if that one does not hand back either, it runs the review itself and the delivery note says the review was not independent.
 4. **The reviewer changed a file or made a commit.** On the handback the main agent compares the checkout with the commit it handed over, undoes a commit the reviewer made, restores a changed file from that commit, tells the user, and still uses the findings (REQ-006/AC-01).
 5. **A fix turns out large.** Its size brings no second review; only a core-tier change whose fixes change product code gets one ([risk-tiers::REQ-005/AC-03](risk-tiers.md)). The delivery note's statement of REQ-008/AC-07 is what tells the user.
 6. **The handback carries a patch all the same.** It is not applied (REQ-008/AC-04).

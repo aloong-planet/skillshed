@@ -67,12 +67,12 @@ Applies to every change carried out through `/implement`, other than a closeout 
 2. **The user declares a tier below the one the agent would assess.** The declared tier is taken. The agent says beforehand which tier it would have assessed, and the delivery note records the declaration (REQ-002/AC-05, AC-06).
 3. **A ticket's tier and a declaration of the user's differ.** The declaration applies (REQ-002/AC-03).
 4. **A ticket states no tier**, because it was cut before tiers existed or was written by hand. The agent that implements it assesses the tier (REQ-002/AC-02).
-5. **The fixes after the review change only tests, documents or comments.** No second review (REQ-005/AC-03).
+5. **The fixes after the review change only tests, data a test reads, documents, or comments in JavaScript, TypeScript or Python files.** No second review (REQ-005/AC-03).
 6. **A fix made after the second review, or to a CI failure after it.** It is not reviewed, and the delivery note says so (REQ-005/AC-04).
 7. **The tool cannot send a sub-agent.** The main agent runs both reviews itself and the delivery note says they were not independent ([post-implementation-check::REQ-004/AC-04](post-implementation-check.md)).
 8. **A light-tier ticket of a feature cut into several tickets.** The main agent checks its acceptance items (REQ-004/AC-03). The feature's closeout, where it has one, checks the whole feature as before.
 9. **A repository whose Markdown is its product**, such as skills or instructions for agents. The script finds no executable content in a change to them, so such a change would qualify under REQ-006; the repository leaves that capability off, and every pull request waits for its owner (REQ-006/AC-01).
-10. **A change of comments only, in code files.** The script finds the executable content unchanged, and REQ-006 applies to it as to a change of documents.
+10. **A change of comments only, in JavaScript, TypeScript or Python files.** The script finds the executable content unchanged, and REQ-006 applies to it as to a change of documents. In a file of any other type the script counts a changed comment as executable content.
 11. **A repository with no CI that pull requests trigger.** REQ-006/AC-02 cannot hold, and every pull request waits for the owner.
 12. **A CI run fails on a pull request that qualified under REQ-006.** It is not merged. After the fix the conditions are judged again on the new head; a fix that changed executable content waits for the owner.
 13. **A change edits the capability declaration.** The script counts it as executable content, so it is never merged under REQ-006 and waits for the owner.
