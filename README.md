@@ -42,7 +42,7 @@ The collection connects discovery, design, delivery, and maintenance:
 2. **Make the design concrete.** Use `prototype` to resolve design questions and `to-spec` to record the agreed behavior, boundaries, and acceptance criteria.
 3. **Divide work when needed.** Use `to-tickets` for work that spans multiple implementation sessions, with dependencies and acceptance evidence attached to each ticket.
 4. **Implement and verify.** Use `implement` to coordinate development, targeted verification, code review, test review, and delivery. `tdd` and `review-tests` address both test design and whether tests actually detect defects.
-5. **Keep the project description current.** Use `features-catalog` to maintain current feature documentation and check it against specifications, implementation, decisions, terminology, and prototypes.
+5. **Check the documents at the end of a change.** Use `features-catalog` to hand a sub-agent the check of specifications, decisions, terminology, and the other documents that describe the product against the implementation and against each other.
 
 The individual skills define the detailed gates and exceptions. For example, `implement` has a lighter path for changes judged small; it does not require every task to become a new specification or ticket.
 
@@ -55,7 +55,7 @@ The individual skills define the detailed gates and exceptions. For example, `im
 | [tdd](tdd/SKILL.md) | Develop through test-driven slices with tests that remain useful through refactoring. |
 | [review-code](review-code/SKILL.md) | Review assumptions, runtime behavior, security, and consistency in a change. |
 | [review-tests](review-tests/SKILL.md) | Review test design, defect detection, duplication, and shared test resources. |
-| [features-catalog](features-catalog/SKILL.md) | Maintain descriptions of current features and reconcile related project documents. |
+| [features-catalog](features-catalog/SKILL.md) | Check project documents against the implementation and each other at the end of a change. |
 | [github-ops](github-ops/SKILL.md) | Define conventions for branches, commits, pull requests, CI, and releases. |
 | [research](research/SKILL.md) | Investigate a question against primary sources and record the findings with their citations. |
 | [ui-design](ui-design/SKILL.md) | Apply shared requirements to user-facing interface changes. |

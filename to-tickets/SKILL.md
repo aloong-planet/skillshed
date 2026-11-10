@@ -104,7 +104,7 @@ Each criterion must state which of three tiers backs it. A criterion carrying no
 
 The reason is mechanical: **a checkbox is not evidence.** It records that someone claimed completion, never what that completion rested on. A fully ticked list whose items cannot each name their guarantee is worth no more than no list at all.
 
-When no verification mechanism can be named, first check whether the expected result is explicit, whether a suitable seam exists, and whether the required tools and environment are available. Record the actual gap; do not infer a missing injectable seam from unverifiability alone. If a new seam is necessary, follow /to-spec's “勾画测试 seam” decision process and include the approved seam work in the same ticket as a technical prerequisite, following “技术前提与流程验收” in the shared requirement standard.
+When no verification mechanism can be named, first check whether the expected result is explicit, whether a suitable seam exists, and whether the required tools and environment are available. Record the actual gap; do not infer a missing injectable seam from unverifiability alone. If a new seam is necessary, confirm it with the user and include the approved seam work in the same ticket as a technical prerequisite, following “技术前提与流程验收” in the shared requirement standard.
 
 When the same criterion recurs across several tickets, back it with **one mechanism** and have those tickets reference it, rather than confirming it by hand in each. Once the mechanism exists, verify separately that it can actually fail — a check that has never failed is, on the evidence, indistinguishable from no check.
 

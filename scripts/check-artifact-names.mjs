@@ -32,7 +32,6 @@ const TEMPLATES = [
   { file: 'to-tickets/ticket-templates.md', kind: 'tag', tags: ['local-ticket-template', 'closeout-ticket-template', 'issue-template'] },
   // Only the parts written into tickets: the sync checklist's header row and the process-acceptance item names
   { file: 'to-tickets/ticket-artifacts.md', kind: 'tables', headerOf: ['同步事项及触发时点'], firstColumnOf: ['验收项'] },
-  { file: 'features-catalog/SKILL.md', kind: 'fence', langs: ['md'] },
   { file: 'domain-modeling/ADR-FORMAT.md', kind: 'fence', langs: ['md'] },
   { file: 'domain-modeling/CONTEXT-FORMAT.md', kind: 'fence', langs: ['md'] },
   { file: 'repo-scaffold/scaffolding.md', kind: 'fence', langs: ['markdown'] }
