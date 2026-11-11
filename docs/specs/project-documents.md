@@ -85,7 +85,7 @@ The two specs this repository already has lose their testing-decisions sections 
 
 - The `features-catalog` skill keeps its name and keeps the closing document check; its selector describes the check only. Renaming it is left to the redesign of the flow.
 - In that skill, the rules for handing over and for checking the handback open `SKILL.md`, and the three-stage regression moves to a reference file the sub-agent reads in full. The three ways a statement goes untrue stay the sub-agent's method for finding what to judge; it writes none of it down. The full-feature closeout stays where a closeout ticket's own session reads it.
-- The wording for the model tier follows the rule already used for handing the CI wait to a sub-agent, and the wording for effort follows the rule already used for evidence gathering, so the three rules read alike.
+- The wording for the model tier follows the rule already used for handing the CI wait to a sub-agent, and the wording for effort follows the rule `/research` already used for its gatherer, so the three rules read alike.
 - The fixed names that existed only for catalogue pages leave the artifact-name tables; "In one line" moves to `/to-spec`'s table with the specs index template. `scripts/check-artifact-names.mjs` is adjusted to match.
 - The owner's global instructions name the catalogue, the exhaustive section and the prototype rule in their outline of the flow. That file is outside this repository and is changed by the owner's session when this change merges.
 
