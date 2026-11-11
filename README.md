@@ -88,11 +88,12 @@ node scripts/check-artifact-names.mjs
 node scripts/check-prototype-copies.mjs
 ```
 
-The change-scope helper and the action-pin check can be tested directly:
+The change-scope helper, the action-pin check and the CI routing scripts can be tested directly:
 
 ```sh
 node --test implement/change-scope.test.mjs
 node --test github-ops/check-action-pins.test.mjs
+node --test github-ops/assets/ci-routing/ci-routing.test.mjs github-ops/assets/ci-routing/routing-rules.test.mjs
 ```
 
 The packaging helper's tests also need `electron-builder` and its dependency tree. To provide them without adding dependencies to this checkout, install them in a temporary directory with pnpm:
