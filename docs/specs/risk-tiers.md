@@ -60,6 +60,8 @@ Applies to every change carried out through `/implement`, other than a closeout 
 - risk-tiers::REQ-006/AC-04: The delivery note of such a change says, before the pull request is opened, that the change holds no executable content and will be merged once its CI passes, under the project's declaration. After the merge the main agent tells the user the pull request's address, that it was merged without approval, and the merge commit.
 - risk-tiers::REQ-006/AC-05: The merge is made the way an approved merge is made.
 - risk-tiers::REQ-006/AC-06: The project's declaration is read only for a change whose executable content equals its fork point. A change with executable content waits for the owner whatever the project declares, and a project that has not declared the capability is not asked about it for such a change.
+- risk-tiers::REQ-006/AC-07: Before a project declares the capability on, the user is told what it reaches: every change the script finds to hold no executable content. The question names what that takes in beyond specs and ADRs: the project's instruction files, every file under `docs/` with the prototypes and their scripts and styles among them, and a change of comments alone in a JavaScript, TypeScript or Python file. A user who turns it on is then asked which of those files they want to see before a merge, and the answer is written as a standing request in the project's `AGENTS.md`, naming each file or directory.
+- risk-tiers::REQ-006/AC-08: The user asks to see a change before it merges (AC-02) either for one change, in the conversation, or as a standing request written where the agent's instructions are. A standing request that names files or directories holds for a pull request that changes any of them, whatever else the pull request changes, and that pull request waits for approval.
 
 ## Failure modes and boundaries
 
@@ -77,6 +79,7 @@ Applies to every change carried out through `/implement`, other than a closeout 
 12. **A CI run fails on a pull request that qualified under REQ-006.** It is not merged. After the fix the conditions are judged again on the new head; a fix that changed executable content waits for the owner.
 13. **A change edits the capability declaration.** The script counts it as executable content, so it is never merged under REQ-006 and waits for the owner.
 14. **A light-tier change decides behaviour for a feature that has no spec.** The decided behaviour is stated in the delivery note; writing that feature's spec is a change of its own (REQ-003/AC-02).
+15. **A pull request that changes only a project's instruction file, or a prototype under `docs/`.** The script reads every file under `docs/` and every Markdown file as holding no executable content, so the pull request qualifies under REQ-006 and merges without approval, unless a standing request of the user's names the file (REQ-006/AC-08). The user is told so before the project turns the capability on (REQ-006/AC-07).
 
 ## Implementation Decisions
 
@@ -86,6 +89,7 @@ Applies to every change carried out through `/implement`, other than a closeout 
 - The reviewer's entry-by-entry check is in the reference file of `/review-code` that both review skills have the reviewer read. `/tdd`'s list of planned cases names the entries of REQ-005/AC-01.
 - One capability ID joins the registry in `/repo-scaffold`, a section with the base fields only: the merge of REQ-006, whose `source` is the document that records the project's adoption of it. It has no enforcing command.
 - `/github-ops`'s rule that a merge needs the user's explicit authorization gains the one exception of REQ-006. The delivery sub-agent still never merges.
+- What the user is told and asked before the capability is turned on (REQ-006/AC-07) is in the registry, with the capability's definition. What counts as a request to see a change first (REQ-006/AC-08) is with the conditions of the merge, in the delivery rules of `/implement`.
 - A declaration that is to outlast a conversation is written where the agent's instructions are: a project's `AGENTS.md` for that project, the owner's global instructions for every project. Those files are the owner's; the global instructions are outside this repository, and their outline of the flow follows this spec.
 
 ## Out of Scope
