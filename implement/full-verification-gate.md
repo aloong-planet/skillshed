@@ -1,6 +1,6 @@
 # 改动写成之后的运行
 
-本文适用于 `/implement` 在改动写成之后为验证它而跑的命令:实现完成后、送审之前的审查前运行,修复之后的修复后运行,每条测试命令在一次交付里的那一次完整运行,以及哪些命令不再运行。写测试与代码的过程中跑的命令(如每个纵切完成后跑的类型检查与该纵切的单测)属于写的过程,不归本文;`/features-catalog` 全 feature 收口逐项查证时作为证据运行的测试、陈述核对为取证运行的命令,以及按 [post-implementation-check.md](post-implementation-check.md)「处置发现」节「先查证再修」一条为得到一条发现所述的错误结果而跑的命令,也不归本文。入口:[SKILL.md](SKILL.md)「轻档路径」节与「实现」节第 5 项、[post-implementation-check.md](post-implementation-check.md) 与 [delivery-and-feedback.md](delivery-and-feedback.md)。
+本文适用于 `/implement` 在改动写成之后为验证它而跑的命令:实现完成后、送审之前的审查前运行,修复之后的修复后运行,每条测试命令在一次交付里的那一次完整运行,以及哪些命令不再运行。写测试与代码的过程中跑的命令(如每个纵切完成后跑的类型检查与该纵切的单测)属于写的过程,不归本文;`/features-catalog` 全 feature 收口逐项查证时作为证据运行的测试、陈述核对为取证运行的命令、按 [delivery-and-feedback.md](delivery-and-feedback.md)「取证」一节为取证运行的命令,以及按 [post-implementation-check.md](post-implementation-check.md)「处置发现」节「先查证再修」一条为得到一条发现所述的错误结果而跑的命令,也不归本文。入口:[SKILL.md](SKILL.md)「轻档路径」节与「实现」节第 5 项、[post-implementation-check.md](post-implementation-check.md) 与 [delivery-and-feedback.md](delivery-and-feedback.md)。
 
 ## 命令的界定与通则
 
