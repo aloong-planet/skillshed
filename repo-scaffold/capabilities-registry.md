@@ -61,6 +61,12 @@ enforced-by = ["pnpm lint"]
 
 「前提」列写了条件的 ID,只在条件成立时适用,条件不成立时不适用;「前提」为「无」的 ID 总是适用。适用与不适用的 ID 各自怎样写、怎样读,以全局指令的「项目能力声明」节为准。
 
+### 问 `docs-auto-merge` 取什么值时
+
+向用户问 `docs-auto-merge` 取什么值时,提问里必须写明启用后哪些改动不等用户批准即合并:按 implement 的 [full-verification-gate.md](../implement/full-verification-gate.md)「可执行内容变没变」条判为可执行内容没有变的全部改动。提问里必须点明其中包括:项目的指令文件(如 `AGENTS.md`、`CLAUDE.md`);`docs/` 下的全部文件,原型及其脚本与样式在内;只改了注释的 JS/TS 与 Python 文件。
+
+用户答启用的,必须接着问上面点明的各类文件里有没有要在合并之前先看的。有的,必须在项目的 `AGENTS.md` 里写一条长期要求:改动这些文件的 PR 在合并之前先给用户看,文件或目录逐一点名。
+
 ### `macos-distribution` 的实现指南
 
 分发政策(哪种构建签名、哪种公证、无证书怎么办)与框架无关;怎么打包按 `client-framework` 读对应的指南:
