@@ -14,7 +14,7 @@ The main agent writes the change and its tests, runs the tests the change touche
 
 ### delivery-flow::REQ-001 The runs follow the change
 
-Applies to the runs that verify a change once it is written. The runs made while a test and its code are being written are part of writing them.
+Applies to the runs that verify a change once it is written. The runs made while a test and its code are being written are part of writing them. A run the main agent makes to obtain the wrong result a review finding describes, before it fixes that finding ([post-implementation-check::REQ-008/AC-08](post-implementation-check.md)), is not one of these runs either.
 
 - delivery-flow::REQ-001/AC-01: After the implementation and before the review, the main agent runs the type check, the lint, and the tests the change touches: the test files it wrote or changed, the test files that import a module it changed, and the test files that read a configuration or data file it changed. The list comes from a search, not from memory. Running a whole test command instead of the files selected from it also meets this.
 - delivery-flow::REQ-001/AC-02: After the fixes to the review's findings, and after any other change made once the review was sent, the same run for what they touch.
