@@ -67,7 +67,7 @@ description: 按 spec、ticket 或用户提出的改动要求实施开发并交�
 
 ## 交付
 
-必须完整读取 [delivery-and-feedback.md](delivery-and-feedback.md),按其「交付」节交出文档核对、跑本地的完整运行、交出交付、核对交回,并按其处理合并。
+必须完整读取 [delivery-and-feedback.md](delivery-and-feedback.md),按其「交付」节交出文档核对、跑本地的完整运行、取证、交出交付、核对交回,并按其处理合并。
 
 ## 交付说明
 
