@@ -8,13 +8,13 @@ Once the tests of a change passed, much of what followed kept records in step in
 
 ## Solution
 
-The main agent writes the change and its tests, runs the tests the change touches, and deals with the findings of the review. What only it knows, it writes into the spec, an ADR or the glossary. The rest goes to sub-agents: the document check and the delivery. A test command runs in full once for a delivery, in the pull request's CI where the CI carries it. One record is kept, the delivery note, and nothing is written after the merge.
+The main agent writes the change and its tests, runs the tests the change touches, and deals with the findings of the review. What only it knows, it writes into the spec, an ADR or the glossary. The rest goes to sub-agents: the document check, the gathering of the evidence a delivery still lacks when that takes three or more commands, files and screenshots, and the delivery. A test command runs in full once for a delivery, in the pull request's CI where the CI carries it. One record is kept, the delivery note, and nothing is written after the merge.
 
 ## Functional Requirements
 
 ### delivery-flow::REQ-001 The runs follow the change
 
-Applies to the runs that verify a change once it is written. The runs made while a test and its code are being written are part of writing them. A run the main agent makes to obtain the wrong result a review finding describes, before it fixes that finding ([post-implementation-check::REQ-008/AC-08](post-implementation-check.md)), is not one of these runs either.
+Applies to the runs that verify a change once it is written. The runs made while a test and its code are being written are part of writing them. A run the main agent makes to obtain the wrong result a review finding describes, before it fixes that finding ([post-implementation-check::REQ-008/AC-08](post-implementation-check.md)), is not one of these runs either. Neither is a command run to gather evidence for the delivery (REQ-006).
 
 - delivery-flow::REQ-001/AC-01: After the implementation and before the review, the main agent runs the type check, the lint, and the tests the change touches: the test files it wrote or changed, the test files that import a module it changed, and the test files that read a configuration or data file it changed. The list comes from a search, not from memory. Running a whole test command instead of the files selected from it also meets this.
 - delivery-flow::REQ-001/AC-02: After the fixes to the review's findings, and after any other change made once the review was sent, the same run for what they touch.
@@ -58,6 +58,23 @@ Applies to the runs that verify a change once it is written. The runs made while
 - delivery-flow::REQ-005/AC-03: On a tracker that closes a ticket from a pull request, the pull request's description names the ticket so that the merge closes it. Nobody edits a ticket or comments on it after the merge, on any tracker. A ticket is done when the change that names it is in the default branch.
 - delivery-flow::REQ-005/AC-04: A feature delivered as one ticket, or with none, has no table of which ticket delivers what. A feature cut into several keeps it. The feature checklist has no part for current verification.
 
+### delivery-flow::REQ-006 Evidence is gathered before the delivery
+
+Applies to the evidence a delivery still lacks once the local runs of REQ-001/AC-03 are done. Evidence is a screenshot, a command's output or a measurement that the delivery note must attach or give (REQ-003/AC-01), or that the project's instruction file, its `AGENTS.md`, asks to be obtained with a delivery.
+
+- delivery-flow::REQ-006/AC-01: After those runs and before the delivery is handed over, the main agent lists in its reply each piece of evidence it has not yet obtained, and each command to run, file to read and screenshot to take to obtain them. It reads the project's instruction file first when that file is not in its context. A delivery that lacks no evidence has none of what follows.
+- delivery-flow::REQ-006/AC-02: Where every command, file and screenshot can be listed and together they number fewer than three, the main agent obtains the evidence itself.
+- delivery-flow::REQ-006/AC-03: Where they number three or more, or some of them cannot be listed, the gathering goes to a sub-agent that does not inherit the conversation.
+- delivery-flow::REQ-006/AC-04: Where the tool lets that sub-agent's model be chosen, it is the tier one above the smallest, of the latest generation, named the way [project-documents::REQ-005/AC-02](project-documents.md) names a tier. A main session already on the smallest tier uses that tier.
+- delivery-flow::REQ-006/AC-05: The change is committed before the handover, with nothing uncommitted left in the checkout, and the main agent neither changes the checkout nor commits until the handback.
+- delivery-flow::REQ-006/AC-06: The handoff carries the checkout's absolute path and that commit; each piece of evidence and what it must prove; the commands and files already listed; and the directory the screenshots go in, which is below the directory of the delivery note. For a screenshot it names the interface point, the state the point must be in and the steps that reach that state. For an acceptance item that a ticket guarantees by evidence gathered by hand it copies the ticket's wording, and for evidence the project's instruction file asks for it copies the clause that asks. It requires that every piece come from running the code at that commit, that no tracked file be changed and that nothing be committed.
+- delivery-flow::REQ-006/AC-07: The handback says of each piece whether it was obtained. For one that was, it gives the screenshot's path, or the command, its exit code and the part of its output that proves the item. For one that was not, it gives the reason.
+- delivery-flow::REQ-006/AC-08: On the handback the main agent first checks that the checkout's head is still that commit and that no tracked file has changed. If either fails, it changes nothing and tells the user. Otherwise it deletes the untracked files left outside the screenshot directory.
+- delivery-flow::REQ-006/AC-09: A piece for which the handback lacks what AC-07 asks is handed over once more, alone. If it is still lacking, the main agent obtains it.
+- delivery-flow::REQ-006/AC-10: A piece the handback says could not be obtained, the main agent sets out to obtain itself. It does not record the piece as unobtainable on the sub-agent's word alone.
+- delivery-flow::REQ-006/AC-11: The main agent opens every screenshot handed back. It attaches one to the delivery note only if it shows the interface point and the state the handoff named; one that does not is a piece lacking under AC-09.
+- delivery-flow::REQ-006/AC-12: Where the tool cannot send a sub-agent, the main agent obtains the evidence itself.
+
 ## Constraints
 
 ### delivery-flow::CON-001 Tool-independent wording (direct acceptance)
@@ -74,10 +91,12 @@ Applies to: the clauses on sub-agents and their models. They name what is handed
 6. **Local ticket files, or a tracker that cannot close a ticket from a pull request.** Nothing is edited; the ticket is done when its change is in the default branch (REQ-005/AC-03).
 7. **A ticket cut under the earlier rules**, with checkboxes and process-acceptance items. It is implemented as it stands; its boxes are not ticked and the records it names are not written (REQ-005, REQ-003/AC-06).
 8. **The fork point's CI did not pass, or never ran.** REQ-001/AC-06 still applies: the change cannot have altered what a test command does. A default branch that is failing is not found by this delivery.
-9. **A light-tier change** ([risk-tiers::REQ-004](risk-tiers.md)). It gets the main agent's own review in place of the independent one and hands over no document check. REQ-001, REQ-003, REQ-004 and the delivery of REQ-002/AC-03 to AC-06 apply to it as to any change.
+9. **A light-tier change** ([risk-tiers::REQ-004](risk-tiers.md)). It gets the main agent's own review in place of the independent one and hands over no document check. REQ-001, REQ-003, REQ-004, REQ-006 and the delivery of REQ-002/AC-03 to AC-06 apply to it as to any change.
 10. **The user reports on a change already delivered.** A defect or added scope is a new delivery, continued on the pull request's branch where that pull request is not merged yet. An acceptance writes nothing (REQ-003/AC-05, REQ-005/AC-03).
 11. **The CI carries a command but its job did not run on the pull request's head.** Where the job was skipped by the CI's own routing by changed paths and the workflow's gate passed, the command does not run for this delivery. In any other case the CI did not carry it this time, and it runs locally on that head (REQ-001/AC-03).
 12. **No CI is triggered by a pull request in the repository.** Every test command and check runs locally before the delivery, and the delivery does not wait for a CI (REQ-001/AC-03, AC-09). A change under REQ-001/AC-06 still runs no test command.
+13. **What some piece of evidence takes cannot all be listed.** The gathering goes to the sub-agent, however few commands, files and screenshots were listed (REQ-006/AC-03).
+14. **The sub-agent that gathers evidence changed a tracked file, or the checkout's head moved while it worked.** The main agent changes nothing and tells the user (REQ-006/AC-08).
 
 ## Implementation Decisions
 
@@ -85,6 +104,7 @@ Applies to: the clauses on sub-agents and their models. They name what is handed
 - The rules on per-ticket records and on the sync checklist leave `/to-tickets` and `/implement`; `/implement` keeps the order of the steps and the reference files for the runs and the handoffs.
 - `change-scope.mjs` still decides whether executable content changed.
 - The delivery sub-agent waits for the CI itself, with the script `/github-ops` already has for that.
+- The sub-agent that gathers evidence loads no skill. What binds it is written into its handoff.
 - The fixed names that only the removed records had leave the artifact-name tables.
 - The owner's global instructions outline the flow and list the working records. That file is outside this repository, and its outline and list follow this spec.
 
