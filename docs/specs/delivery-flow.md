@@ -1,6 +1,6 @@
 # Delivery flow
 
-> Related: [post-implementation-check](post-implementation-check.md) · [project-documents](project-documents.md) · [closeout-path](closeout-path.md) · [risk-tiers](risk-tiers.md) · `/implement` ([SKILL.md](../../implement/SKILL.md)) · `/tdd` ([SKILL.md](../../tdd/SKILL.md)) · `/to-tickets` ([SKILL.md](../../to-tickets/SKILL.md)) · `/github-ops` ([SKILL.md](../../github-ops/SKILL.md), [delivery.md](../../github-ops/delivery.md))
+> Related: [post-implementation-check](post-implementation-check.md) · [project-documents](project-documents.md) · [closeout-path](closeout-path.md) · [risk-tiers](risk-tiers.md) · `/implement` ([SKILL.md](../../implement/SKILL.md)) · `/tdd` ([SKILL.md](../../tdd/SKILL.md)) · `/to-tickets` ([SKILL.md](../../to-tickets/SKILL.md)) · `/ui-design` ([SKILL.md](../../ui-design/SKILL.md)) · `/github-ops` ([SKILL.md](../../github-ops/SKILL.md), [delivery.md](../../github-ops/delivery.md))
 
 ## Problem Statement
 
@@ -67,12 +67,12 @@ Applies to the evidence a delivery still lacks once the local runs of REQ-001/AC
 - delivery-flow::REQ-006/AC-03: Where they number three or more, or some of them cannot be listed, the gathering goes to a sub-agent that does not inherit the conversation.
 - delivery-flow::REQ-006/AC-04: Where the tool lets that sub-agent's model be chosen, it is the tier one above the smallest, of the latest generation, named the way [project-documents::REQ-005/AC-02](project-documents.md) names a tier. A main session already on the smallest tier uses that tier.
 - delivery-flow::REQ-006/AC-05: The change is committed before the handover, with nothing uncommitted left in the checkout, and the main agent neither changes the checkout nor commits until the handback.
-- delivery-flow::REQ-006/AC-06: The handoff carries the checkout's absolute path and that commit; each piece of evidence and what it must prove; the commands, files and interface operations already listed, the operations in order under the piece they belong to; and the directory the screenshots go in, which is below the directory of the delivery note. For a screenshot it names the interface point and the state the point must be in. For an acceptance item that a ticket guarantees by evidence gathered by hand it copies the ticket's wording, and for evidence the project's instruction file asks for it copies the clause that asks. It requires that every piece come from running the code at that commit, that no tracked file be changed and that nothing be committed.
+- delivery-flow::REQ-006/AC-06: The handoff carries the checkout's absolute path and that commit; each piece of evidence and what it must prove; the commands, files and interface operations already listed, the operations in order under the piece they belong to; and the directory the screenshots go in, which is below the directory of the delivery note. For a screenshot it names the interface point and the state the point must be in, and states what `/ui-design` asks of evidence taken of an interface: what the screenshot must take in and, where it is taken from a build product, that the product is fresh. The main agent loads `/ui-design` first when it is not in its context. For an acceptance item that a ticket guarantees by evidence gathered by hand it copies the ticket's wording, and for evidence the project's instruction file asks for it copies the clause that asks. It requires that every piece come from running the code at that commit, that no tracked file be changed and that nothing be committed.
 - delivery-flow::REQ-006/AC-07: The handback says of each piece whether it was obtained. For one that was, it gives the screenshot's path, or the command, its exit code and the part of its output that proves the item. For one that was not, it gives the reason.
 - delivery-flow::REQ-006/AC-08: On the handback the main agent first checks that the checkout's head is still that commit and that no tracked file has changed. If either fails, it changes nothing and tells the user. Otherwise it deletes the untracked files left outside the screenshot directory.
 - delivery-flow::REQ-006/AC-09: A piece for which the handback lacks what AC-07 asks is handed over once more, alone. If it is still lacking, the main agent obtains it.
 - delivery-flow::REQ-006/AC-10: A piece the handback says could not be obtained, the main agent sets out to obtain itself. It does not record the piece as unobtainable on the sub-agent's word alone.
-- delivery-flow::REQ-006/AC-11: The main agent opens every screenshot handed back. It attaches one to the delivery note only if it shows the interface point and the state the handoff named; one that does not is a piece lacking under AC-09.
+- delivery-flow::REQ-006/AC-11: The main agent opens every screenshot handed back. It attaches one to the delivery note only if it shows the interface point and the state the handoff named and takes in what the handoff asked; one that does not is a piece lacking under AC-09.
 - delivery-flow::REQ-006/AC-12: Where the tool cannot send a sub-agent, the main agent obtains the evidence itself.
 
 ## Constraints
@@ -105,7 +105,7 @@ Applies to: the clauses on sub-agents and their models. They name what is handed
 - The rules on per-ticket records and on the sync checklist leave `/to-tickets` and `/implement`; `/implement` keeps the order of the steps and the reference files for the runs and the handoffs.
 - `change-scope.mjs` still decides whether executable content changed.
 - The delivery sub-agent waits for the CI itself, with the script `/github-ops` already has for that.
-- The sub-agent that gathers evidence loads no skill. What binds it is written into its handoff.
+- The sub-agent that gathers evidence loads no skill. What binds it is written into its handoff, and that includes what `/ui-design` asks of a screenshot, which the main agent writes there.
 - The fixed names that only the removed records had leave the artifact-name tables.
 - The owner's global instructions outline the flow and list the working records. That file is outside this repository, and its outline and list follow this spec.
 
