@@ -1,6 +1,6 @@
 # Project documents
 
-> Related: `/to-spec` ([SKILL.md](../../to-spec/SKILL.md)) · `/features-catalog` ([SKILL.md](../../features-catalog/SKILL.md)) · `/tdd` ([SKILL.md](../../tdd/SKILL.md)) · `/review-tests` ([SKILL.md](../../review-tests/SKILL.md)) · `/prototype` ([SKILL.md](../../prototype/SKILL.md), [UI.md](../../prototype/UI.md)) · `/implement` ([SKILL.md](../../implement/SKILL.md), [delivery-and-feedback.md](../../implement/delivery-and-feedback.md))
+> Related: `/to-spec` ([SKILL.md](../../to-spec/SKILL.md)) · `/domain-modeling` ([SKILL.md](../../domain-modeling/SKILL.md), [ADR-FORMAT.md](../../domain-modeling/ADR-FORMAT.md)) · `/features-catalog` ([SKILL.md](../../features-catalog/SKILL.md)) · `/tdd` ([SKILL.md](../../tdd/SKILL.md)) · `/review-tests` ([SKILL.md](../../review-tests/SKILL.md)) · `/prototype` ([SKILL.md](../../prototype/SKILL.md), [UI.md](../../prototype/UI.md)) · `/implement` ([SKILL.md](../../implement/SKILL.md), [delivery-and-feedback.md](../../implement/delivery-and-feedback.md))
 
 ## Problem Statement
 
@@ -8,13 +8,15 @@ A project kept two documents per feature, a spec and a feature-catalogue page, a
 
 A spec also carried content that nobody rebuilding the product would need: how a rule came about, how the current code is laid out, how the tests were designed, what a benchmark measured on one machine. The section on failure modes was filled by walking every user operation sequence, and each entry in it had to have a test case, so the number of cases followed the number of entries rather than the risk.
 
+A project's ADRs were append-only. A change to a decision opened a new entry that superseded part of an older one, so the rule in force was spread across several entries, and the entries kept how each decision came about, verification logs, costs already paid and implementation detail. Nothing said what an entry may hold or how long it may be, and the rule keeping process conventions out of ADRs contradicted the places that record a project's own choice of practice in one.
+
 Every visible change to the interface, down to a colour or a gap, needed a prototype the user had confirmed, and the prototype had to be kept in step with the app afterwards.
 
 The document check at the end of a change ran in the main session, at the point where that session's context is largest.
 
 ## Solution
 
-A feature has one document, its spec, and the spec states the user-visible behaviour too. A spec holds what rebuilding the product from the specs, the ADRs and `CONTEXT.md` would need, and nothing else. A boundary entry is written when the product's behaviour had to be decided there or when real use reaches the failure and getting it wrong is costly; test cases follow the acceptance criteria and that risk. A prototype is made when the interface question is open, and is not kept in step with the app once the app exists. The document check at the end of a change runs in a sub-agent on a smaller model.
+A feature has one document, its spec, and the spec states the user-visible behaviour too. A spec holds what rebuilding the product from the specs, the ADRs and `CONTEXT.md` would need, and nothing else. An ADR states a decision in force the way a spec states behaviour: a table decides which decisions get one, it holds only what each of its sections allows within a length cap, and it is edited in place once the user confirms the change. A boundary entry is written when the product's behaviour had to be decided there or when real use reaches the failure and getting it wrong is costly; test cases follow the acceptance criteria and that risk. A prototype is made when the interface question is open, and is not kept in step with the app once the app exists. The document check at the end of a change runs in a sub-agent on a smaller model.
 
 ## Functional Requirements
 
@@ -65,6 +67,41 @@ Applies to the document check that ends a change, not to the full-feature closeo
 - project-documents::REQ-005/AC-08: The main agent reads only the rules for handing over and for checking the handback. The rules of the check itself are in a file the sub-agent reads.
 - project-documents::REQ-005/AC-09: Before the main agent commits the document changes a sub-agent left, it reads the sub-agent's changes to the documents in the checkout and judges each added, rewritten or deleted statement against what the change did and decided, reading the code or document the statement is about where that does not settle it. A statement left untrue is corrected, a deleted one that still holds is restored, and the user is told which. It judges only those statements and does not run the check again. This does not apply when the main agent ran the check itself.
 
+### project-documents::REQ-007 Which decisions get an ADR (direct acceptance)
+
+A decision gets an ADR when it is hard to reverse, baffling without context and the product of a real trade-off, and the table below sends it to an ADR; whatever the table sends elsewhere goes there instead.
+
+| What is decided | Where it goes |
+|---|---|
+| A project's architectural decision, or the trade-off behind its product behaviour or an accounting rule | An ADR |
+| A project's choice on a process question: which practice it adopts, and why | An ADR, stating this project's choice and not the practice's own rules |
+| A process rule that holds across projects | The skill that governs that work |
+| A constraint on whoever changes the code | An invariant in the project's `AGENTS.md`; the trade-off behind it, when it meets the thresholds, also gets an ADR as in the first row |
+| Product behaviour or an accounting rule, as stated | The feature's spec, which cites the ADR of the choice behind it when that choice gets one |
+| An incident | A postmortem |
+| How the code carries out a decision | A comment in that code |
+
+### project-documents::REQ-008 What an ADR holds
+
+- project-documents::REQ-008/AC-01: An ADR has five sections, and each holds only this: Context, the problem and the forces on it; Options, one item per option, chosen, rejected or deferred, with why, and for a deferred one the condition that reopens it; Decision, the rule in force in the active voice; Consequences, the positive, negative and neutral consequences that still hold; Sources, pointers to the evidence and the key figures the decision rests on, each with the premise it holds under.
+- project-documents::REQ-008/AC-02: No section holds how the rule came about, a verification or rollout log, a record of the evidence closing, a one-off cost already paid, how the code carries out the decision, interface detail, how a measurement was taken, line numbers, a site-by-site list, a restatement of another ADR, a spec or a skill, or an option about how to record the decision.
+- project-documents::REQ-008/AC-03: Context is at most three sentences, and each option and each consequence is its own item of at most two sentences. The entry without its title and status line is at most 1,800 characters in a project whose working language is `zh`, and at most 5,000 in a project with any other working language. An entry over the cap first loses what AC-02 excludes, under REQ-009/AC-06, and is split by decision if it is still over.
+- project-documents::REQ-008/AC-04: Whoever writes or edits an ADR checks it against AC-01 to AC-03, and checks that the declaration at the head of the project's `docs/adr/README.md` states these rules and that its index matches the entries. The closing document check makes the same checks again for each ADR the change added or whose own statements it edited (REQ-010/AC-01), and for each ADR it deleted checks that its number was retired under REQ-009/AC-05.
+
+### project-documents::REQ-009 How an ADR changes
+
+- project-documents::REQ-009/AC-01: An entry states the decision in force. A change to an accepted decision edits that entry in place, and an approach given up becomes one of its rejected options, with why it was given up. The states are Proposed and Accepted; there is no superseded state, and the history of an entry is in git.
+- project-documents::REQ-009/AC-02: A change to what an entry chose, rejected or accepted as a consequence is confirmed by the user before it is written. A rewrite that keeps the decision, such as compressing an entry, merging entries or correcting a stale fact, is not confirmed in advance, and each one is listed in the delivery note for the review before the pull request merges, or reported to the user when the change has no delivery note.
+- project-documents::REQ-009/AC-03: An accepted entry's status line carries the date the decision in force was confirmed. A change of decision updates it; a rewrite that keeps the decision leaves it.
+- project-documents::REQ-009/AC-04: A new decision edits every existing entry in which it makes a sentence of the Decision section untrue or needs a sentence added there, and opens a new entry when there is none. An edit that takes an entry over the cap of REQ-008/AC-03 splits it by decision.
+- project-documents::REQ-009/AC-05: An entry merged into another, or whose decision is withdrawn, has its file deleted. The same change points every citation of its number in the repository at the entry it went into, or removes the citation when the decision was withdrawn, and the ADR index keeps a line naming each retired number and where it went. A number is never used again.
+- project-documents::REQ-009/AC-06: Before content of a kind REQ-008/AC-02 excludes leaves an entry, it is found in its current home, or added there first: interface behaviour in the spec, how the code carries out the decision in a comment in that code, a constraint in an `AGENTS.md` invariant. Content with no current home, such as how the rule came about, is deleted.
+
+### project-documents::REQ-010 ADRs written under the earlier rules
+
+- project-documents::REQ-010/AC-01: When a change edits an entry's own statements (its decision, its options, its consequences or a fact it states), the whole entry is brought under REQ-008 and REQ-009 in the same change: the entries its status line or notes mark as superseding, extending or amending it, or as superseded, extended or amended by it, are merged into it under REQ-009/AC-05; what REQ-008/AC-02 excludes leaves it under REQ-009/AC-06; and its length comes within the cap. Pointing a citation at another number is not such an edit. An entry no change edits stays as it is.
+- project-documents::REQ-010/AC-02: These rules apply in every project at once. The first change that writes or edits an ADR in a project rewrites the declaration at the head of its `docs/adr/README.md` to these rules.
+
 ### project-documents::REQ-006 This repository follows its own rules (direct acceptance)
 
 The two specs this repository already has lose their testing-decisions sections and the content of REQ-002/AC-02's kinds, under REQ-002/AC-04 for any fact about real runs worth keeping. The repository's README describes the document check without a feature catalogue, and the specs index lists this spec.
@@ -80,6 +117,12 @@ The two specs this repository already has lose their testing-decisions sections 
 7. **A change inside the gate is being implemented.** Until the change is delivered, its in-gate interface points are built to the prototype the user confirmed, and a difference from it is a defect of the implementation. Once it is delivered, the app is the baseline for them as for any other (REQ-004/AC-01, AC-03).
 8. **The spec was rewritten before the code, as the flow asks.** Whether the change alters user-visible behaviour, and so whether the closing check runs, is judged against the specs at the branch's fork point, not against the specs the branch has already rewritten (REQ-001/AC-01).
 9. **Something happened in the conversation and no file records it** (a rule newly decided, acceptance feedback). The sub-agent cannot see the conversation, so the handoff states the event; it states what happened, not what is or is not consistent (REQ-005/AC-04).
+10. **Retiring an entry changes a citation inside another entry.** The citing entry is not rewritten for that; it comes under the new rules when a change edits its own statements (REQ-010/AC-01).
+11. **A project's ADR index still declares append-only.** The new rules apply there all the same, and the first change to an ADR in that project rewrites the declaration (REQ-010/AC-02).
+12. **The closing check finds a touched ADR outside the rules, and the fix needs code changed**, such as a citation of a retired number in a source comment. The check rewrites what is document-only and hands back the rest as a finding (REQ-005/AC-05, REQ-008/AC-04, REQ-009/AC-05).
+13. **The entries of one rule, merged, exceed the cap.** The result is split by decision rather than kept over the cap (REQ-008/AC-03, REQ-009/AC-04).
+14. **Something an entry excludes is stated nowhere else**, such as an interface behaviour only an ADR describes. It is added to its home before it leaves the entry, so a rewrite loses nothing still true (REQ-009/AC-06).
+15. **A rewrite meant to keep the decision changes it**, by dropping a rejected option or a negative consequence that still holds; removing content REQ-008/AC-02 excludes is not such a drop. That is a change of decision and is confirmed by the user before it is written; the delivery note's list of rewrites is where a reviewer catches one that was not (REQ-009/AC-02).
 
 ## Implementation Decisions
 
@@ -87,11 +130,15 @@ The two specs this repository already has lose their testing-decisions sections 
 - In that skill, the rules for handing over and for checking the handback open `SKILL.md`, and the three-stage regression moves to a reference file the sub-agent reads in full. The three ways a statement goes untrue stay the sub-agent's method for finding what to judge; it writes none of it down. The full-feature closeout stays where a closeout ticket's own session reads it.
 - The wording for the model tier follows the rule already used for handing the CI wait to a sub-agent, and the wording for effort follows the rule `/research` already used for its gatherer, so the three rules read alike.
 - The fixed names that existed only for catalogue pages leave the artifact-name tables; "In one line" moves to `/to-spec`'s table with the specs index template. `scripts/check-artifact-names.mjs` is adjusted to match.
+- The rules for ADRs stay in domain-modeling's `ADR-FORMAT.md`, the one place the other skills point to, which also says what the index declaration states. The table of REQ-007 takes the place of its collection boundary; the capability registry's wording that a project's adoption of a practice is recorded in a document such as an ADR stands.
+- `/prototype` keeps its rule that persistent documents hold conclusions rather than prototype paths, with a reason that no longer appeals to append-only documents. In ADR-FORMAT's artifact-name table the fixed name of the superseded state gives way to "Retired numbers" and "Withdrawn", and `scripts/check-artifact-names.mjs` checks the table against ADR-FORMAT.
+- Every step that edits an ADR points to ADR-FORMAT: `/implement`'s light-path document check, the closeout's claim check, and the closing check's executor, whose rules in the features-catalog reference file also hold the second look of REQ-008/AC-04 and hand back as a finding any rewrite that would change a decision. The main agent lists the executor's ADR rewrites when it checks the handback.
 - The owner's global instructions name the catalogue, the exhaustive section and the prototype rule in their outline of the flow. That file is outside this repository and is changed by the owner's session when this change merges.
 
 ## Out of Scope
 
 - Handing a closeout ticket's full-feature closeout to a sub-agent.
-- Migrating another project's `docs/features/`, or trimming its specs beyond REQ-002/AC-05.
+- Migrating another project's `docs/features/`, trimming its specs beyond REQ-002/AC-05, or rewriting its ADRs beyond REQ-010; a project's owner asks for that as a change of its own.
+- A script that measures an ADR's length or sections. The length is checked with the content, which has to be read anyway (REQ-008/AC-04).
 - A project's own ADRs and gate scripts about prototypes. A project that has decided its prototypes are the baseline keeps that decision until it reverses it.
 - Renaming the `features-catalog` skill.

@@ -21,7 +21,7 @@ description: 按 spec、ticket 或用户提出的改动要求实施开发并交�
 4. 必须按 [full-verification-gate.md](full-verification-gate.md)「审查前运行」条跑审查前运行。
 5. 必须调用 `/review-code` 审本会话的这次改动,修掉它的每条发现中判为当场修的,并把每条发现及其处置写进交付说明,处置只取「交付说明」节「内容」条的三种;有修复的,修复后必须按 full-verification-gate.md「修复后运行」条跑修复后运行。
 6. 按票实施的,必须对票的每条验收项,按 `/review-code` 的 [independent-review.md](../review-code/independent-review.md)「审什么」节第 3 项的判法找出它在哪里实现、由什么守着;按该项判法构成发现的,每条作为一条发现,与第 5 项的发现同样写进交付说明、处置并跑修复后运行。
-7. 必须答两问:本次改动让仓库里陈述现状的文档(`docs/` 下的 spec、ADR,`CONTEXT.md`,各级 README,项目 `AGENTS.md`)中哪句话变成了谎、又缺了哪句话。作答前必须检索本次改动涉及的名称(被改的函数与模块、配置键、文件路径、界面文案)在这些文档中的全部出现处,不得凭印象作答。变成谎或缺的句子当场改写。本次改动的需求先与用户对齐过的,对齐定下的行为不经 `/to-spec`,必须在这时写进该行为所属 feature 的 spec;该 feature 没有 spec 的,写进交付说明。两问的结论与所用的检索命令及其输出必须写进交付说明。
+7. 必须答两问:本次改动让仓库里陈述现状的文档(`docs/` 下的 spec、ADR,`CONTEXT.md`,各级 README,项目 `AGENTS.md`)中哪句话变成了谎、又缺了哪句话。作答前必须检索本次改动涉及的名称(被改的函数与模块、配置键、文件路径、界面文案)在这些文档中的全部出现处,不得凭印象作答。变成谎或缺的句子当场改写;改写的句子在 ADR 里的,必须按 domain-modeling 的 [ADR-FORMAT.md](../domain-modeling/ADR-FORMAT.md) 改。本次改动的需求先与用户对齐过的,对齐定下的行为不经 `/to-spec`,必须在这时写进该行为所属 feature 的 spec;该 feature 没有 spec 的,写进交付说明。两问的结论与所用的检索命令及其输出必须写进交付说明。
 8. 必须执行「交付」节。
 
 ## 收口票路径
