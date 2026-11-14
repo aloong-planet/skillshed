@@ -73,7 +73,7 @@ A decision gets an ADR when it is hard to reverse, baffling without context and 
 
 | What is decided | Where it goes |
 |---|---|
-| A project's architectural decision | An ADR |
+| A project's architectural decision, or the trade-off behind its product behaviour or an accounting rule | An ADR |
 | A project's choice on a process question: which practice it adopts, and why | An ADR, stating this project's choice and not the practice's own rules |
 | A process rule that holds across projects | The skill that governs that work |
 | A constraint on whoever changes the code, with no trade-off behind it | An invariant in the project's `AGENTS.md` |
@@ -85,13 +85,13 @@ A decision gets an ADR when it is hard to reverse, baffling without context and 
 
 - project-documents::REQ-008/AC-01: An ADR has five sections, and each holds only this: Context, the problem and the forces on it; Options, one item per option, chosen, rejected or deferred, with why, and for a deferred one the condition that reopens it; Decision, the rule in force in the active voice; Consequences, the positive, negative and neutral consequences that still hold; Sources, pointers to the evidence and the key figures the decision rests on, each with the premise it holds under.
 - project-documents::REQ-008/AC-02: No section holds how the rule came about, a verification or rollout log, a record of the evidence closing, a one-off cost already paid, how the code carries out the decision, interface detail, how a measurement was taken, line numbers, a site-by-site list, a restatement of another ADR, a spec or a skill, or an option about how to record the decision.
-- project-documents::REQ-008/AC-03: Context is at most three sentences, and each option and each consequence is its own item of at most two sentences. The entry without its title and status line is at most 5,000 characters in a project whose working language is `en`, and at most 1,800 in one whose working language is `zh`. An entry over the cap first loses what AC-02 excludes, under REQ-009/AC-06, and is split by decision if it is still over.
-- project-documents::REQ-008/AC-04: Whoever writes or edits an ADR checks it against AC-01 to AC-03, and the closing document check checks again the ADRs the change touched.
+- project-documents::REQ-008/AC-03: Context is at most three sentences, and each option and each consequence is its own item of at most two sentences. The entry without its title and status line is at most 1,800 characters in a project whose working language is `zh`, and at most 5,000 in a project with any other working language. An entry over the cap first loses what AC-02 excludes, under REQ-009/AC-06, and is split by decision if it is still over.
+- project-documents::REQ-008/AC-04: Whoever writes or edits an ADR checks it against AC-01 to AC-03, and checks that the declaration at the head of the project's `docs/adr/README.md` states these rules and that its index matches the entries. The closing document check makes the same checks again for each ADR the change added or whose own statements it edited (REQ-010/AC-01), and for each ADR it deleted checks that its number was retired under REQ-009/AC-05.
 
 ### project-documents::REQ-009 How an ADR changes
 
 - project-documents::REQ-009/AC-01: An entry states the decision in force. A change to an accepted decision edits that entry in place, and an approach given up becomes one of its rejected options, with why it was given up. The states are Proposed and Accepted; there is no superseded state, and the history of an entry is in git.
-- project-documents::REQ-009/AC-02: A change to what an entry chose, rejected or accepted as a consequence is confirmed by the user before it is written. A rewrite that keeps the decision, such as compressing an entry, merging entries or correcting a stale fact, is not confirmed in advance, and each one is listed in the delivery note for the review before the pull request merges.
+- project-documents::REQ-009/AC-02: A change to what an entry chose, rejected or accepted as a consequence is confirmed by the user before it is written. A rewrite that keeps the decision, such as compressing an entry, merging entries or correcting a stale fact, is not confirmed in advance, and each one is listed in the delivery note for the review before the pull request merges, or reported to the user when the change has no delivery note.
 - project-documents::REQ-009/AC-03: An accepted entry's status line carries the date the decision in force was confirmed. A change of decision updates it; a rewrite that keeps the decision leaves it.
 - project-documents::REQ-009/AC-04: A new decision edits every existing entry in which it makes a sentence of the Decision section untrue or needs a sentence added there, and opens a new entry when there is none. An edit that takes an entry over the cap of REQ-008/AC-03 splits it by decision.
 - project-documents::REQ-009/AC-05: An entry merged into another, or whose decision is withdrawn, has its file deleted. The same change points every citation of its number in the repository at the entry it went into, or removes the citation when the decision was withdrawn, and the ADR index keeps a line naming each retired number and where it went. A number is never used again.
@@ -122,7 +122,7 @@ The two specs this repository already has lose their testing-decisions sections 
 12. **The closing check finds a touched ADR outside the rules, and the fix needs code changed**, such as a citation of a retired number in a source comment. The check rewrites what is document-only and hands back the rest as a finding (REQ-005/AC-05, REQ-008/AC-04, REQ-009/AC-05).
 13. **The entries of one rule, merged, exceed the cap.** The result is split by decision rather than kept over the cap (REQ-008/AC-03, REQ-009/AC-04).
 14. **Something an entry excludes is stated nowhere else**, such as an interface behaviour only an ADR describes. It is added to its home before it leaves the entry, so a rewrite loses nothing still true (REQ-009/AC-06).
-15. **A rewrite meant to keep the decision changes it**, by dropping a rejected option or a negative consequence. That is a change of decision and is confirmed by the user before it is written; the delivery note's list of rewrites is where a reviewer catches one that was not (REQ-009/AC-02).
+15. **A rewrite meant to keep the decision changes it**, by dropping a rejected option or a negative consequence that still holds; removing content REQ-008/AC-02 excludes is not such a drop. That is a change of decision and is confirmed by the user before it is written; the delivery note's list of rewrites is where a reviewer catches one that was not (REQ-009/AC-02).
 
 ## Implementation Decisions
 
@@ -131,8 +131,8 @@ The two specs this repository already has lose their testing-decisions sections 
 - The wording for the model tier follows the rule already used for handing the CI wait to a sub-agent, and the wording for effort follows the rule `/research` already used for its gatherer, so the three rules read alike.
 - The fixed names that existed only for catalogue pages leave the artifact-name tables; "In one line" moves to `/to-spec`'s table with the specs index template. `scripts/check-artifact-names.mjs` is adjusted to match.
 - The rules for ADRs stay in domain-modeling's `ADR-FORMAT.md`, the one place the other skills point to, which also holds the template of the index declaration. The table of REQ-007 takes the place of its collection boundary; the capability registry's wording that a project's adoption of a practice is recorded in a document such as an ADR stands.
-- `/prototype` keeps its rule that persistent documents hold conclusions rather than prototype paths, with a reason that no longer appeals to append-only documents. The fixed name of the superseded state leaves ADR-FORMAT's artifact-name table, and `scripts/check-artifact-names.mjs` checks the table against ADR-FORMAT.
-- The closing check's second look at touched ADRs (REQ-008/AC-04) is a line in the features-catalog reference file the sub-agent reads.
+- `/prototype` keeps its rule that persistent documents hold conclusions rather than prototype paths, with a reason that no longer appeals to append-only documents. In ADR-FORMAT's artifact-name table the fixed name of the superseded state gives way to "Retired numbers" and "Withdrawn", and `scripts/check-artifact-names.mjs` checks the table against ADR-FORMAT.
+- Every step that edits an ADR points to ADR-FORMAT: `/implement`'s light-path document check, the closeout's claim check, and the closing check's executor, whose rules in the features-catalog reference file also hold the second look of REQ-008/AC-04 and hand back as a finding any rewrite that would change a decision. The main agent lists the executor's ADR rewrites when it checks the handback.
 - The owner's global instructions name the catalogue, the exhaustive section and the prototype rule in their outline of the flow. That file is outside this repository and is changed by the owner's session when this change merges.
 
 ## Out of Scope
