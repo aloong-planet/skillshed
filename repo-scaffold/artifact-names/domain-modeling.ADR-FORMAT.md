@@ -7,7 +7,6 @@
 | 状态 | Status |
 | 提议 | Proposed |
 | 已接受 | Accepted |
-| 已被 ADR-XXXX 取代 | Superseded by ADR-XXXX |
 | 背景与问题 | Context |
 | 备选项 | Options |
 | 决策 | Decision |
@@ -18,3 +17,5 @@
 | 来源 | Sources |
 | 未留档 | not recorded |
 | 总体 | General |
+| 已退役编号 | Retired numbers |
+| 作废 | Withdrawn |

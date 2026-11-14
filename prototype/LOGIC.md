@@ -21,7 +21,7 @@ docs/prototypes/<功能模块>/<原型名>/
 2. **写逻辑模块**:复制 [logic-template.js](./logic-template.js) 填充 `initial`/`reduce`/`legal`/`ALL_ACTIONS`/`TERMINAL`,`reduce` 与 `legal` 的分工按 STATE-MACHINE.md「一、建模约定」节。
 3. **接驾驶面板**:按 STATE-MACHINE.md「二、驾驶面板规范」与「三、实现约束」两节。
 4. **交给用户驾驶**:有价值的时刻是"等等,这不该可能"——那是想法里的 bug,正是原型的意义。要加事件就加,原型会进化。
-5. **捕获(原型保留)**:除 SKILL.md 通用规则 6 外,Logic 原型的 mermaid 图(取自 `.mmd` 正本)可内联进 spec 或作 ADR 来源。
+5. **捕获(原型保留)**:按 SKILL.md 通用规则 6 办。
 
 ## 反模式
 
