@@ -76,7 +76,7 @@ A decision gets an ADR when it is hard to reverse, baffling without context and 
 | A project's architectural decision, or the trade-off behind its product behaviour or an accounting rule | An ADR |
 | A project's choice on a process question: which practice it adopts, and why | An ADR, stating this project's choice and not the practice's own rules |
 | A process rule that holds across projects | The skill that governs that work |
-| A constraint on whoever changes the code, with no trade-off behind it | An invariant in the project's `AGENTS.md` |
+| A constraint on whoever changes the code | An invariant in the project's `AGENTS.md`; the trade-off behind it, when it meets the thresholds, also gets an ADR as in the first row |
 | Product behaviour or an accounting rule, as stated | The feature's spec, which cites the ADR of the choice behind it when that choice gets one |
 | An incident | A postmortem |
 | How the code carries out a decision | A comment in that code |
