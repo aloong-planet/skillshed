@@ -12,8 +12,8 @@
 //
 // Entries checked: those added since the base, and those whose text differs from the base's once these are blanked
 // out on both sides and line endings are read alike: every `ADR-NNNN`; every file name an entry has now, had at the
-// base or had in the history of HEAD; and every four-digit number, standing between characters that are not letters
-// or digits, that is the number of such an entry. With --all, every entry.
+// base or had in the history of HEAD; and every four-digit number with no letter or digit next to it that is the
+// number of such an entry. With --all, every entry.
 //
 // For each entry checked, a violation is:
 //   - a first line that is not `# ADR-NNNN: <title>`, or whose NNNN is not the file name's;
@@ -77,8 +77,9 @@
 // at the root of a git repository; no docs/adr; a shallow clone; capabilities.toml unreadable, python3 missing or
 // older than 3.11, or no working-language string; the names table unreadable, without its en column or a column for
 // the working-language, or without one of the names; an unknown argument, or --base with --all; a --base that is not
-// a commit; no --base and no refs/remotes/origin/HEAD; a git command that fails; docs/adr, an entry file or a
-// README.md that exists but cannot be read; any error the script does not expect.
+// a commit; no --base and no refs/remotes/origin/HEAD; a git command that fails; a failed read of docs/adr, of an
+// entry file or of docs/adr/README.md, other than the absence of docs/adr or of the README (a missing README being
+// a violation); any error the script does not expect.
 import { spawnSync } from 'node:child_process'
 import { readdirSync, readFileSync, realpathSync, statSync } from 'node:fs'
 import { dirname, join } from 'node:path'
