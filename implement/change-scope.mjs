@@ -31,8 +31,9 @@
 //   6. Any other type: changed.
 //
 // A comment is compared as a comment whatever reads it, so the changes below come out same although they can
-// change what a test command does. The run rules never skip lint or typecheck on this script's verdict, so the
-// comments those tools read are checked; the rest are left to the pull request's CI:
+// change what a test command does. On this script's verdict the run rules skip lint or typecheck only where it reads
+// none of the files that differ from the base, so the comments those tools read are checked; the rest are left to
+// the pull request's CI:
 //   - Comments other tools read: a test runner's environment (@vitest-environment), bundler annotations
 //     (#__PURE__, webpackChunkName), coverage ignores (c8 ignore, # pragma: no cover).
 //   - A file a test reads as text, where comments and spacing are content.
@@ -50,7 +51,8 @@ import { extname, join } from 'node:path'
 
 // The inert files of implement/full-verification-gate.md; docs/ holds the documentation and process records of the
 // layout /repo-scaffold sets up. implement/SKILL.md forbids the tests that a test command runs from reading them,
-// and a command that reads one does not count as a test command, so it is never skipped.
+// and a command that reads one does not count as a test command, so this script's verdict never skips it where a
+// file it reads differs from the base.
 const isInert = (path) => path === 'docs' || path.startsWith('docs/') || extname(path).toLowerCase() === '.md'
 
 const JS_TS = new Set(['.js', '.jsx', '.mjs', '.cjs', '.ts', '.tsx', '.mts', '.cts'])
