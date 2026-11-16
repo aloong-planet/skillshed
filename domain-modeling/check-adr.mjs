@@ -10,15 +10,16 @@
 // points to. The base side is that commit; the current side is the working tree, uncommitted and untracked files
 // included. An entry is a file docs/adr/NNNN-*.md, and the two sides' entries are paired by NNNN.
 //
-// Entries checked: those added since the base, and those whose text differs from the base's once every `ADR-NNNN`
-// and every entry file name (`NNNN-slug.md`) is blanked out on both sides and line endings are read alike; with
-// --all, every entry.
+// Entries checked: those added since the base, and those whose text differs from the base's once these are blanked
+// out on both sides and line endings are read alike: every `ADR-NNNN`; every file name an entry has now, had at the
+// base or had in the history of HEAD; and every four-digit number, standing between characters that are not letters
+// or digits, that is the number of such an entry. With --all, every entry.
 //
 // For each entry checked, a violation is:
 //   - a first line that is not `# ADR-NNNN: <title>`, or whose NNNN is not the file name's;
 //   - no status line `- Status: <value>` after the title, a value other than `Proposed` or `Accepted` followed by
-//     a parenthetical, such as `Accepted (2026-11-12)`, or any text but blank lines between the title and the
-//     first section besides the status line;
+//     its date in parentheses, written YYYY-MM-DD with nothing else, such as `Accepted (2026-11-12)`, or any text
+//     but blank lines between the title and the first section besides the status line;
 //   - sections, the `## ` headings outside fenced code, other than Context, Options, Decision, Consequences and
 //     Sources, in that order, or one of them empty;
 //   - a Context of more than 3 sentences;
@@ -37,9 +38,13 @@
 //   - docs/adr/README.md missing, or holding no `| # | Decision | Status |` table;
 //   - in such a table, a row whose first cell is not `[NNNN](NNNN-slug.md)` linking to an entry file, a second
 //     row for one number, or an entry file with no row;
-//   - a row whose Decision cell, `\|` read as `|`, is not the entry's title after `ADR-NNNN: `, or whose status
-//     cell, a trailing parenthetical removed, is not the entry's state: its status value, a trailing parenthetical
-//     removed;
+//   - a row whose Decision cell, `\|` read as `|`, is not the entry's title after `ADR-NNNN:`, or whose status cell
+//     does not name the entry's state. What a status value, or a status cell, names is Proposed or Accepted when it
+//     opens with that name, and otherwise the text without a trailing parenthetical.
+//     Here an entry's title is read from a first line `# ADR-NNNN:`, with or without spaces around the colon, and
+//     its status value from the first line before the first section that reads `Status:`, with or without a list
+//     marker; where the title or the status value cannot be read, that cell is not compared, and the output names
+//     the cell instead, so an entry written under the earlier rules is not edited to make its row pass;
 //   - a number that had an entry file in the history of HEAD and has none now, but is not listed under the
 //     README's heading `Retired numbers` (an item there stands for the first four-digit number in it);
 //   - a number listed there that has an entry file;
@@ -72,7 +77,8 @@
 // at the root of a git repository; no docs/adr; a shallow clone; capabilities.toml unreadable, python3 missing or
 // older than 3.11, or no working-language string; the names table unreadable, without its en column or a column for
 // the working-language, or without one of the names; an unknown argument, or --base with --all; a --base that is not
-// a commit; no --base and no refs/remotes/origin/HEAD; a git command that fails.
+// a commit; no --base and no refs/remotes/origin/HEAD; a git command that fails; docs/adr, an entry file or a
+// README.md that exists but cannot be read; any error the script does not expect.
 import { spawnSync } from 'node:child_process'
 import { readdirSync, readFileSync, realpathSync, statSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -98,16 +104,10 @@ const WORD = /[\p{L}\p{N}]/u
 
 /** The text with fenced code and link targets taken out, each inline code span a placeholder, and every run of whitespace one space */
 function plain(text) {
-  const kept = []
-  let fence = null
-  for (const line of text.replace(/\r\n?/g, '\n').split('\n')) {
-    const m = /^ {0,3}(`{3,}|~{3,})/.exec(line)
-    if (fence) {
-      if (m && m[1][0] === fence[0] && m[1].length >= fence.length) fence = null
-    } else if (m) fence = m[1]
-    else kept.push(line)
-  }
-  return kept
+  const lines = text.replace(/\r\n?/g, '\n').split('\n')
+  const fenced = lineMarks(lines)
+  return lines
+    .filter((_, i) => !fenced[i])
     .join('\n')
     .replace(/(`+)[\s\S]*?\1/g, '`x`')
     .replace(/\]\([^)]*\)/g, ']')
@@ -198,6 +198,7 @@ export function parseNames(text, language) {
   return names
 }
 
+/** For each line, whether it is a fence line of fenced code (3 or more backticks or tildes) or inside one */
 function lineMarks(lines) {
   const fenced = []
   let fence = null
@@ -264,25 +265,44 @@ function statusValue(head, names) {
 
 const TRAILING_PARENTHETICAL = new RegExp(`\\s*[(${ZH_OPEN_PAREN}][^()${ZH_OPEN_PAREN}${ZH_CLOSE_PAREN}]*[)${ZH_CLOSE_PAREN}]\\s*$`)
 
-/** A status value without its trailing parenthetical: the entry's state */
-export function stateOf(value) {
+/** The state a status value or a status cell names: Proposed or Accepted when it opens with that name, otherwise the text without a trailing parenthetical */
+function stateOf(value, names) {
+  for (const state of [names.Proposed, names.Accepted]) {
+    if (value.startsWith(state)) return state
+  }
   return value.replace(TRAILING_PARENTHETICAL, '').trim()
 }
 
-/** The number, the title after `ADR-NNNN: `, the status line, the state, the options and the negative consequences of an entry; null where the entry has none */
+const LOOSE_TITLE = new RegExp(`^#\\s+ADR-(\\d{4})\\s*[:${ZH_COLON}]\\s*(.*?)\\s*$`)
+
+/** The first line before the first section, after the title, that reads as a status line, with or without its list marker */
+function looseStatus(head, names) {
+  const line = new RegExp(`^(?:[-*+]\\s+)?${escapeRegExp(names.Status)}\\s*[:${ZH_COLON}]\\s*(.*?)\\s*$`)
+  for (const { text } of head.slice(1)) {
+    const m = line.exec(text)
+    if (m) return { text, value: m[1] }
+  }
+  return null
+}
+
+/**
+ * The number, the title after `ADR-NNNN:`, the status line, the state, the options and the negative consequences of
+ * an entry; null where the entry has none. The title and the status line are read with or without the template's
+ * spacing and list marker, as an entry written under the earlier rules may have them.
+ */
 export function readEntry(text, names) {
   const { lines, head, sections } = parseEntry(text)
-  const title = /^# ADR-(\d{4}): (.*)$/.exec(lines[0])
-  const status = statusValue(head, names)
+  const title = LOOSE_TITLE.exec(lines[0])
+  const status = looseStatus(head, names)
   const section = (name) => sections.find((s) => s.name === name)
   const options = section(names.Options)
   const consequences = section(names.Consequences)
   const kinds = consequences && items(consequences.body, consequenceMarker(names))
   return {
     number: title?.[1] ?? null,
-    title: title?.[2] ?? null,
+    title: title?.[2] || null,
     statusLine: status?.text ?? null,
-    state: status ? stateOf(status.value) : null,
+    state: status ? stateOf(status.value, names) : null,
     options: options ? items(options.body, OPTION_MARKER).found.map((i) => i.text.replace(/\s*\n\s*/g, ' ')) : null,
     negatives: kinds ? kinds.found.filter((i) => i.label === names.Negative).map((i) => i.text.replace(/\s*\n\s*/g, ' ').trim()) : null,
   }
@@ -310,9 +330,10 @@ export function checkEntry(fileName, text, names, language) {
   const status = statusValue(rest, names)
   if (!status) add(rest[0]?.line ?? 0, `no status line \`- ${names.Status}: ...\` between the title and the first section`)
   else {
-    const accepted = new RegExp(`^${escapeRegExp(names.Accepted)}\\s*(?:\\([^()]+\\)|${ZH_OPEN_PAREN}[^${ZH_OPEN_PAREN}${ZH_CLOSE_PAREN}]+${ZH_CLOSE_PAREN})$`)
+    const date = '\\d{4}-\\d{2}-\\d{2}'
+    const accepted = new RegExp(`^${escapeRegExp(names.Accepted)}\\s*(?:\\(${date}\\)|${ZH_OPEN_PAREN}${date}${ZH_CLOSE_PAREN})$`)
     if (status.value !== names.Proposed && !accepted.test(status.value)) {
-      add(status.line, `the status is neither "${names.Proposed}" nor "${names.Accepted} (<date>)": "${status.value}"`)
+      add(status.line, `the status is neither "${names.Proposed}" nor "${names.Accepted} (YYYY-MM-DD)": "${status.value}"`)
     }
   }
   for (const h of rest) if (h.line !== status?.line) add(h.line, 'text outside the status line and the five sections')
@@ -365,23 +386,36 @@ export function checkEntry(fileName, text, names, language) {
 }
 
 const ADR_NUMBER = /ADR-\d{4}/g
-const ENTRY_FILE_NAME = /\b\d{4}-[a-z0-9-]+\.md\b/g
+const BARE_NUMBER = /(?<![\p{L}\p{N}])\d{4}(?![\p{L}\p{N}])/gu
 
-/** Whether two texts of an entry differ in more than ADR numbers and entry file names */
-export function changedBeyondNumbers(base, current) {
-  const blank = (t) => t.replace(/\r\n?/g, '\n').replace(ADR_NUMBER, 'ADR-####').replace(ENTRY_FILE_NAME, '####.md')
+/**
+ * Whether two texts of an entry differ in more than ADR numbers and entry file names. `known` holds `numbers` and
+ * `fileNames`, those of the entries at the base, now and in the history: each of those file names, every
+ * `ADR-NNNN`, and each of those numbers standing alone are blanked out on both sides.
+ */
+export function changedBeyondNumbers(base, current, known) {
+  const fileNames = [...known.fileNames].sort((a, b) => b.length - a.length).map(escapeRegExp)
+  const fileName = fileNames.length ? new RegExp(fileNames.join('|'), 'g') : null
+  const blank = (t) => {
+    const text = t.replace(/\r\n?/g, '\n')
+    return (fileName ? text.replace(fileName, '####.md') : text)
+      .replace(ADR_NUMBER, 'ADR-####')
+      .replace(BARE_NUMBER, (n) => (known.numbers.has(n) ? '####' : n))
+  }
   return blank(base) !== blank(current)
 }
 
 /**
- * The violations of the index, each `{ line, message }` with a 1-based line of the README, and the retired numbers.
- * `entries` maps each number with an entry file now to `{ fileName, title, state }` (title and state null when the
- * entry has none); `history` holds every number that had an entry file in the history.
+ * The violations of the index, each `{ line, message }` with a 1-based line of the README; the cells not compared,
+ * each `NNNN (<cell names>)`; and the retired numbers. `entries` maps each number with an entry file now to
+ * `{ fileName, title, state }` (title and state null when the entry has none that can be read); `history` holds every
+ * number that had an entry file in the history.
  */
 export function checkIndex(readme, entries, history, names) {
   const found = []
+  const uncompared = []
   const add = (line, message) => found.push({ line: line + 1, message })
-  if (readme === null) return { violations: [{ line: 1, message: 'docs/adr has no README.md' }], retired: new Set(), retiredLines: new Set() }
+  if (readme === null) return { violations: [{ line: 1, message: 'docs/adr has no README.md' }], uncompared, retired: new Set(), retiredLines: new Set() }
   const lines = readme.replace(/\r\n?/g, '\n').split('\n')
   const header = ['#', names.Decision, names.Status].join('\n')
   const rows = new Map()
@@ -400,10 +434,12 @@ export function checkIndex(readme, entries, history, names) {
       const entry = entries.get(number)
       if (!entry || entry.fileName !== file) { add(i, `the row links to ${file}, which is not an entry file`); continue }
       const cell = (decision ?? '').replace(/\\\|/g, '|')
-      if (entry.title === null) add(i, `${number}'s first line is not \`# ADR-NNNN: <title>\`, so the row cannot be compared`)
+      const notCompared = []
+      if (entry.title === null) notCompared.push(names.Decision)
       else if (cell !== entry.title) add(i, `the ${names.Decision} cell is not the title of ${number}: "${cell}" against "${entry.title}"`)
-      if (entry.state === null) add(i, `${number} has no status line, so the row cannot be compared`)
-      else if (stateOf(status ?? '') !== entry.state) add(i, `the ${names.Status} cell "${status ?? ''}" is not the state of ${number}, "${entry.state}"`)
+      if (entry.state === null) notCompared.push(names.Status)
+      else if (stateOf(status ?? '', names) !== entry.state) add(i, `the ${names.Status} cell "${status ?? ''}" is not the state of ${number}, "${entry.state}"`)
+      if (notCompared.length) uncompared.push(`${number} (${notCompared.join(', ')})`)
     }
   }
   if (tables === 0) add(0, `the index has no \`| # | ${names.Decision} | ${names.Status} |\` table`)
@@ -431,7 +467,7 @@ export function checkIndex(readme, entries, history, names) {
     }
   }
   const retired = new Set([...[...listed.keys()].filter((n) => !entries.has(n)), ...[...history].filter((n) => !entries.has(n))])
-  return { violations: found, retired, retiredLines }
+  return { violations: found, uncompared, retired, retiredLines }
 }
 
 const USAGE = 'Usage, from the repository root: check-adr.mjs [--base <commit> | --all]'
@@ -503,16 +539,40 @@ function baseCommit(given) {
   return gitOut(['merge-base', 'HEAD', branch], `cannot find the fork point of HEAD and ${branch}`).trim()
 }
 
-function currentEntries() {
+/** The text of the file at `path`; a file that cannot be read is a check that cannot be made */
+function readText(path) {
+  try {
+    return readFileSync(path, 'utf8')
+  } catch (e) {
+    throw new CannotCheck(`cannot read ${path}: ${e.code ?? e.message}`)
+  }
+}
+
+/** The entry files among the file names of docs/adr: for each number the first in sorted order, and every other file of a number */
+export function entryFiles(names) {
   const entries = new Map()
   const duplicates = []
-  for (const name of readdirSync(ADR_DIR).sort()) {
+  for (const name of [...names].sort()) {
     const m = ENTRY_FILE.exec(name)
     if (!m) continue
-    if (entries.has(m[1])) { duplicates.push(name); continue }
-    entries.set(m[1], { fileName: name, text: readFileSync(join(ADR_DIR, name), 'utf8') })
+    if (entries.has(m[1])) duplicates.push(name)
+    else entries.set(m[1], name)
   }
   return { entries, duplicates }
+}
+
+function currentEntries() {
+  let names
+  try {
+    names = readdirSync(ADR_DIR)
+  } catch (e) {
+    throw new CannotCheck(`cannot read ${ADR_DIR}: ${e.code ?? e.message}`)
+  }
+  const { entries, duplicates } = entryFiles(names)
+  return {
+    entries: new Map([...entries].map(([n, name]) => [n, { fileName: name, text: readText(join(ADR_DIR, name)) }])),
+    duplicates,
+  }
 }
 
 function baseEntries(base) {
@@ -562,7 +622,11 @@ function main(argv) {
     throw new CannotCheck(`not run at the root of a git repository. ${USAGE}`)
   }
   let isDir = false
-  try { isDir = statSync(ADR_DIR).isDirectory() } catch {}
+  try {
+    isDir = statSync(ADR_DIR).isDirectory()
+  } catch (e) {
+    if (e.code !== 'ENOENT' && e.code !== 'ENOTDIR') throw new CannotCheck(`cannot read ${ADR_DIR}: ${e.code ?? e.message}`)
+  }
   if (!isDir) throw new CannotCheck(`no ${ADR_DIR} directory here`)
   if (gitOut(['rev-parse', '--is-shallow-repository'], 'cannot tell whether the clone is shallow').trim() === 'true') {
     throw new CannotCheck('a shallow clone: its history cannot show which numbers were retired; fetch the full history')
@@ -576,7 +640,12 @@ function main(argv) {
   const added = [...current.keys()].filter((n) => !before.has(n))
   const deleted = [...before.keys()].filter((n) => !current.has(n))
   const kept = [...current.keys()].filter((n) => before.has(n))
-  const changed = kept.filter((n) => changedBeyondNumbers(before.get(n).text, current.get(n).text))
+  const history = historyNames()
+  const known = {
+    numbers: new Set([...current.keys(), ...before.keys(), ...history.keys()]),
+    fileNames: new Set([...[...current.values(), ...before.values()].map((e) => e.fileName), ...duplicates, ...[...history.values()].flatMap((s) => [...s])]),
+  }
+  const changed = kept.filter((n) => changedBeyondNumbers(before.get(n).text, current.get(n).text, known))
   const renumbered = kept.filter((n) => !changed.includes(n) && before.get(n).text !== current.get(n).text)
   const checked = opts.all ? [...current.keys()] : [...added, ...changed].sort()
 
@@ -588,9 +657,12 @@ function main(argv) {
   }
 
   const read = new Map([...current].map(([n, e]) => [n, { fileName: e.fileName, ...readEntry(e.text, names) }]))
-  const history = historyNames()
   let readme = null
-  try { readme = readFileSync(join(ADR_DIR, 'README.md'), 'utf8') } catch {}
+  try {
+    readme = readFileSync(join(ADR_DIR, 'README.md'), 'utf8')
+  } catch (e) {
+    if (e.code !== 'ENOENT') throw new CannotCheck(`cannot read ${ADR_DIR}/README.md: ${e.code ?? e.message}`)
+  }
   const index = checkIndex(readme, read, new Set(history.keys()), names)
   for (const v of index.violations) violations.push(`${ADR_DIR}/README.md:${v.line}: ${v.message}`)
 
@@ -608,6 +680,7 @@ function main(argv) {
     : `Every entry checked: ${checked.join(', ') || 'none'}.`)
   if (renumbered.length) out.push(`Not checked, changed only in ADR numbers or entry file names: ${renumbered.join(', ')}.`)
   out.push(`Citations of retired numbers searched for as ADR-NNNN and as the file names each number had; other forms, such as a bare number, were not searched. Retired: ${[...index.retired].sort().join(', ') || 'none'}.`)
+  if (index.uncompared.length) out.push(`Index cells not compared, since the entry's title or status line could not be read: ${index.uncompared.join(', ')}.`)
   out.push(...violations)
   out.push(`${violations.length} violation(s).`)
 
@@ -663,8 +736,7 @@ if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.me
   try {
     process.exitCode = main(process.argv.slice(2))
   } catch (e) {
-    if (!(e instanceof CannotCheck)) throw e
-    console.error(`Could not check: ${e.message}`)
+    console.error(`Could not check: ${e instanceof CannotCheck ? e.message : `an error the script does not expect: ${e?.stack ?? e}`}`)
     process.exitCode = 2
   }
 }

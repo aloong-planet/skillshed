@@ -93,7 +93,7 @@ The change-scope helper, the action-pin check, the ADR check and the CI routing 
 ```sh
 node --test implement/change-scope.test.mjs
 node --test github-ops/check-action-pins.test.mjs
-node --test domain-modeling/check-adr.test.mjs
+node --test domain-modeling/project-documents.test.mjs
 node --test github-ops/assets/ci-routing/ci-routing.test.mjs github-ops/assets/ci-routing/routing-rules.test.mjs
 ```
 

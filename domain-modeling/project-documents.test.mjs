@@ -1,20 +1,22 @@
-// Tests for check-adr.mjs:
-//   node --test domain-modeling/check-adr.test.mjs
+// Tests for check-adr.mjs, the ADR check of the project-documents spec:
+//   node --test domain-modeling/project-documents.test.mjs
 // The rules are tested on the functions the script exports, with hand-written maps of fixed names. The command-line
 // cases copy the script into a throwaway skill tree beside a names table the test writes, and run it in throwaway git
 // repositories, so no file of this repository but the script is read. The entry fixture follows the shape of a real
 // project's ADR: hard-wrapped lines, options as bold-led numbered items with indented continuation lines, consequences
-// labelled by kind, and a Decision section holding a paragraph and a list. Chinese punctuation is built from code
-// points, and the zh map holds made-up names, so this file holds no Chinese text.
+// labelled by kind, and a Decision section holding a paragraph and a list; the entries read for the index follow the
+// status lines of entries written under the earlier rules. Chinese punctuation is built from code points, and the zh
+// map holds made-up names, so this file holds no Chinese text.
+// Gap: no case reaches the exit 2 for an error the script does not expect, since no input is known to raise one.
 import { after, test } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { copyFileSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs'
+import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  CannotCheck, changedBeyondNumbers, checkEntry, checkIndex, countChars, countSentences, parseNames,
+  CannotCheck, changedBeyondNumbers, checkEntry, checkIndex, countChars, countSentences, entryFiles, parseNames, readEntry,
 } from './check-adr.mjs'
 
 const ch = (...codes) => String.fromCharCode(...codes)
@@ -35,6 +37,7 @@ for (const [what, text, expected] of [
   ['empty text', '', 0],
   ['a sentence opening with a digit', 'It took 2 s. 3 runs failed.', 2],
   ['fenced code', 'Before.\n```\nA. B. C.\n```\nAfter.', 2],
+  ['code fenced with tildes', 'Before.\n~~~\nA. B. C.\n~~~\nAfter.', 2],
   ['parentheses that do not balance', 'Note (see below. Then two. Three.', 3],
   ['a closing parenthesis without its opening one', 'Stray) (see. Two.) Three.', 2],
   ['Chinese end marks', `${A}${P}${B}${E}${C}${Q}`, 3],
@@ -133,6 +136,8 @@ for (const [what, text, expected, line, N = EN, language = 'en'] of [
   ['a title number that is not the file name\'s', mutate(REAL, '# ADR-0003:', '# ADR-0004:'), /title's number 0004 is not the file name's 0003/, 1],
   ['Accepted without a parenthetical', mutate(REAL, 'Accepted (2026-11-12)', 'Accepted'), /status is neither/, 3],
   ['a state outside the template', mutate(REAL, 'Accepted (2026-11-12)', 'Superseded (2026-11-12)'), /status is neither/, 3],
+  ['Accepted with a note in place of the date', mutate(REAL, 'Accepted (2026-11-12)', 'Accepted (v0.5.2 released, verified on the wire)'), /status is neither/, 3],
+  ['Accepted with a note after the date', mutate(REAL, 'Accepted (2026-11-12)', 'Accepted (2026-11-12; verified later)'), /status is neither/, 3],
   ['text between the status line and the first section', mutate(REAL, '(2026-11-12)\n', '(2026-11-12)\n\nSupersedes ADR-0002.\n'), /text outside the status line/, 5],
   ['a missing section', mutate(REAL, SOURCES, ''), /the sections are .*; expected/, 5],
   ['sections out of order', mutate(mutate(REAL, SOURCES, ''), '## Decision', `${SOURCES}\n## Decision`), /the sections are .*; expected/, 5],
@@ -143,6 +148,9 @@ for (const [what, text, expected, line, N = EN, language = 'en'] of [
   ['a consequence over two sentences', mutate(REAL, 'the step under way.', 'the step under way. It is copied.'), /consequence has 3 sentences; at most 2/, 31],
   ['text in Options outside an option', mutate(REAL, 'its work back.\n', 'its work back.\n\nSee also the list above.\n'), /line in Options outside a numbered option/, 20],
   ['options written as bullets', mutate(REAL, '2. Only cut', '- Only cut'), /line in Options outside a numbered option/, 15],
+  ['text in Consequences outside an item', mutate(REAL, 'where a scan runs.\n', 'where a scan runs.\n\nSee also the list above.\n'), /line in Consequences outside a `- ` item/, 34],
+  ['no status line', mutate(REAL, '- Status: Accepted (2026-11-12)\n\n', ''), /no status line `- Status: \.\.\.` between the title and the first section/, 1],
+  ['a first line that is not a title', mutate(REAL, '# ADR-0003: A scan', 'ADR-0003: A scan'), /the first line is not `# ADR-NNNN: <title>`/, 1],
   ['a consequence without its kind', mutate(REAL, '- Neutral: the triggers', '- Neutral: the triggers do not move.\n- Also: the triggers'), /does not open with "Positive:", "Negative:" or "Neutral:"/, 33],
   ['no neutral consequence', mutate(REAL, '- Neutral: the triggers and their intervals do not depend on where a scan runs.\n', ''), /no "Neutral" consequence/, 27],
   ['an en entry over 5,000 characters', sized(EN, 5001), /5001 characters, .*at most 5000 for working-language "en"/, 1],
@@ -183,9 +191,29 @@ for (const [what, table, language, reason] of [
   })
 }
 
-test('takes a change of ADR numbers and entry file names alone for no change', () => {
-  assert.equal(changedBeyondNumbers('See ADR-0002 and [it](0002-old.md).\n', 'See ADR-0005 and [it](0005-new-name.md).\n'), false)
-  assert.equal(changedBeyondNumbers('See ADR-0002.\n', 'See ADR-0002 now.\n'), true)
+const KNOWN = {
+  numbers: new Set(['0001', '0002', '0003', '0005', '0013', '0014', '0020']),
+  fileNames: new Set(['0002-old.md', '0005-new-name.md', '0002-Old_Name.md', '0005-new.md']),
+}
+for (const [what, base, current, expected, known = KNOWN] of [
+  ['an ADR number and an entry file name repointed', 'See ADR-0002 and [it](0002-old.md).\n', 'See ADR-0005 and [it](0005-new-name.md).\n', false],
+  ['an entry number written bare, repointed', 'As 0001 says.\n', 'As 0003 says.\n', false],
+  ['the second number of ADR-0013/0014, repointed', 'See ADR-0013/0014.\n', 'See ADR-0013/0020.\n', false],
+  ['an entry file name outside lower-case letters, digits and hyphens, repointed', '[it](0002-Old_Name.md)\n', '[it](0005-new.md)\n', false],
+  ['a word added', 'See ADR-0002.\n', 'See ADR-0002 now.\n', true],
+  ['a four-digit figure that is no entry\'s number', 'It holds 1024 rows.\n', 'It holds 2048 rows.\n', true],
+  ['a dated file name that is no entry\'s, replaced', 'See 2026-11-12-where-the-memory-goes.md.\n', 'See 2026-11-14-a-different-finding.md.\n', true],
+  ['an ADR number repointed, with no entry known', 'See ADR-0002.\n', 'See ADR-0005.\n', false, { numbers: new Set(), fileNames: new Set() }],
+]) {
+  test(`takes ${what} for ${expected ? 'a change' : 'no change'}`, () => {
+    assert.equal(changedBeyondNumbers(base, current, known), expected)
+  })
+}
+
+test('takes the first file of a number, in sorted order, as its entry and reports every other', () => {
+  const { entries, duplicates } = entryFiles(['0002-x.md', '0001-b.md', 'README.md', '0001-a.md', 'notes.txt'])
+  assert.deepEqual([...entries], [['0001', '0001-a.md'], ['0002', '0002-x.md']])
+  assert.deepEqual(duplicates, ['0001-b.md'])
 })
 
 const ENTRIES = new Map([
@@ -238,6 +266,30 @@ for (const [what, readme, expected, line] of [
   })
 }
 
+for (const [what, text, expected] of [
+  ['a status value with text after its date, wrapped', realEntry(EN, 'Accepted (2026-08-18). Supersedes in part the clause of ADR-0005 and the\n  matching clause of ADR-0006.'), { title: 'A scan runs on one worker thread', state: 'Accepted' }],
+  ['a status line without its list marker', mutate(REAL, '- Status: Accepted', 'Status: Accepted'), { title: 'A scan runs on one worker thread', state: 'Accepted' }],
+  ['a title without a space after its colon', mutate(REAL, '# ADR-0003: A scan', '# ADR-0003:A scan'), { title: 'A scan runs on one worker thread', state: 'Accepted' }],
+  ['a proposed entry with a note after its state', realEntry(EN, 'Proposed; it awaits the in-app measurement'), { title: 'A scan runs on one worker thread', state: 'Proposed' }],
+  ['a state the rules no longer have', realEntry(EN, 'Superseded by ADR-0005 (the total rule)'), { title: 'A scan runs on one worker thread', state: 'Superseded by ADR-0005' }],
+  ['a status line under another label', mutate(REAL, '- Status:', '- State:'), { title: 'A scan runs on one worker thread', state: null }],
+]) {
+  test(`reads the title and state of an entry for the index: ${what}`, () => {
+    const { title, state } = readEntry(text, EN)
+    assert.deepEqual({ title, state }, expected)
+  })
+}
+
+test('names the index cells it cannot compare and reports nothing about them', () => {
+  const entries = new Map([
+    ['0001', { ...ENTRIES.get('0001'), state: null }],
+    ['0003', { ...ENTRIES.get('0003'), title: null, state: null }],
+  ])
+  const { violations, uncompared } = checkIndex(README, entries, new Set(['0001', '0002', '0003']), EN)
+  assert.deepEqual(violations, [])
+  assert.deepEqual(uncompared, ['0001 (Status)', '0003 (Decision, Status)'])
+})
+
 test('reports an index with no index table at all', () => {
   const readme = README.replaceAll('| # | Decision | Status |', '| # | Title | Status |')
   const { violations } = checkIndex(readme, ENTRIES, new Set(['0001', '0002', '0003']), EN)
@@ -246,7 +298,13 @@ test('reports an index with no index table at all', () => {
 
 // Command-line cases. Git runs with no global or system configuration, so the user's settings change no output.
 const dirs = []
-after(() => { for (const d of dirs) rmSync(d, { recursive: true, force: true }) })
+const locked = []
+after(() => {
+  for (const p of locked) chmodSync(p, 0o755)
+  for (const d of dirs) rmSync(d, { recursive: true, force: true })
+})
+/** `path` made unreadable until the cases end */
+const lock = (path) => { chmodSync(path, 0o000); locked.push(path) }
 const scratch = () => { const d = mkdtempSync(join(tmpdir(), 'check-adr-test-')); dirs.push(d); return d }
 
 const SKILLS = scratch()
@@ -311,13 +369,13 @@ const reported = (out) => [...out.matchAll(/^docs\/adr\/(\d{4})-[^:]*:\d+: /gm)]
 function touchedSet() {
   const root = project({
     [file('0001', 'Old one')]: minimal('0001', 'Old one', { context: OVER }),
-    [file('0002', 'Old two')]: minimal('0002', 'Old two', { context: OVER, option: 'See ADR-0001 in [it](0001-old-one.md) — rejected.' }),
+    [file('0002', 'Old two')]: minimal('0002', 'Old two', { context: OVER, option: 'See ADR-0001, 0001 and [it](0001-old-one.md) — rejected.' }),
     [file('0003', 'Old three')]: minimal('0003', 'Old three', { context: OVER }),
     'docs/adr/README.md': readme([['0001', 'Old one'], ['0002', 'Old two'], ['0003', 'Old three']]),
   })
   const base = git(root, 'rev-parse', 'HEAD')
   write(root, {
-    [file('0002', 'Old two')]: minimal('0002', 'Old two', { context: OVER, option: 'See ADR-0004 in [it](0004-elsewhere.md) — rejected.' }),
+    [file('0002', 'Old two')]: minimal('0002', 'Old two', { context: OVER, option: 'See ADR-0003, 0003 and [it](0003-old-three.md) — rejected.' }),
     [file('0003', 'Old three')]: minimal('0003', 'Old three', { context: OVER + ' Five.' }),
     [file('0005', 'New five')]: minimal('0005', 'New five', { context: OVER }),
     'docs/adr/README.md': readme([['0001', 'Old one'], ['0002', 'Old two'], ['0003', 'Old three'], ['0005', 'New five']]),
@@ -361,22 +419,51 @@ test('takes the fork point from origin/HEAD by default', () => {
   assert.deepEqual(reported(r.out), ['0002'], r.out)
 })
 
-for (const [what, retired, code] of [
-  ['a number gone from the history but not retired', [], 1],
-  ['a gone number listed as retired', ['0002: merged into 0001'], 0],
-]) {
-  test(`reads the history for ${what}`, () => {
-    const root = project({
-      [file('0001', 'One')]: minimal('0001', 'One'),
-      [file('0002', 'Two')]: minimal('0002', 'Two'),
-      'docs/adr/README.md': readme([['0001', 'One'], ['0002', 'Two']]),
-    })
-    write(root, { [file('0002', 'Two')]: null, 'docs/adr/README.md': readme([['0001', 'One']], retired) })
-    const r = run(root, ['--all'])
-    assert.equal(r.code, code, r.out + r.err)
-    if (code === 1) assert.match(r.out, /^docs\/adr\/README\.md:\d+: 0002 had an entry file in the history and has none now/m)
+test('reads the history for a number gone but not retired', () => {
+  const root = project({
+    [file('0001', 'One')]: minimal('0001', 'One'),
+    [file('0002', 'Two')]: minimal('0002', 'Two'),
+    'docs/adr/README.md': readme([['0001', 'One'], ['0002', 'Two']]),
   })
-}
+  write(root, { [file('0002', 'Two')]: null, 'docs/adr/README.md': readme([['0001', 'One']]) })
+  const r = run(root, ['--all'])
+  assert.equal(r.code, 1, r.out + r.err)
+  assert.match(r.out, /^docs\/adr\/README\.md:\d+: 0002 had an entry file in the history and has none now/m)
+})
+
+test('reports a docs/adr without README.md', () => {
+  const root = project({ [file('0001', 'One')]: minimal('0001', 'One') })
+  const r = run(root, ['--all'])
+  assert.equal(r.code, 1, r.out + r.err)
+  assert.match(r.out, /^docs\/adr\/README\.md:1: docs\/adr has no README\.md$/m)
+})
+
+test('reports a second entry file for one number', () => {
+  const root = project({
+    [file('0001', 'One')]: minimal('0001', 'One'),
+    [file('0001', 'Two')]: minimal('0001', 'Two'),
+    'docs/adr/README.md': readme([['0001', 'One']]),
+  })
+  const r = run(root, ['--all'])
+  assert.equal(r.code, 1, r.out + r.err)
+  assert.match(r.out, /^docs\/adr\/0001-two\.md:1: a second entry file for number 0001$/m)
+})
+
+test('passes the index rows of untouched entries written under the earlier rules, naming the cells it cannot compare', () => {
+  const root = project({
+    [file('0001', 'Old one')]: minimal('0001', 'Old one', { status: 'Accepted (2026-08-18). Supersedes in part ADR-0002 and the' }),
+    [file('0002', 'Old two')]: minimal('0002', 'Old two').replace('- Status:', '- State:'),
+    'docs/adr/README.md': readme([['0001', 'Old one'], ['0002', 'Old two']]),
+  })
+  const base = git(root, 'rev-parse', 'HEAD')
+  write(root, {
+    [file('0003', 'New three')]: minimal('0003', 'New three'),
+    'docs/adr/README.md': readme([['0001', 'Old one'], ['0002', 'Old two'], ['0003', 'New three']]),
+  })
+  const r = run(root, ['--base', base])
+  assert.equal(r.code, 0, r.out + r.err)
+  assert.match(r.out, /^Index cells not compared, since the entry's title or status line could not be read: 0002 \(Status\)\.$/m)
+})
 
 test('reports citations of a retired number in tracked and untracked files, but not in the list of retired numbers', () => {
   const root = project({
@@ -399,7 +486,7 @@ test('reports citations of a retired number in tracked and untracked files, but 
   assert.match(r.out, /searched for as ADR-NNNN and as the file names each number had; other forms, such as a bare number, were not searched/)
 })
 
-test('lists for review the options and negative consequences on both sides of a merge, the status change and the citing lines', () => {
+test('lists for review the options and negative consequences on both sides of a merge and a split, the status change and the citing lines', () => {
   const root = project({
     [file('0001', 'One')]: minimal('0001', 'One', { option: 'Cites ADR-0003 — rejected.' }),
     [file('0002', 'Two')]: minimal('0002', 'Two', { option: 'Option of two — rejected.', negative: 'two is slow.' }),
@@ -411,7 +498,8 @@ test('lists for review the options and negative consequences on both sides of a 
   write(root, {
     [file('0002', 'Two')]: null,
     [file('0003', 'Three')]: minimal('0003', 'Three', { option: 'Option of two — rejected.', negative: 'three is big.', status: 'Accepted (2026-11-16)' }),
-    'docs/adr/README.md': readme([['0001', 'One'], ['0003', 'Three']], ['0002: merged into 0003']),
+    [file('0004', 'Four')]: minimal('0004', 'Four', { option: 'Option of three, split off — rejected.', negative: 'four is new.' }),
+    'docs/adr/README.md': readme([['0001', 'One'], ['0003', 'Three'], ['0004', 'Four']], ['0002: merged into 0003']),
   })
   const r = run(root, ['--base', base])
   assert.equal(r.code, 0, r.out + r.err)
@@ -420,6 +508,8 @@ test('lists for review the options and negative consequences on both sides of a 
   assert.ok(atBase.includes('  0002-two.md (deleted):\n    Options 1: **One** — chosen.\n    Options 2: Option of two — rejected.\n    Negative: two is slow.\n'), atBase)
   assert.ok(atBase.includes('  0003-three.md:\n    Options 1: **One** — chosen.\n    Options 2: Option of three — rejected.\n    Negative: three is big.\n'), atBase)
   assert.ok(now.includes('  0003-three.md:\n    Options 1: **One** — chosen.\n    Options 2: Option of two — rejected.\n    Negative: three is big.\n'), now)
+  assert.ok(now.includes('  0004-four.md (added):\n    Options 1: **One** — chosen.\n    Options 2: Option of three, split off — rejected.\n    Negative: four is new.\n'), now)
+  assert.doesNotMatch(atBase, /0004-four/)
   assert.doesNotMatch(now, /0002-two/)
   assert.match(now, /0003: - Status: Accepted \(2026-11-01\) -> - Status: Accepted \(2026-11-16\)/)
   assert.match(now, /^ {2}docs\/specs\/x\.md:3: Per ADR-0003, it holds\.$/m)
@@ -427,13 +517,18 @@ test('lists for review the options and negative consequences on both sides of a 
   assert.doesNotMatch(now, /docs\/adr\/0003-three\.md:/)
 })
 
-test('reads working-language with a TOML parser and writes the names in it', () => {
+test('reads working-language with a TOML parser, and takes the names and the length cap of that language', () => {
   const root = project({
-    [file('0001', 'One')]: minimal('0001', 'One', { N: ZH, status: `${ZH.Accepted} (2026-11-01)` }),
-    'docs/adr/README.md': readme([['0001', 'One', ZH.Accepted]], [], ZH),
+    [file('0001', 'One')]: minimal('0001', 'One', { N: ZH, status: `${ZH.Accepted} (2026-11-01)` }).replace(`- ${ZH.Status}: `, `- ${ZH.Status}${ch(0xff1a)}`),
+    [file('0002', 'Two')]: minimal('0002', 'Two', { N: ZH, status: `${ZH.Accepted} (2026-11-01)` }) + 'x'.repeat(2000) + '\n',
+    'docs/adr/README.md': readme([['0001', 'One', ZH.Accepted], ['0002', 'Two', ZH.Accepted]], [], ZH),
   }, '"working-language" = "zh"\n')
   const r = run(root, ['--all'])
-  assert.equal(r.code, 0, r.out + r.err)
+  assert.equal(r.code, 1, r.out + r.err)
+  const violations = r.out.split('\n').filter((l) => /^\S+:\d+: /.test(l))
+  assert.equal(violations.length, 1, r.out)
+  assert.match(violations[0], /^docs\/adr\/0002-two\.md:1: \d+ characters, the title and status lines excluded; at most 1800 for working-language "zh"$/)
+  assert.doesNotMatch(r.out, /Index cells not compared/)
 })
 
 const plainProject = () => project({ [file('0001', 'One')]: minimal('0001', 'One'), 'docs/adr/README.md': readme([['0001', 'One']]) })
@@ -453,6 +548,11 @@ for (const [what, setup, reason] of [
   ['with an unknown argument', () => ({ cwd: plainProject(), args: ['--bogus'] }), /unknown argument "--bogus"/],
   ['with a --base that is not a commit', () => ({ cwd: plainProject(), args: ['--base', 'no-such-commit'] }), /--base "no-such-commit" is not a commit/],
   ['without --base or origin/HEAD', () => ({ cwd: plainProject(), args: [] }), /refs\/remotes\/origin\/HEAD is not set/],
+  ['with a docs/adr it cannot list', () => { const root = plainProject(); lock(join(root, 'docs/adr')); return { cwd: root, args: ['--all'] } }, /cannot read docs\/adr: EACCES/],
+  ['with a docs it cannot enter', () => { const root = plainProject(); lock(join(root, 'docs')); return { cwd: root, args: ['--all'] } }, /cannot read docs\/adr: EACCES/],
+  ['with a file named docs', () => ({ cwd: project({ docs: 'not a directory\n' }), args: ['--all'] }), /no docs\/adr directory/],
+  ['with an entry file it cannot read', () => { const root = plainProject(); lock(join(root, file('0001', 'One'))); return { cwd: root, args: ['--all'] } }, /cannot read docs\/adr\/0001-one\.md/],
+  ['with a README it cannot read', () => { const root = plainProject(); lock(join(root, 'docs/adr/README.md')); return { cwd: root, args: ['--all'] } }, /cannot read docs\/adr\/README\.md/],
 ]) {
   test(`cannot check ${what}`, () => {
     const { cwd, args } = setup()
