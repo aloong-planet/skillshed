@@ -22,7 +22,6 @@ const FIXTURE = {
   ]
 }
 const config = parseConfig(FIXTURE)
-const on = (result) => Object.keys(result.scopes).filter((name) => result.scopes[name])
 const pr = (base, head) => ({ pull_request: { base: { sha: base }, head: { sha: head } } })
 
 test('a pattern: * stays in one segment, ** spans segments, nothing else is special', () => {
@@ -130,7 +129,8 @@ test('the gate requires selected jobs, tolerates skipped unselected ones, and re
     const errors = gateFailures(input, config)
     assert.ok(errors.some((line) => expected.test(line)), `${expected}: ${errors.join(' | ')}`)
   }
-  const { e2e: _, ...withoutE2e } = needs('false', 'false', 'false')
+  const withoutE2e = needs('false', 'false', 'false')
+  delete withoutE2e.e2e
   assert.deepEqual(gateFailures(withoutE2e, config), ["e2e: listed in routing.json but not among the gate's needs"])
   // A flag that is not exactly "true" or "false" fails, and its jobs are then required: skipped ones fail too
   for (const flag of [undefined, '', 'TRUE', 'yes']) {

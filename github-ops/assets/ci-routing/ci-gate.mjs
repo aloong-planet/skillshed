@@ -45,7 +45,7 @@ if (isMain(import.meta.url)) {
     try {
       needs = JSON.parse(process.env.NEEDS_JSON ?? 'null')
     } catch (error) {
-      throw new Error(`NEEDS_JSON is not JSON (${error.message})`)
+      throw new Error(`NEEDS_JSON is not JSON (${error.message})`, { cause: error })
     }
     const errors = gateFailures(needs, readConfig())
     if (errors.length) throw new Error(errors.join('\n'))
