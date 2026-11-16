@@ -11,7 +11,8 @@
 // included. An entry is a file docs/adr/NNNN-*.md, and the two sides' entries are paired by NNNN.
 //
 // Entries checked: those added since the base, and those whose text differs from the base's once every `ADR-NNNN`
-// and every entry file name (`NNNN-slug.md`) is blanked out on both sides; with --all, every entry.
+// and every entry file name (`NNNN-slug.md`) is blanked out on both sides and line endings are read alike; with
+// --all, every entry.
 //
 // For each entry checked, a violation is:
 //   - a first line that is not `# ADR-NNNN: <title>`, or whose NNNN is not the file name's;
@@ -26,7 +27,8 @@
 //     `Neutral:`, an item of more than 2 sentences, or one of the three kinds with no item;
 //   - more than 1,800 characters when working-language is zh, or 5,000 otherwise.
 // A line belongs to the item above it when it is indented, or when it follows the item with no blank line between
-// and opens no list item or heading. The names in quotes and backticks here are the en column of
+// and opens no list item or heading. The fixed names used here, Status, Proposed, Accepted, the five section names,
+// Positive, Negative, Neutral and Retired numbers, are the en column of
 // repo-scaffold/artifact-names/domain-modeling.ADR-FORMAT.md; the script reads the project's working-language from
 // capabilities.toml and takes each name from that language's column of the table when it runs, zh's being the
 // first column. `:` may be the full-width colon, and the parentheses full-width ones.
@@ -39,13 +41,13 @@
 //     cell, a trailing parenthetical removed, is not the entry's state: its status value, a trailing parenthetical
 //     removed;
 //   - a number that had an entry file in the history of HEAD and has none now, but is not listed under the
-//     README's heading `Retired numbers` (each item there lists the first NNNN it holds);
+//     README's heading `Retired numbers` (an item there stands for the first four-digit number in it);
 //   - a number listed there that has an entry file;
-//   - for each retired number, one listed there or one with a file in the history and none now, a line holding
-//     `ADR-NNNN` or one of the file names that number had, in a file git grep searches (tracked files and untracked
-//     ones, ignored files left out), outside the README's Retired numbers section. A bare number or any other form
-//     is not searched for, and the output says so.
-// A second entry file for one number is reported too, and the first file in byte order is taken as the entry.
+//   - for each retired number, one that is listed there or had a file in the history, and has no entry file now,
+//     a line holding `ADR-NNNN` or one of the file names that number had, in a file git grep searches (tracked
+//     files and untracked ones, ignored files left out), outside the README's Retired numbers section. A bare
+//     number or any other form is not searched for, and the output says so.
+// A second entry file for one number is reported too, and the first file name in sorted order is taken as the entry.
 //
 // For review, printed after the violations when there is a base and leaving the exit code alone: the options and
 // negative consequences of every entry deleted or checked, at the base, and of every entry added or checked, now;
@@ -55,9 +57,9 @@
 //
 // How sentences are counted, for a section or for an item without its leading `1. ` or `- `:
 //   1. Fenced code and inline code are taken out (an inline code span leaves a placeholder that opens with a
-//      backtick), so are link targets `](...)`, and line breaks count as spaces.
+//      backtick), so is the target `(...)` of each link `[...](...)`, and line breaks count as spaces.
 //   2. Nothing inside parentheses, ASCII or full-width and at any depth, ends a sentence. When the parentheses of
-//      the text do not balance, they protect nothing.
+//      the text do not balance, a closing one without its opening one included, they protect nothing.
 //   3. `.`, `!` or `?` ends a sentence when what follows it, after any closing quotation marks, `]`, `*` and further
 //      end marks, is the end of the text, or a space and then an upper-case letter, a digit, a quotation mark, a
 //      backtick, `*`, `(` or `[`. A `.` that ends e.g., i.e., vs., etc. or cf. ends none.
@@ -68,9 +70,9 @@
 //
 // Exit codes: no violation -> 0; any violation -> 1; could not check -> 2, with the reason, which is one of: not run
 // at the root of a git repository; no docs/adr; a shallow clone; capabilities.toml unreadable, python3 missing or
-// older than 3.11, or no working-language string; the names table unreadable, without a column for the
-// working-language, or without one of the names; an unknown argument, or --base with --all; a --base that is not a
-// commit; no --base and no refs/remotes/origin/HEAD.
+// older than 3.11, or no working-language string; the names table unreadable, without its en column or a column for
+// the working-language, or without one of the names; an unknown argument, or --base with --all; a --base that is not
+// a commit; no --base and no refs/remotes/origin/HEAD; a git command that fails.
 import { spawnSync } from 'node:child_process'
 import { readdirSync, readFileSync, realpathSync, statSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -94,7 +96,7 @@ const OPENER = new RegExp(`[\\p{Lu}\\p{N}"'${LEFT_QUOTES}\`*(\\[]`, 'u')
 const ABBREVIATION = /(?:^|[^\p{L}])(?:e\.g|i\.e|vs|etc|cf)$/iu
 const WORD = /[\p{L}\p{N}]/u
 
-/** The text with fenced code, inline code and link targets taken out, and every run of whitespace one space */
+/** The text with fenced code and link targets taken out, each inline code span a placeholder, and every run of whitespace one space */
 function plain(text) {
   const kept = []
   let fence = null
@@ -115,12 +117,13 @@ function plain(text) {
 
 function sentences(chars, guarded) {
   let depth = 0
+  let stray = false
   let count = 0
   let open = false
   for (let i = 0; i < chars.length; i++) {
     const c = chars[i]
     if (guarded && OPEN_PARENS.has(c)) { depth++; continue }
-    if (guarded && CLOSE_PARENS.has(c)) { if (depth > 0) depth--; continue }
+    if (guarded && CLOSE_PARENS.has(c)) { if (depth > 0) depth--; else stray = true; continue }
     if (depth === 0 && ZH_ENDS.has(c)) {
       while (i + 1 < chars.length && ZH_ENDS.has(chars[i + 1])) i++
       count++
@@ -141,7 +144,7 @@ function sentences(chars, guarded) {
     }
     if (WORD.test(c)) open = true
   }
-  return { count: count + (open ? 1 : 0), balanced: depth === 0 }
+  return { count: count + (open ? 1 : 0), balanced: depth === 0 && !stray }
 }
 
 /** The number of sentences in `text`, counted as the header says */
@@ -266,7 +269,7 @@ export function stateOf(value) {
   return value.replace(TRAILING_PARENTHETICAL, '').trim()
 }
 
-/** The title after `ADR-NNNN: `, the state, the options and the negative consequences of an entry; null where the entry has none */
+/** The number, the title after `ADR-NNNN: `, the status line, the state, the options and the negative consequences of an entry; null where the entry has none */
 export function readEntry(text, names) {
   const { lines, head, sections } = parseEntry(text)
   const title = /^# ADR-(\d{4}): (.*)$/.exec(lines[0])

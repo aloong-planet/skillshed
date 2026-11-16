@@ -36,6 +36,7 @@ for (const [what, text, expected] of [
   ['a sentence opening with a digit', 'It took 2 s. 3 runs failed.', 2],
   ['fenced code', 'Before.\n```\nA. B. C.\n```\nAfter.', 2],
   ['parentheses that do not balance', 'Note (see below. Then two. Three.', 3],
+  ['a closing parenthesis without its opening one', 'Stray) (see. Two.) Three.', 2],
   ['Chinese end marks', `${A}${P}${B}${E}${C}${Q}`, 3],
   ['Chinese end marks inside full-width parentheses', `${A}${LP}${B}${P}${C}${RP}${D}${P}`, 1],
   ['Chinese end marks in a row', `${A}${Q}${E}${B}${P}`, 2],
@@ -306,7 +307,7 @@ const readme = (rows, retired = [], N = EN) =>
 const file = (n, title) => `docs/adr/${n}-${slug(title)}.md`
 const reported = (out) => [...out.matchAll(/^docs\/adr\/(\d{4})-[^:]*:\d+: /gm)].map((m) => m[1]).filter((n, i, a) => a.indexOf(n) === i).sort()
 
-/** Base: four entries breaking a rule each; now: 0002 repointed only, 0003 edited, 0005 new and untracked */
+/** Base: three entries breaking a rule each; now: 0002 repointed only, 0003 edited, 0005 new and untracked */
 function touchedSet() {
   const root = project({
     [file('0001', 'Old one')]: minimal('0001', 'Old one', { context: OVER }),
