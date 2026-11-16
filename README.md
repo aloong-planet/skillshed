@@ -88,11 +88,12 @@ node scripts/check-artifact-names.mjs
 node scripts/check-prototype-copies.mjs
 ```
 
-The change-scope helper, the action-pin check and the CI routing scripts can be tested directly:
+The change-scope helper, the action-pin check, the ADR check and the CI routing scripts can be tested directly (the ADR check needs python3 3.11 or later):
 
 ```sh
 node --test implement/change-scope.test.mjs
 node --test github-ops/check-action-pins.test.mjs
+node --test domain-modeling/check-adr.test.mjs
 node --test github-ops/assets/ci-routing/ci-routing.test.mjs github-ops/assets/ci-routing/routing-rules.test.mjs
 ```
 
