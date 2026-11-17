@@ -79,7 +79,7 @@ grep -rln "node:sqlite\|node:test" src/    # 项目用到的版本敏感内置�
 | `changes` | id 就是 `changes`;没有 `if`;checkout 写 `fetch-depth: 0` 与 `persist-credentials: false`;`outputs` 里每个范围一行,且与 `routing.json` 的范围一一对应 |
 | 产品 job | `needs` 含 `changes`;`if` 只在它所在的范围被选中时为真(在两个范围里的,两个范围用 `\|\|` 连接);id 写在 `routing.json` 这些范围的 job 列表里 |
 | 其余 job(仓库规范检查等) | 没有 `if`;不在 `routing.json` 的任何范围里——gate 对它们一律要求成功 |
-| `ci-gate` | `name` 是 `CI gate`;`needs` 等于其余全部 job id 的集合——gate 只看得见自己 `needs` 里的 job,漏掉的那个失败了 PR 照样能合;`if: ${{ always() }}`,不得写成 `!cancelled()` 或省略——上游失败或跳过时那两种写法会让 gate 被跳过,而被跳过的必需检查算作通过;取结果的 step 带 `NEEDS_JSON: ${{ toJSON(needs) }}` |
+| `ci-gate` | `name` 是 `CI gate`;`needs` 等于其余全部 job id 的集合——gate 只看得见自己 `needs` 里的 job,漏掉的那个失败了 PR 照样能合;`if` 为 `${{ always() }}` 或 `${{ !cancelled() }}`,不得省略——省略时默认的 `success()` 在上游有 job 失败或被跳过时跳过 gate,而被跳过的必需检查算作通过;取结果的 step 带 `NEEDS_JSON: ${{ toJSON(needs) }}` |
 | 每个 job 与 step | 没有 `continue-on-error`;除失败时上传报告的 step 外,step 没有 `if` |
 
 - 仓库的依赖里已有 YAML 解析器的,必须把这张表写成一个读取门禁 workflow 的测试,放进 `.github/ci/`;没有的,每次改动后按表人工核对。
