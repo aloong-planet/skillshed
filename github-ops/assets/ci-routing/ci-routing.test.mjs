@@ -201,6 +201,8 @@ test('the command line publishes each scope from a real pull-request diff, every
     // The pushed commit adds README.md alone, so every scope cannot come from its paths
     ['push', { before: products, after: head }, undefined, 'app=true\nsite=true\ntool=true\n'],
     ['pull_request', pr(head, head), undefined, 'app=false\nsite=false\ntool=false\n'],
+    // Commits a pull request could compare, so only the event name can make the command fail
+    ['workflow_dispatch', pr(base, head), undefined, null],
     ['pull_request', pr('f'.repeat(40), head), undefined, null],
     ['pull_request', pr(base, head), '{ not json', null]
   ]
