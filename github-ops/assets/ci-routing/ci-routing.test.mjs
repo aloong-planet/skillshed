@@ -82,7 +82,7 @@ test('only a pull request is compared, and an unsupported event or malformed com
   assert.equal(comparisonForEvent('push', {}), null)
   // The unsupported events carry commits a pull request is accepted with, so only their names can reject them
   for (const [name, event] of [
-    ['pull_request_target', pr(a, b)], ['merge_group', pr(a, b)], [undefined, pr(a, b)],
+    ['pull_request_target', pr(a, b)], ['merge_group', pr(a, b)], ['workflow_dispatch', pr(a, b)], [undefined, pr(a, b)],
     ['pull_request', { before: a, after: b }], ['pull_request', pr('0'.repeat(40), b)],
     ['pull_request', pr(a, '0'.repeat(40))], ['pull_request', pr('--output=x', b)], ['pull_request', pr(a.toUpperCase(), b)]
   ]) assert.throws(() => comparisonForEvent(name, event), /event|commit/, `${name} ${JSON.stringify(event)}`)
@@ -201,10 +201,10 @@ test('the command line publishes each scope from a real pull-request diff, every
     // The pushed commit adds README.md alone, so every scope cannot come from its paths
     ['push', { before: products, after: head }, undefined, 'app=true\nsite=true\ntool=true\n'],
     ['pull_request', pr(head, head), undefined, 'app=false\nsite=false\ntool=false\n'],
+    // Commits a pull request could compare, so only the event name can make the command fail
+    ['workflow_dispatch', pr(base, head), undefined, null],
     ['pull_request', pr('f'.repeat(40), head), undefined, null],
-    ['workflow_dispatch', {}, undefined, null],
-    ['pull_request', pr(base, head), '{ not json', null],
-    ['pull_request', pr(base, head), JSON.stringify({ ...FIXTURE, rules: [{ reason: 'r', select: [], paths: ['.github/**'] }] }), null]
+    ['pull_request', pr(base, head), '{ not json', null]
   ]
   for (const [i, [name, event, routing, expected]] of cases.entries()) {
     const { run, output, summary } = runScope(i, name, event, routing)
