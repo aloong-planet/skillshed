@@ -8,13 +8,13 @@
 // status lines of entries written under the earlier rules. Chinese punctuation is built from code points, and the zh
 // map holds made-up names, so this file holds no Chinese text.
 // Gap: no case reaches the exit 2 for an error the script does not expect, since no input is known to raise one.
-import { after, test } from 'node:test'
+import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { copyFileSync, mkdirSync, symlinkSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { scratchRepos, write } from '../scripts/test-support/scratch-repos.mjs'
 import {
   CannotCheck, changedBeyondNumbers, checkEntry, checkIndex, countChars, countSentences, entryFiles, parseNames, readEntry,
 } from './check-adr.mjs'
@@ -296,16 +296,8 @@ test('reports an index with no index table at all', () => {
   assert.ok(violations.some((v) => /no `\| # \| Decision \| Status \|` table/.test(v.message)), JSON.stringify(violations))
 })
 
-// Command-line cases. Git runs with no global or system configuration, so the user's settings change no output.
-const dirs = []
-const locked = []
-after(() => {
-  for (const p of locked) chmodSync(p, 0o755)
-  for (const d of dirs) rmSync(d, { recursive: true, force: true })
-})
-/** `path` made unreadable until the cases end */
-const lock = (path) => { chmodSync(path, 0o000); locked.push(path) }
-const scratch = () => { const d = mkdtempSync(join(tmpdir(), 'check-adr-test-')); dirs.push(d); return d }
+// Command-line cases.
+const { scratch, lock, env: ENV, git } = scratchRepos('check-adr-test-')
 
 const SKILLS = scratch()
 mkdirSync(join(SKILLS, 'domain-modeling'))
@@ -315,23 +307,6 @@ writeFileSync(join(SKILLS, 'repo-scaffold/artifact-names/domain-modeling.ADR-FOR
   `| canonical | en |\n|---|---|\n${Object.keys(EN).map((k) => `| ${ZH[k]} | ${k} |`).join('\n')}\n`)
 const SCRIPT = join(SKILLS, 'domain-modeling/check-adr.mjs')
 
-const EMPTY_CONFIG = join(SKILLS, 'gitconfig')
-writeFileSync(EMPTY_CONFIG, '')
-const ENV = { ...process.env, GIT_CONFIG_GLOBAL: EMPTY_CONFIG, GIT_CONFIG_NOSYSTEM: '1', GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@example.invalid', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@example.invalid' }
-for (const k of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE']) delete ENV[k]
-
-function git(cwd, ...args) {
-  const r = spawnSync('git', args, { cwd, env: ENV, encoding: 'utf8' })
-  assert.equal(r.status, 0, `git ${args.join(' ')}: ${r.stderr}`)
-  return r.stdout.trim()
-}
-function write(root, files) {
-  for (const [path, text] of Object.entries(files)) {
-    if (text === null) { unlinkSync(join(root, path)); continue }
-    mkdirSync(dirname(join(root, path)), { recursive: true })
-    writeFileSync(join(root, path), text)
-  }
-}
 function commit(root, files, message = 'change') {
   write(root, files)
   git(root, 'add', '-A')

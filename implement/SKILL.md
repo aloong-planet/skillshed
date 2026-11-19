@@ -7,6 +7,8 @@ description: 按 spec、ticket 或用户提出的改动要求实施开发并交�
 
 开工前或实施中,有要与用户对齐的需求、验收条件或要做的决策的,不论走哪条路径、哪一档,都必须停下与用户对齐,再继续;没有的,不论哪一档,都不得为对齐而停下。
 
+本 skill 写或改的代码注释与测试引用 spec 的,必须按 [requirement-identifiers.md](../to-spec/requirement-identifiers.md)「代码注释与测试里的引用」节写。
+
 本 skill 写或改的测试,凡是测试命令会运行的,都不得读取惰性文件:判定可执行内容变没变时把惰性文件判为不影响测试命令,以此为前提(惰性文件与测试命令的界定见 [full-verification-gate.md](full-verification-gate.md)「测试命令与惰性文件」条)。要校验惰性文件的内容(如 README 与站点页面一致),必须做成每次都照跑的检查命令,不得做成这样的测试。
 
 收到用户对已交付工作的反馈时,必须完整读取 [delivery-and-feedback.md](delivery-and-feedback.md),按其「验收反馈」节处理。
@@ -16,12 +18,12 @@ description: 按 spec、ticket 或用户提出的改动要求实施开发并交�
 档位为轻档的改动,必须依次执行本节各项;下文各节与「实现」节各项,只执行本节指向的部分。
 
 1. 必须执行「实现」节第 0 项(准入检查)与第 1 项(分支)。
-2. 写代码前必须在回复里写下本次的成功标准:修 bug 的写明要消除的错误行为及其复现方式,改行为的写明改动后的行为;按票实施的,票的验收项即成功标准。
+2. 写代码前必须在回复里写下本次的成功标准:修 bug 的写明要消除的错误行为及其复现方式,改行为的写明改动后的行为;按票实施的,票的验收项即成功标准;按为本次改动经 `/to-spec` 写成或改写的 spec 实施的,该 spec 里属本轮核对范围(按 [requirement-identifiers.md](../to-spec/requirement-identifiers.md)「核对范围与旧格式接续」定)的每条验收条件即成功标准。
 3. 必须为成功标准里的每条行为写或改测试,按 `/tdd` 执行,其「用例落在哪一层」「不写重复的用例」与「测试资源复用」三节「判据」一条要说出的内容必须写进交付说明,不适用的写明不适用;按「实现」节第 4 项判为无测试价值的,在交付说明里写明理由后不写测试。
 4. 必须按 [full-verification-gate.md](full-verification-gate.md)「审查前运行」条跑审查前运行。
 5. 必须调用 `/review-code` 审本会话的这次改动,修掉它的每条发现中判为当场修的,并把每条发现及其处置写进交付说明,处置只取「交付说明」节「内容」条的三种;有修复的,修复后必须按 full-verification-gate.md「修复后运行」条跑修复后运行。
-6. 按票实施的,必须对票的每条验收项,按 `/review-code` 的 [independent-review.md](../review-code/independent-review.md)「审什么」节第 3 项的判法找出它在哪里实现、由什么守着;按该项判法构成发现的,每条作为一条发现,与第 5 项的发现同样写进交付说明、处置并跑修复后运行。
-7. 必须答两问:本次改动让仓库里陈述现状的文档(`docs/` 下的 spec、ADR,`CONTEXT.md`,各级 README,项目 `AGENTS.md`)中哪句话变成了谎、又缺了哪句话。作答前必须检索本次改动涉及的名称(被改的函数与模块、配置键、文件路径、界面文案)在这些文档中的全部出现处,不得凭印象作答。变成谎或缺的句子当场改写;改写的句子在 ADR 里的,必须按 domain-modeling 的 [ADR-FORMAT.md](../domain-modeling/ADR-FORMAT.md) 改。本次改动的需求先与用户对齐过的,对齐定下的行为不经 `/to-spec`,必须在这时写进该行为所属 feature 的 spec;该 feature 没有 spec 的,写进交付说明。两问的结论与所用的检索命令及其输出必须写进交付说明。
+6. 按票或按 spec 实施的,必须对第 2 项取自票或 spec 的每条成功标准,按 `/review-code` 的 [independent-review.md](../review-code/independent-review.md)「审什么」节第 3 项的判法找出它在哪里实现、由什么守着;按该项判法构成发现的,每条作为一条发现,与第 5 项的发现同样写进交付说明、处置并跑修复后运行。
+7. 必须答两问:本次改动让仓库里陈述现状的文档(`docs/` 下的 spec、ADR,`CONTEXT.md`,各级 README,项目 `AGENTS.md`)中哪句话变成了谎、又缺了哪句话。作答前必须检索本次改动涉及的名称(被改的函数与模块、配置键、文件路径、界面文案)在这些文档中的全部出现处,不得凭印象作答。变成谎或缺的句子当场改写;改写的句子在 ADR 里的,必须按 domain-modeling 的 [ADR-FORMAT.md](../domain-modeling/ADR-FORMAT.md) 改;改 `docs/specs/` 下的文件之前,必须完整读取 [spec-writing.md](../to-spec/spec-writing.md)。两问的结论与所用的检索命令及其输出必须写进交付说明。
 8. 必须执行「交付」节。
 
 ## 收口票路径
@@ -30,7 +32,7 @@ description: 按 spec、ticket 或用户提出的改动要求实施开发并交�
 
 0. **开工读取**:认定本票是收口票后,当前工具支持一次请求发出多个调用时,必须用一次请求读完票(尚未读的)与本节后面各项点名的 skill 与引用文档,各项指向的节里点名的也算;再用一次请求读完这些文件点名的 skill 与引用文档,以及票点名的 spec 与 feature 级的 `checklist.md`;读到的文件又点名了别的,依此再用一次请求读完,直到没有新的。每份文件仍是一次单独的工具调用。只在某种情形下才要读的(如第 2 项「需要可执行改动的」所走的各节),等情形出现再读。
 1. 票 Blocked by 的每张票都必须已合并进默认分支;有未合并的,必须停下报告,不得开工。随后必须执行「实现」节第 1 项(分支)。
-2. 必须调 `/features-catalog`,执行其「文档一致性收口」与「全 feature 收口」两节,把全 feature 收口的结论写进交付说明,并把票点名的决定与边界写进 spec。写进仓库的每条产品事实都必须有证据留在陈述核对记录里,证据的形态见 [claim-check.md](claim-check.md)「核对的执行」第 3 项。需要可执行改动([change-scope.mjs](change-scope.mjs) 会判为 `changed` 的改动)的,必须从「实现」节第 0 项起依次走到「独立审查」节写它,其中「实现」节第 1 项不重做,不得先写后补;走完必须按 `/features-catalog`「全 feature 收口」的「判定收口」条重核受影响项。写进仓库的改动必须提交为 commit。
+2. 必须调 `/features-catalog`,执行其「文档一致性收口」与「全 feature 收口」两节,把全 feature 收口的结论写进交付说明,并把票点名的决定与边界写进 spec;改 `docs/specs/` 下的文件之前,必须完整读取 [spec-writing.md](../to-spec/spec-writing.md)。写进仓库的每条产品事实都必须有证据留在陈述核对记录里,证据的形态见 [claim-check.md](claim-check.md)「核对的执行」第 3 项。需要可执行改动([change-scope.mjs](change-scope.mjs) 会判为 `changed` 的改动)的,必须从「实现」节第 0 项起依次走到「独立审查」节写它,其中「实现」节第 1 项不重做,不得先写后补;走完必须按 `/features-catalog`「全 feature 收口」的「判定收口」条重核受影响项。写进仓库的改动必须提交为 commit。
 3. 必须先拉取远端,取 `git merge-base HEAD origin/<默认分支>` 得到的分叉点,再按下列各支判定,所用命令、完整输出与退出码必须写进陈述核对记录(路径见 claim-check.md「核对的执行」第 7 项):
    - 相对分叉点 `git diff` 为空的:不得开 PR,跳过下面两项,把收口结论报告给用户。
    - 相对分叉点运行 [change-scope.mjs](change-scope.mjs),退出码为 0 的:即没有可执行改动,不得送独立审查,交付说明写明这次跳过及其依据。
@@ -59,7 +61,7 @@ description: 按 spec、ticket 或用户提出的改动要求实施开发并交�
 
 发现处置完毕、有修复的其修复后运行通过、核心档要复审的复审也处置完毕之后,交出文档核对或交付之前,必须把只有主 agent 知道的写进持久文档:
 
-- **spec**:本次改动定下或改变的行为,写进 `docs/specs/<slug>.md`(**不删**),使它描述的是**最终实现**而非最初设想(新增的边界条目、口径修订、Out of Scope 变化);各节的处理按 to-spec「模板与持久化的配合」办;留给用户决定的发现所涉的行为,按 [post-implementation-check.md](post-implementation-check.md)「留给用户决定」条不写。
+- **spec**:本次改动定下或改变的行为,写进 `docs/specs/<slug>.md`(**不删**),使它描述的是**最终实现**而非最初设想(新增的边界条目、口径修订、Out of Scope 变化);改 `docs/specs/` 下的文件之前,必须完整读取 [spec-writing.md](../to-spec/spec-writing.md);留给用户决定的发现所涉的行为,按 [post-implementation-check.md](post-implementation-check.md)「留给用户决定」条不写。
 - **新拍的决策**(尤其实现期踩坑改向的)→ ADR(按 domain-modeling/ADR-FORMAT;顺带检查有无「提议」态 ADR 该升级或推翻);
 - **新术语/新消解的歧义** → CONTEXT.md;
 - **踩坑因果链** → `docs/` 复盘文档;**判据**:说得出根因、说得出"现有检查为什么没拦住"、且已落一道防御——三者齐备才单开一篇,缺任一的不开;
