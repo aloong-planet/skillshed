@@ -14,7 +14,7 @@ Template headings and the other fixed names in the templates follow the artifact
 
 # <NN> — <Ticket title>
 
-**What to build:** the end-to-end behaviour this ticket makes work, from the user's perspective — not a layer-by-layer implementation list.
+**What to build:** the end-to-end behaviour this ticket makes work, from the user's perspective — not a layer-by-layer implementation list. For a ticket of a behaviour-preserving replacement ([SKILL.md](SKILL.md) step 3) other than its closeout ticket, instead: the components it connects end to end if it is the walking skeleton, otherwise the component it replaces; and how it proves the results the same as the old implementation's.
 
 **Blocked by:** the numbers/titles of the tickets that gate this one, or "None — can start immediately".
 
@@ -69,7 +69,7 @@ A reference to the parent issue on the tracker (if the source was an existing is
 
 ## What to build
 
-The end-to-end behaviour this ticket makes work, from the user's perspective — not layer-by-layer implementation.
+The end-to-end behaviour this ticket makes work, from the user's perspective — not layer-by-layer implementation. For a ticket of a behaviour-preserving replacement ([SKILL.md](SKILL.md) step 3) other than its closeout ticket, instead: the components it connects end to end if it is the walking skeleton, otherwise the component it replaces; and how it proves the results the same as the old implementation's.
 
 ## 风险档位
 
