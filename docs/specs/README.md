@@ -14,5 +14,5 @@ Persistent specs of confirmed requirements for these skills; one-off working rec
 
 ## Invariants
 
-- One spec per module, kept as a current description and rewritten in place; history lives in git.
+- One spec per feature, kept as a current description and rewritten in place; history lives in git.
 - A spec names no ticket, branch or working-record path; behaviour not yet built is marked with a `Pending:` note that can be judged against the implementation.
