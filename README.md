@@ -88,7 +88,7 @@ node scripts/check-artifact-names.mjs
 node scripts/check-prototype-copies.mjs
 ```
 
-A change to a specification under `docs/specs/` is also checked against the size cap and the specification rules before it is committed:
+A change to a specification under `docs/specs/` is also checked, before it is committed, against the size cap and the specification rules a script can see:
 
 ```sh
 node to-spec/check-spec.mjs --base "$(git merge-base HEAD origin/main)"
