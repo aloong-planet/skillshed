@@ -9,7 +9,7 @@ Break a plan, spec, or conversation into a set of **tickets** — tracer-bullet 
 
 The issue tracker and the agent-grabbable label string should have been provided to you in `docs/agents/issue-tracker.md` — run `/repo-scaffold` if not.
 
-**Tickets are disposable; the spec is not** — so a ticket references the spec, never the reverse. What that forbids on the persistent side is stated once, in `/to-spec`; here it means each ticket carries its own requirement text (quoted from the spec) rather than expecting the spec to point back at it.
+**Tickets are disposable; the spec is not** — so a ticket references the spec, never the reverse. What that forbids on the persistent side is stated once, in item 4.8 of [spec-writing.md](../to-spec/spec-writing.md)「不得写，以及不得留下的内容」; here it means each ticket carries its own requirement text (quoted from the spec) rather than expecting the spec to point back at it.
 
 ## Process
 

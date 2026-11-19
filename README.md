@@ -39,7 +39,7 @@ Read the relevant skill before using it. The skills contain specific prerequisit
 The collection connects discovery, design, delivery, and maintenance:
 
 1. **Establish facts and agree on requirements.** Use `grill-with-docs` to investigate the current system and resolve decisions with the user. Use `domain-modeling` for domain vocabulary and architectural decisions.
-2. **Make the design concrete.** Use `prototype` to resolve design questions and `to-spec` to record the agreed behavior, boundaries, and acceptance criteria.
+2. **Make the design concrete.** Use `prototype` to resolve design questions and `to-spec` to record the agreed behavior, boundaries, and acceptance criteria. The rules for writing a specification live in one `to-spec` file that every step changing a specification reads first: what a specification holds and leaves out, one feature per specification, a size cap a script reports, and splitting by feature.
 3. **Divide work when needed.** Use `to-tickets` for work that spans multiple implementation sessions, with dependencies and, for each acceptance item, the gate, test, or evidence that guarantees it.
 4. **Implement and review.** Use `implement` to coordinate development, the runs that follow the change, and the independent review of the code, the tests and the acceptance criteria. `tdd` shapes the tests as they are written; `review-code` and `review-tests` define what the independent reviewer checks.
 5. **Check the documents, then deliver.** Before the delivery, `implement` uses `features-catalog` to hand a sub-agent the check of specifications, decisions, terminology, and the other documents that describe the product against the implementation and against each other. The evidence the delivery note still lacks, such as screenshots and command output, is gathered next, by a sub-agent when that takes three or more commands, files, interface operations and screenshots. The delivery itself goes to another sub-agent and keeps one record, its delivery note, which becomes the pull request's description.
@@ -88,12 +88,19 @@ node scripts/check-artifact-names.mjs
 node scripts/check-prototype-copies.mjs
 ```
 
-The change-scope helper, the action-pin check, the ADR check and the CI routing scripts can be tested directly (the ADR check needs python3 3.11 or later):
+A change to a specification under `docs/specs/` is also checked against the size cap and the specification rules before it is committed:
+
+```sh
+node to-spec/check-spec.mjs --base "$(git merge-base HEAD origin/main)"
+```
+
+The change-scope helper, the action-pin check, the ADR check, the spec check and the CI routing scripts can be tested directly (the ADR check and the spec check need python3 3.11 or later):
 
 ```sh
 node --test implement/change-scope.test.mjs
 node --test github-ops/check-action-pins.test.mjs
 node --test domain-modeling/project-documents.test.mjs
+node --test to-spec/project-documents-spec-check.test.mjs
 node --test github-ops/assets/ci-routing/ci-routing.test.mjs github-ops/assets/ci-routing/routing-rules.test.mjs
 ```
 

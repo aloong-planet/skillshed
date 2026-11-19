@@ -25,7 +25,7 @@ const CJK_G = /[㐀-鿿豈-﫿]/g
 
 // Where templates live. `fence`: fenced blocks with these info strings; `tag`: <tag>…</tag> blocks.
 const TEMPLATES = [
-  { file: 'to-spec/SKILL.md', kind: 'fence', langs: ['md'] },
+  { file: 'to-spec/spec-writing.md', kind: 'fence', langs: ['md'] },
   { file: 'to-tickets/feature-checklist.md', kind: 'tag', tags: ['checklist-template'] },
   { file: 'to-tickets/ticket-templates.md', kind: 'tag', tags: ['local-ticket-template', 'closeout-ticket-template', 'issue-template'] },
   { file: 'domain-modeling/ADR-FORMAT.md', kind: 'fence', langs: ['md'] },
