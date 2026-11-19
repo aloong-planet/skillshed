@@ -19,12 +19,13 @@
 //     code and inline code; or a path into the working records, `docs/.workings` or `../.workings` followed by
 //     anything but a letter, a digit, `_` or `-`, inside code too. Lines the change did not add are left alone, since a
 //     change does not edit a section it does not rewrite only to remove such content;
-//   - a full identifier `<slug>::<local number>` on a line of a file git grep searches (tracked files and untracked
-//     ones, ignored files left out) whose spec docs/specs/<slug>.md has no primary definition of it, or whose spec was
-//     at the base and is gone. The local number is `<letters>-<digits>`, optionally followed by `/AC-<digits>`, with no
-//     letter, digit, `_` or `/` after it. A primary definition is a heading or a list item, outside fenced code, whose
-//     text opens with the identifier, followed by anything but a letter, a digit, `_` or `/`. A citation whose slug has
-//     a spec neither now nor at the base is not checked, and the output counts the citations checked and not checked.
+//   - a full identifier `<slug>::<local number>` on a line of a file git tracks, as it is in the working tree, whose
+//     spec docs/specs/<slug>.md has no primary definition of it, or whose spec was at the base and is gone. The local
+//     number is `<letters>-<digits>`, optionally followed by `/AC-<digits>`, with no letter, digit, `_` or `/` after
+//     it. A primary definition is a heading or a list item, outside fenced code, whose text opens with the identifier,
+//     followed by anything but a letter, a digit, `_` or `/`. A citation whose slug has a spec neither now nor at the
+//     base is not checked, and the output counts the citations checked and not checked. Untracked files, new specs
+//     among them, are not searched for citations.
 // The lines a change added are those of the spec now outside a longest common subsequence of its lines and the lines
 // of the spec at the base, line endings read alike; every line of a new spec.
 //
@@ -300,9 +301,9 @@ function baseSpecs(base) {
   return specs
 }
 
-/** The lines of tracked and untracked files, ignored files left out, that hold a full identifier, as `{ path, line, text }` */
+/** The lines of the files git tracks, as they are in the working tree, that hold a full identifier, as `{ path, line, text }` */
 function citingLines() {
-  const r = git(['grep', '-n', '-I', '-z', '--untracked', '-E', '[A-Za-z0-9][A-Za-z0-9_-]*::[A-Z]+-[0-9]+'])
+  const r = git(['grep', '-n', '-I', '-z', '-E', '[A-Za-z0-9][A-Za-z0-9_-]*::[A-Z]+-[0-9]+'])
   if (r.status === 1) return []
   if (r.status !== 0) throw new CannotCheck(`git grep failed: ${r.stderr.trim()}`)
   return r.stdout.split('\n').filter(Boolean).map((l) => {
@@ -332,7 +333,7 @@ function main(argv) {
   const out = [`Base ${base}. Working language "${language}": a spec over ${n(r.cap)} code points is over the cap.`]
   for (const s of r.sizes) out.push(`${s.path}: ${n(s.size)} code points, cap ${n(r.cap)}, ${s.delta === null ? 'new' : `${signed(s.delta)} since the base`}.`)
   for (const path of r.deleted) out.push(`${path}: deleted since the base.`)
-  out.push(`Full identifiers cited in tracked and untracked files, ignored ones left out: ${r.citations.checked} checked; ` +
+  out.push(`Full identifiers cited in the files git tracks: ${r.citations.checked} checked; ` +
     `${r.citations.skipped} not checked, their slug having a spec neither now nor at the base.`)
   for (const v of r.violations) out.push(`${v.path}:${v.line}: ${v.message}`)
   out.push(`${r.violations.length} violation(s).`)

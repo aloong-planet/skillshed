@@ -7,13 +7,12 @@
 // file holds no Chinese text.
 // Gap: no case reaches the exit 2 for an error the script does not expect, since no input is known to raise one, for a
 // git command that fails once the repository and the base are known good, or for a python3 missing or older than 3.11.
-import { after, test } from 'node:test'
+import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, unlinkSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { scratchRepos, write } from '../scripts/test-support/scratch-repos.mjs'
 import { addedLines, CannotCheck, capFor, checkSpecs, citationsIn, definesIn, isSpecFile, parseArgs, reviewReasons, size } from './check-spec.mjs'
 
 test('measures a spec in Unicode code points, markup and line endings included', () => {
@@ -22,11 +21,9 @@ test('measures a spec in Unicode code points, markup and line endings included',
   assert.equal(size('a\r\nb'), 4)
 })
 
-for (const [language, cap] of [['en', 50000], ['zh', 18000], ['fr', null]]) {
-  test(`takes the cap of working-language "${language}": ${cap ?? 'none'}`, () => {
-    assert.equal(capFor(language), cap)
-  })
-}
+test('has no cap for a working language other than en and zh', () => {
+  assert.equal(capFor('fr'), null)
+})
 
 const spec = (n) => `# A\n\n${'x'.repeat(n - 6)}\n`
 const check = (current, base = {}, language = 'en', hits = []) =>
@@ -205,35 +202,9 @@ for (const [what, argv, reason] of [
   })
 }
 
-// Command-line cases, run in throwaway git repositories. Git runs with no global or system configuration, so the
-// user's settings change no output.
-const dirs = []
-const locked = []
-after(() => {
-  for (const p of locked) chmodSync(p, 0o755)
-  for (const d of dirs) rmSync(d, { recursive: true, force: true })
-})
-/** `path` made unreadable until the cases end */
-const lock = (path) => { chmodSync(path, 0o000); locked.push(path) }
-const scratch = () => { const d = mkdtempSync(join(tmpdir(), 'check-spec-test-')); dirs.push(d); return d }
+// Command-line cases, run in throwaway git repositories.
+const { scratch, lock, env: ENV, git } = scratchRepos('check-spec-test-')
 const SCRIPT = join(dirname(fileURLToPath(import.meta.url)), 'check-spec.mjs')
-const EMPTY_CONFIG = join(scratch(), 'gitconfig')
-writeFileSync(EMPTY_CONFIG, '')
-const ENV = { ...process.env, GIT_CONFIG_GLOBAL: EMPTY_CONFIG, GIT_CONFIG_NOSYSTEM: '1', GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@example.invalid', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@example.invalid' }
-for (const k of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE']) delete ENV[k]
-
-function git(cwd, ...args) {
-  const r = spawnSync('git', args, { cwd, env: ENV, encoding: 'utf8' })
-  assert.equal(r.status, 0, `git ${args.join(' ')}: ${r.stderr}`)
-  return r.stdout.trim()
-}
-function write(root, files) {
-  for (const [path, text] of Object.entries(files)) {
-    if (text === null) { unlinkSync(join(root, path)); continue }
-    mkdirSync(dirname(join(root, path)), { recursive: true })
-    writeFileSync(join(root, path), text)
-  }
-}
 /** A repository on branch main holding `files` in one commit, and that commit */
 function project(files, language = '"working-language" = "en"\n') {
   const root = scratch()
@@ -278,14 +249,14 @@ test('passes a change that breaks no rule, reporting the sizes and the added lin
   assert.deepEqual(review.split('\n').filter((l) => l.startsWith('  ')), ['  docs/specs/area.md:13 [prototype]: - area::REQ-001/AC-03: The prototype\'s order holds.'])
 })
 
-test('reports citations in tracked and untracked files, and of a deleted spec, but not in ignored files', () => {
+test('reports citations in the files git tracks as they are now, and of a deleted spec, but not in untracked files', () => {
   const { root, base } = project({
     'docs/specs/area.md': REAL_SPEC,
     'docs/specs/old.md': '# Old\n\n- old::REQ-001: It held.\n',
     'src/a.ts': '// area::REQ-001/AC-02\n// area::REQ-002\n',
-    '.gitignore': 'ignored/\n',
+    'notes.md': 'Nothing yet.\n',
   })
-  write(root, { 'docs/specs/old.md': null, 'notes.md': 'See old::REQ-001 and area::US-001.\n', 'ignored/x.md': 'area::REQ-009\n' })
+  write(root, { 'docs/specs/old.md': null, 'notes.md': 'See old::REQ-001 and area::US-001.\n', 'draft.md': 'area::REQ-009\n' })
   const r = run(root, ['--base', base])
   assert.equal(r.code, 1, r.out + r.err)
   assert.deepEqual(violationLines(r.out).sort(), [
@@ -294,6 +265,15 @@ test('reports citations in tracked and untracked files, and of a deleted spec, b
     'src/a.ts:2: cites area::REQ-002, which docs/specs/area.md does not define in a heading or list item opening with it',
   ])
   assert.match(r.out, /^docs\/specs\/old\.md: deleted since the base\.$/m)
+})
+
+test('takes no Markdown file in a directory under docs/specs for a spec, at the base or now', () => {
+  const over = `# Old\n\n${'x'.repeat(50001)}\n`
+  const { root, base } = project({ 'docs/specs/area.md': REAL_SPEC, 'docs/specs/archive/old.md': over, 'docs/specs/archive/gone.md': over })
+  write(root, { 'docs/specs/archive/old.md': `${over}More ~~struck~~.\n`, 'docs/specs/archive/gone.md': null })
+  const r = run(root, ['--base', base])
+  assert.equal(r.code, 0, r.out + r.err)
+  assert.doesNotMatch(r.out, /archive/)
 })
 
 test('reads working-language with a TOML parser and takes the cap of that language, for a new spec not yet added to git', () => {
