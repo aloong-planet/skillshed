@@ -161,10 +161,6 @@ A decision gets an ADR when it is hard to reverse, baffling without context and 
 
 A code comment or a test that cites a spec gives the full identifier of the entry it cites, never a section-local number or a line number, and does not restate what the entry says or the figures it gives.
 
-### project-documents::REQ-006 This repository follows its own rules (direct acceptance)
-
-The two specs this repository already has lose their testing-decisions sections and the content of REQ-002/AC-02's kinds, under REQ-002/AC-04 for any fact about real runs worth keeping. The repository's README describes the document check without a feature catalogue, and the specs index lists this spec.
-
 ## Failure modes and boundaries
 
 1. **The tool cannot choose a sub-agent's model or effort.** The sub-agent runs on what the tool gives it; the check is still handed over (REQ-005/AC-02, AC-03).
