@@ -478,8 +478,8 @@ const DIFFER = 'the fuses of the built apps differ from electronFuses in electro
 
 describe('reading the fuses of the built apps', () => {
   const appWith = (bytes) => writeFramework(path.join(tempDir(), `${PRODUCT}.app`), bytes)
-  const check = (app, electronFuses = ELECTRON_FUSES, log = () => {}) =>
-    mac.checkFuses([{ arch: 'arm64', app }], { fuses: mac.configuredFuses({ electronFuses }), library: mac.fusesLibrary(), log })
+  const check = (app, electronFuses = ELECTRON_FUSES) =>
+    mac.checkFuses([{ arch: 'arm64', app }], { fuses: mac.configuredFuses({ electronFuses }), library: mac.fusesLibrary(), log: () => {} })
 
   test('an app whose fuses were never flipped fails on every fuse electronFuses sets, each named with what it found', async () => {
     const app = appWith(await packedSlice({}))
