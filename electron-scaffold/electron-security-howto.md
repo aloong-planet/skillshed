@@ -152,23 +152,14 @@ electronFuses:
   grantFileProtocolExtraPrivileges: false   # precondition: the code loads no file:// page (see #18)
 ```
 
-**怎么验**——**这条的判据是读产物,不是看配置**。配置写对不代表生效(版本/平台/配置段位置错都会静默跳过)。写个脚本读二进制的 fuse wire:
+**怎么验**——**这条的判据是读产物,不是看配置**。配置写对不代表生效(版本/平台/配置段位置错都会静默跳过)。用打包资产的 macOS 打包不得另写脚本:它每次打包都读每个产物的 fuse wire 并与 `electronFuses` 比对(`macos-signing.md` 第 6 节),读法见 [`assets/mac-packaging.cjs`](./assets/mac-packaging.cjs) 的 `checkFuses`。其余打包自己写读取时,必须照它读:
 
-<!-- asset -->
-```js
-const SENTINEL = Buffer.from('dL7pKGdnNz796PbbjQWNKmHXBZaB9tsX', 'utf8')  // @electron/fuses sentinel
-const NAMES = ['runAsNode','cookieEncryption','nodeOptions','nodeCliInspect',
-               'asarIntegrity','onlyLoadAppFromAsar','v8Snapshot','fileProtocolPrivileges',
-               'wasmTrapHandlers']            // index 8 exists since Electron 41
-const buf = readFileSync('<app>/Contents/Frameworks/Electron Framework.framework/Versions/A/Electron Framework')
-const i = buf.indexOf(SENTINEL) + SENTINEL.length
-const count = buf[i + 1]
-// buf[i+2+k]: 0x31=ENABLED, 0x30=DISABLED, anything else=REMOVED
-```
+- 每个 sentinel 后各有一条 wire,universal 二进制有两条,必须每条都读;找不到 sentinel 即失败。
+- wire 的第一个字节是版本,不是 1 即失败;第二个字节是 fuse 个数,要读的下标不小于它即失败,不得读到 wire 之外的字节。
+- sentinel、状态字节与各 fuse 的下标必须取自打包工具依赖的 `@electron/fuses`,不得在脚本里另写一份:wire 只追加不重排(`fuses.json5` 明载;E41 追加 `wasmTrapHandlers`,长度由 8 变 9),按它的下标读在版本之间不会错位。
 
 **踩过的坑**
-- ⚠️ **fuse wire 会随版本增长**(E41 追加 `wasmTrapHandlers`,长度 8→9)。但 `fuses.json5` 明载"**只追加不重排**",所以**按下标读长期安全**;名称表要跟着补,否则新项回落成 `fuseN`。
-- ⚠️ 升级 Electron 后**必须重跑这个校验**——我们就因为想当然说"结构未变"而写错过文档,实测才发现长度变了。
+- ⚠️ **不得在 `afterPack` 钩子里读 fuses**:electron-builder 在 `afterPack` 之后、签名之前才翻转它们(读自 app-builder-lib 26.17.0 的 `platformPackager.js`),钩子里读到的是 Electron 出厂时的状态。必须在打包命令结束之后读产物。
 - `grantFileProtocolExtraPrivileges: false` 有前提:确认代码内无 `file://` 页面加载。**主进程内 `net.fetch(file://…)` 读盘是另一条路径,不受该 fuse 约束**——我们实测确认(关闭后 e2e 全绿,含按需读盘用例)。
 
 ---
@@ -320,7 +311,7 @@ if (app.isPackaged) {
 }
 ```
 
-**怎么验**:单测覆盖 electron-security.md「固化」节列出的启动入口绕过向量。接线只能实跑打包产物:打包资产每次打包都做(`macos-signing.md` 第 6 节)。
+**怎么验**:单测覆盖 electron-security.md「固化」节列出的启动入口绕过向量。接线只能实跑打包产物,每次打包由谁实跑见 electron-security.md 第 21 条。
 
 **踩过的坑**
 - ⚠️ **必须在主模块加载时同步判定,不得放进 `whenReady`**。实测(前提:Electron 43.2.0、ESM 主模块):模块加载时调试端口还没开、其他进程还没起,`app.exit` 当场结束进程,其后的代码一行不跑;等到 ready,端口已经开了。
