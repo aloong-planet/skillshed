@@ -311,7 +311,7 @@ if (app.isPackaged) {
 }
 ```
 
-**怎么验**:单测覆盖 electron-security.md「固化」节列出的启动入口绕过向量。接线只能实跑打包产物:打包资产每次打包都做(`macos-signing.md` 第 6 节)。
+**怎么验**:单测覆盖 electron-security.md「固化」节列出的启动入口绕过向量。接线只能实跑打包产物,每次打包由谁实跑见 electron-security.md 第 21 条。
 
 **踩过的坑**
 - ⚠️ **必须在主模块加载时同步判定,不得放进 `whenReady`**。实测(前提:Electron 43.2.0、ESM 主模块):模块加载时调试端口还没开、其他进程还没起,`app.exit` 当场结束进程,其后的代码一行不跑;等到 ready,端口已经开了。
