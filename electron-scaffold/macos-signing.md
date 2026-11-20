@@ -57,8 +57,8 @@ macOS 桌面应用(Developer ID / DMG 直分发)从分发政策、配置到发�
 
 | 入口命令 | 做什么 |
 |---|---|
-| `dist:mac:local` | 检查 Developer ID 证书(没有就报错退出)→ 一次调用构建并签名各架构的 `.app` 与 DMG(有 ZIP 时连同 ZIP),内置公证关闭、不挂公证钩子 → 核对每个 `.app` 与 DMG 的签名,有 ZIP 时还核对每个 ZIP 里的 `.app`,并实跑 `.app` 核对启动入口(第 6 节) |
-| `dist:mac:release` | 构建前检查证书与公证凭据,缺任一就报错退出 → 同一次调用加挂 `afterSign` 钩子:每个 `.app` 签名之后、打它的 DMG 与 ZIP 之前,用 `notarytool` 公证并 staple,公证状态与日志按第 6 节断言 → 核对签名,并断言每个 `.app`(有 ZIP 时含每个 ZIP 里的 `.app`)已自带票据,实跑 `.app` 核对启动入口 → 核对产物全集,再对每个 DMG 做提交前检查、公证、staple 与门禁(第 6、7 节) |
+| `dist:mac:local` | 检查 Developer ID 证书(没有就报错退出)→ 一次调用构建并签名各架构的 `.app` 与 DMG(有 ZIP 时连同 ZIP),内置公证关闭、不挂公证钩子 → 读回每个 `.app` 的 fuses 与 `electronFuses` 比对 → 核对每个 `.app` 与 DMG 的签名,有 ZIP 时还核对每个 ZIP 里的 `.app`,并实跑 `.app` 核对启动入口(第 6 节) |
+| `dist:mac:release` | 构建前检查证书与公证凭据,缺任一就报错退出 → 同一次调用加挂 `afterSign` 钩子:每个 `.app` 签名之后、打它的 DMG 与 ZIP 之前,用 `notarytool` 公证并 staple,公证状态与日志按第 6 节断言 → 读回每个 `.app` 的 fuses 与 `electronFuses` 比对 → 核对签名,并断言每个 `.app`(有 ZIP 时含每个 ZIP 里的 `.app`)已自带票据,实跑 `.app` 核对启动入口 → 核对产物全集,再对每个 DMG 做提交前检查、公证、staple 与门禁(第 6、7 节) |
 
 - **不得把一次打包拆成多次 electron-builder 调用**(如先用 `--mac dir` 打 `.app`、再用 `--prepackaged` 打 DMG):electron-builder 有些行为只在同一次调用同时构建 `.app` 与 DMG 或 zip 时才发生——往 `.app` 里写 `app-update.yml` 的条件正是这次调用的目标含 `dmg` 或 `zip`——拆开调用会把它们静默丢掉,构建不报错。
 - **不得用内置公证(`mac.notarize`)公证 `.app`**:它只要环境里有 Apple 凭据就自动提交,本地打包会在加载了凭据的机器上悄悄提交;缺凭据时只告警后跳过,发布出去的 `.app` 没有票据而构建是绿的;它也不留公证日志。
@@ -181,8 +181,9 @@ CI 的 macOS 打包按**触发方式**分档:
 - **产物全集**:提交 Apple 之前先核对预期产物全集——缺失、重复、多出、版本或架构不符,都必须在等待公证之前失败。有 ZIP 时全集还包括每个架构的 ZIP 与恰好一份更新元数据:元数据必须是本版本的,列出的恰是这些 ZIP,记录的大小与 sha512 与文件一致。
 - **提交前检查**:对最终签名后的每个 DMG,在 `notarytool submit` 之前跑 `hdiutil verify`(镜像完整性)、`codesign --verify --verbose=4` 与下一条的签名内容断言;任一失败不得提交。
 - **签名内容**:`codesign --display --verbose=4` 的输出里断言**签名身份是 Developer ID Application**、**Team ID 匹配**、**Timestamp 非 `none`**(缺安全时间戳的签名会在证书过期后失效)。
+- **Electron fuses**:每次打包(两种 profile)都必须从每个 `.app` 的 Electron Framework 二进制读回 fuse wire,`electronFuses` 设了的每个 fuse 在每条 wire 里(universal 有两条)都必须是它设的状态;任一 fuse 不符、wire 版本不是 1、找不到 wire、要读的 fuse 超出 wire 长度、`electronFuses` 里有对不上 fuse 的键、读不到 electron-builder 依赖的 `@electron/fuses` 的常量,都必须失败。没设 `electronFuses` 时不核对,日志写明。期望值从哪里取、各 fuse 该怎么设见 [electron-security.md](./electron-security.md) 第 19 条。
 - **启动入口**:每次打包(两种 profile)都必须实跑构建出的 `.app`:带上每个应拒绝的输入启动,进程必须以退出码 64 结束,且命令行指定的程序没有运行;只带设置目录(`--user-data-dir=<临时目录>`)启动,进程必须在观察窗口内不退出。崩溃、其他退出码、到时限仍在运行都不算拒绝。没有后一条,一个什么都拒绝的守卫能通过全部输入,而用户打不开它。每次启动必须用独立的临时设置目录,且不得把签名与公证凭据传给被启动的应用。本机跑不了的架构必须报告并跳过,一个都跑不了时必须失败。应拒绝什么、应用侧怎么做见 [electron-security.md](./electron-security.md) 第 21 条。
-- **ZIP 里的 `.app`**:把 ZIP 解压到临时目录(`ditto -x -k`),断言解出的恰好是预期的那一个 `.app`,对它跑 `codesign --verify --deep --strict` 与上一条的签名内容断言,发布时再跑 `stapler validate`;临时目录用完即删,ZIP 本身不动(第 3 节硬约束)。
+- **ZIP 里的 `.app`**:把 ZIP 解压到临时目录(`ditto -x -k`),断言解出的恰好是预期的那一个 `.app`,对它跑 `codesign --verify --deep --strict` 与「签名内容」一条的断言,发布时再跑 `stapler validate`;临时目录用完即删,ZIP 本身不动(第 3 节硬约束)。
 - **解析必须结构化**:签名字段取完整字段比对,不做子串匹配;notarytool 的输出按 JSON 解析;stdout 与 stderr 都要捕获——Apple 的命令行工具常把诊断写进 stderr。
 - **公证状态**:`notarytool submit --wait --output-format json` 的 `status` 必须是 `Accepted` 且带有效 submission id。**但 submit 的状态不够**——还要用 `notarytool log <id>` 拉回日志,断言 **jobId 与本次 submission id 一致、状态仍是 Accepted、没有 severity 为 error 的问题**(比较不区分大小写),并把日志**原样(未改动的 JSON)随构建产物留档**,如与产物同级的 `<产物>.notary-log.json`;CI 上随临时产物一并上传。
 - **票据装订**:见第 7 节。
@@ -259,7 +260,7 @@ stat -f %z <zip>
 - 用 fake command runner 做的单测,验的是**命令序列、失败传播、清理逻辑**,**不等于验过 Apple**——它一次也没访问过 Apple 服务。测试文件里要写明这一点,不能让绿色被读成"公证通过"。
 - 真实端到端只能由**发布 tag**(正式版或预发布)或**专门的手动验证档**产生。
 - 下列信号单独成立时都不得据以宣称"已公证":tag 形态、打包步骤成功、`notarytool submit` 返回 Accepted、只有内部 App 的检查通过(包括 `spctl --type execute`——它说明不了打开 DMG 时 Gatekeeper 怎么判)。必须以第 6、7 节的全部断言为准。
-- 注入命令执行器的单测至少覆盖:产物全集发现与版本、架构错配;签名身份、Team ID 精确匹配、时间戳缺失或为 `none`;submit 的 JSON 畸形、缺 submission id、状态非 Accepted;日志 jobId 不符、状态不符、含 error 级问题;第 3 节的命令顺序;含空格的路径;挂载失败、内部 App 验收失败、正常卸载、强制卸载兜底、原始错误不被覆盖;有 ZIP 时:ZIP 缺失或多出、ZIP 里不止那一个 App、ZIP 里 App 的签名身份、Team ID、时间戳不符或缺票据、更新元数据缺失或多份、版本不符、所列文件与 ZIP 不符、大小或 sha512 不符、ZIP 没被写过;启动入口:应用到时限仍在运行、退出码不是 64、崩溃、命令行指定的程序被运行、只带设置目录时退出、本机跑不了的架构、一个都跑不了;workflow 条件能证明手动验证档无法发布或改动镜像。
+- 注入命令执行器的单测至少覆盖:产物全集发现与版本、架构错配;签名身份、Team ID 精确匹配、时间戳缺失或为 `none`;submit 的 JSON 畸形、缺 submission id、状态非 Accepted;日志 jobId 不符、状态不符、含 error 级问题;第 3 节的命令顺序;含空格的路径;挂载失败、内部 App 验收失败、正常卸载、强制卸载兜底、原始错误不被覆盖;有 ZIP 时:ZIP 缺失或多出、ZIP 里不止那一个 App、ZIP 里 App 的签名身份、Team ID、时间戳不符或缺票据、更新元数据缺失或多份、版本不符、所列文件与 ZIP 不符、大小或 sha512 不符、ZIP 没被写过;fuses:某个 fuse 与 `electronFuses` 不符(含只有 universal 第二条 wire 不符)、wire 版本不是 1、找不到 wire、要读的 fuse 超出 wire 长度、对不上 fuse 的键、`@electron/fuses` 的常量读不到,以及不符时不再做签名、启动入口与 DMG 的核对;启动入口:应用到时限仍在运行、退出码不是 64、崩溃、命令行指定的程序被运行、只带设置目录时退出、本机跑不了的架构、一个都跑不了;workflow 条件能证明手动验证档无法发布或改动镜像。
 - 对 workflow 文本做静态测试只是回归护栏,不能替代真跑一次手动验证档。
 - 这几条属于「验证会假绿」的通用形态,判据见 [review-code/false-greens.md](../review-code/false-greens.md)。
 

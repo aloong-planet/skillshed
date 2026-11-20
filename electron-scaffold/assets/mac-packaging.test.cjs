@@ -10,6 +10,12 @@
 // the app inside it. The launch gate's decisions run against an injected launcher. Two things here do start a real process:
 // launchApp, its adapter, starts shell scripts, and one case runs the gate's generated program. Whether a real app refuses
 // is what a real packaging run shows.
+//
+// The fuse check reads stand-in framework binaries, laid out as a real framework, whose wires the real writer flipped:
+// app-builder-lib's generateFuseConfig and @electron/fuses' flipFuses, the ones electron-builder packs with. Whether a
+// real Electron Framework flipped by a real build reads as set, and whether main hands the fuses it read to the packaging
+// (main is tested only for refusing a key it cannot map before any command runs), is what a real packaging run's log
+// shows: it names every app with the slices it read.
 const { test, describe, afterEach } = require('node:test')
 const assert = require('node:assert/strict')
 const { spawnSync } = require('node:child_process')
@@ -127,7 +133,8 @@ const appPath = (outputDir, subdir) => path.join(outputDir, subdir, `${PRODUCT}.
  * `ditto -x -k` extracts a ZIP the way a real one comes out: the app alone at the top, plus the files named in
  * `zipExtras[arch]`, and a read-only directory inside the app when the arch is in `zipLocked`. The app extracted from
  * an arch's ZIP is answered with `zipAppSignature[arch]` (default: signed correctly), and fails `stapler validate` when
- * the arch is in `unstapledZip`. `extractions` lists every extraction.
+ * the arch is in `unstapledZip`. `extractions` lists every extraction. With `frameworks`, each subdir it names gets an
+ * Electron Framework holding those bytes when electron-builder runs.
  */
 function buildRunner(outputDir, opts = {}) {
   const commands = []
@@ -138,6 +145,7 @@ function buildRunner(outputDir, opts = {}) {
     if (command === 'lipo') return lipo(LIPO_ANSWERS)(command, args)
     if (command === 'electron-builder') {
       makeApps(outputDir, BUILD_SUBDIRS)
+      for (const [subdir, bytes] of Object.entries(opts.frameworks ?? {})) writeFramework(appPath(outputDir, subdir), bytes)
       for (const arch of ARCHES) {
         if (!(opts.skipDmg ?? []).includes(arch)) fs.writeFileSync(dmgPath(outputDir, arch), 'new')
         if (opts.zip && !(opts.skipZip ?? []).includes(arch)) fs.writeFileSync(zipPath(outputDir, arch), `zip for ${arch}`)
@@ -196,8 +204,8 @@ function launcher(answer = () => undefined) {
   return { calls, launch }
 }
 
-const pkg = (outputDir, run, profile, env = { CSC_LINK: 'base64-p12' }, zip = false, launch = launcher().launch) =>
-  mac.packageMac({ profile, env, run, outputDir, productName: PRODUCT, version: VERSION, arches: ARCHES, zip, hookPath: 'build/mac-packaging.cjs', launch, hostArch: 'arm64', log: () => {} })
+const pkg = (outputDir, run, profile, env = { CSC_LINK: 'base64-p12' }, zip = false, launch = launcher().launch, extra = {}) =>
+  mac.packageMac({ profile, env, run, outputDir, productName: PRODUCT, version: VERSION, arches: ARCHES, zip, hookPath: 'build/mac-packaging.cjs', launch, hostArch: 'arm64', log: () => {}, ...extra })
 
 /** The commands with each extraction directory, whose name is random, shown as `<zip:arch>` */
 const withExtractions = (commands, extractions) =>
@@ -350,6 +358,222 @@ describe('locating the built apps', () => {
     assert.throws(() => mac.findBuiltApps({ outputDir, productName: PRODUCT, arches: ['arm64'], run: lipo({ mac: 'x86_64', 'mac-arm64': 'arm64' }) }), {
       message: `built app for an arch the config does not list (x64): ${appPath(outputDir, 'mac')}`
     })
+  })
+})
+
+/**
+ * The fuse writer electron-builder packs with, resolved the way the code under test resolves its reader: app-builder-lib's
+ * generateFuseConfig (electronFuses → @electron/fuses config) and @electron/fuses' flipFuses. The fixtures are written by
+ * them, so the expected states come from the real writer, not from this file's reading of it.
+ */
+let writerModules = null
+function writer() {
+  if (writerModules) return writerModules
+  const builderLib = path.dirname(require.resolve('app-builder-lib/package.json', { paths: [path.dirname(require.resolve('electron-builder/package.json'))] }))
+  const fusesDir = path.dirname(require.resolve('@electron/fuses/package.json', { paths: [builderLib] }))
+  const { PlatformPackager } = require(builderLib)
+  writerModules = {
+    schema: require(path.join(builderLib, 'scheme.json')),
+    generateFuseConfig: (electronFuses) => PlatformPackager.prototype.generateFuseConfig.call(undefined, electronFuses),
+    ...require(fusesDir),
+    SENTINEL: require(path.join(fusesDir, 'dist', 'constants.js')).SENTINEL
+  }
+  return writerModules
+}
+
+describe('which fuses are checked', () => {
+  test('every electronFuses key the schema allows is checked as the fuse electron-builder writes for it, with the same value', async () => {
+    const { schema, generateFuseConfig, FuseV1Options } = writer()
+    const keys = Object.keys(schema.definitions.FuseOptionsV1.properties)
+    let fuseKeys = 0
+    for (const key of keys) {
+      for (const value of [true, false, null]) {
+        const written = await generateFuseConfig({ [key]: value })
+        const writtenFuses = Object.fromEntries(Object.entries(written).filter(([index]) => /^\d+$/.test(index)))
+        const checked = Object.fromEntries(mac.configuredFuses({ electronFuses: { [key]: value } }).map(({ option, enabled }) => [FuseV1Options[option], enabled]))
+        assert.deepEqual(checked, writtenFuses, `electronFuses.${key}: ${value}`)
+        if (value === true && Object.keys(writtenFuses).length > 0) fuseKeys++
+      }
+    }
+    assert.ok(fuseKeys > 0, 'the schema lists keys electron-builder writes as fuses')
+  })
+
+  test('a key it cannot map to a fuse is refused, named', () => {
+    assert.throws(() => mac.configuredFuses({ electronFuses: { runAsNode: false, someLaterFuse: true } }), {
+      message: 'electron-builder.yml sets electronFuses.someLaterFuse, which mac-packaging.cjs cannot map to a fuse, so it could not check that the build applied it'
+    })
+  })
+
+  test('a config without electronFuses has no fuse to check', () => {
+    assert.deepEqual(mac.configuredFuses(CONFIG), [])
+  })
+
+  test('the wire layout comes from the @electron/fuses electron-builder depends on', () => {
+    const { sentinel, states, options } = mac.fusesLibrary()
+    // As in a real Electron Framework binary, and as @electron/fuses 1.8.0 defines the states
+    assert.equal(sentinel.toString(), 'dL7pKGdnNz796PbbjQWNKmHXBZaB9tsX')
+    assert.deepEqual([states.DISABLE, states.ENABLE, states[0x30], states[0x31]], [0x30, 0x31, 'DISABLE', 'ENABLE'])
+    assert.deepEqual([options.RunAsNode, options.GrantFileProtocolExtraPrivileges], [0, 7])
+  })
+
+  const CONSTANTS = '@electron/fuses/dist/constants'
+  const moduleFile = (text) => {
+    const file = path.join(tempDir(), 'module.js')
+    fs.writeFileSync(file, text)
+    return () => file
+  }
+  for (const [name, id, replacement, message] of [
+    ['its constants module moved', CONSTANTS, () => () => { throw new Error(`Cannot find module '${CONSTANTS}'`) },
+      `cannot load ${CONSTANTS} through electron-builder (electron-builder → app-builder-lib → @electron/fuses), which the fuse check reads the fuse wire's layout from (Cannot find module '${CONSTANTS}')`],
+    ['its constants module no longer holds the sentinel and states', CONSTANTS, () => moduleFile('module.exports = { FuseState: {} }'),
+      `${CONSTANTS} does not hold SENTINEL and FuseState as the fuse check reads them`],
+    ['its options lack one the check maps electronFuses to', '@electron/fuses', () => moduleFile('module.exports = { FuseV1Options: { RunAsNode: 0 } }'),
+      '@electron/fuses has no FuseV1Options.EnableCookieEncryption, which the fuse check maps electronFuses.enableCookieEncryption to']
+  ]) {
+    test(`fails closed, naming the module, when ${name}`, () => {
+      const resolveTo = replacement()
+      const resolve = (request, options) => (request === id ? resolveTo(request, options) : require.resolve(request, options))
+      assert.throws(() => mac.fusesLibrary(resolve), { message })
+    })
+  }
+})
+
+// The fuse wire as Electron 43.2.0 ships it, read from its Electron Framework binary (one wire: version 1, nine fuses),
+// before electron-builder flips it
+const SHIPPED_FUSES = [0x31, 0x30, 0x31, 0x31, 0x30, 0x30, 0x30, 0x31, 0x31]
+// The electronFuses of a real electron-builder.yml, which sets seven of them
+const ELECTRON_FUSES = {
+  runAsNode: false,
+  enableNodeCliInspectArguments: false,
+  enableNodeOptionsEnvironmentVariable: false,
+  onlyLoadAppFromAsar: true,
+  enableCookieEncryption: true,
+  enableEmbeddedAsarIntegrityValidation: true,
+  grantFileProtocolExtraPrivileges: false
+}
+
+/**
+ * One slice of an Electron Framework binary as electron-builder leaves it when it packs with `electronFuses`: the shipped
+ * wire (its first `wireLength` fuses) between stand-in code bytes, flipped by the real writer. The bytes after the wire
+ * are 0x30, the DISABLE state, so a reader that runs past the wire would find a state there.
+ */
+async function packedSlice(electronFuses, { wireLength = SHIPPED_FUSES.length } = {}) {
+  const { SENTINEL, flipFuses, generateFuseConfig } = writer()
+  // No ".app" anywhere in the path: flipFuses would look for the framework elsewhere
+  const file = path.join(tempDir(), 'Electron Framework')
+  fs.writeFileSync(file, Buffer.concat([
+    Buffer.from('code before the wire'), Buffer.from(SENTINEL), Buffer.from([1, wireLength, ...SHIPPED_FUSES.slice(0, wireLength)]), Buffer.alloc(16, 0x30)
+  ]))
+  await flipFuses(file, await generateFuseConfig(electronFuses))
+  return fs.readFileSync(file)
+}
+
+/** Where electron-builder leaves an app's Electron Framework binary, which the fuses are flipped in */
+const frameworkOf = (app) => path.join(app, 'Contents', 'Frameworks', 'Electron Framework.framework', 'Electron Framework')
+
+/** Gives an app an Electron Framework holding `bytes`, laid out as a real one: the binary behind the framework's symlinks */
+function writeFramework(app, bytes) {
+  const versions = path.join(path.dirname(frameworkOf(app)), 'Versions')
+  fs.mkdirSync(path.join(versions, 'A'), { recursive: true })
+  fs.writeFileSync(path.join(versions, 'A', 'Electron Framework'), bytes)
+  fs.symlinkSync('A', path.join(versions, 'Current'))
+  fs.symlinkSync('Versions/Current/Electron Framework', frameworkOf(app))
+  return app
+}
+
+const DIFFER = 'the fuses of the built apps differ from electronFuses in electron-builder.yml:'
+
+describe('reading the fuses of the built apps', () => {
+  const appWith = (bytes) => writeFramework(path.join(tempDir(), `${PRODUCT}.app`), bytes)
+  const check = (app, electronFuses = ELECTRON_FUSES, log = () => {}) =>
+    mac.checkFuses([{ arch: 'arm64', app }], { fuses: mac.configuredFuses({ electronFuses }), library: mac.fusesLibrary(), log })
+
+  test('an app whose fuses are as electronFuses sets them passes, and the log names it', async () => {
+    const app = appWith(await packedSlice(ELECTRON_FUSES))
+    const lines = []
+    check(app, ELECTRON_FUSES, (line) => lines.push(line))
+    assert.deepEqual(lines, [`[mac] ${app}: every fuse electronFuses sets is as set (slices read: 1)`])
+  })
+
+  test('an app whose fuses were never flipped fails on every fuse electronFuses sets, each named with what it found', async () => {
+    const app = appWith(await packedSlice({}))
+    assert.throws(() => check(app), {
+      message: [
+        DIFFER,
+        `  ${app}: RunAsNode (electronFuses.runAsNode) in slice 1 of 1 is ENABLE, expected DISABLE`,
+        `  ${app}: EnableNodeCliInspectArguments (electronFuses.enableNodeCliInspectArguments) in slice 1 of 1 is ENABLE, expected DISABLE`,
+        `  ${app}: EnableNodeOptionsEnvironmentVariable (electronFuses.enableNodeOptionsEnvironmentVariable) in slice 1 of 1 is ENABLE, expected DISABLE`,
+        `  ${app}: OnlyLoadAppFromAsar (electronFuses.onlyLoadAppFromAsar) in slice 1 of 1 is DISABLE, expected ENABLE`,
+        `  ${app}: EnableCookieEncryption (electronFuses.enableCookieEncryption) in slice 1 of 1 is DISABLE, expected ENABLE`,
+        `  ${app}: EnableEmbeddedAsarIntegrityValidation (electronFuses.enableEmbeddedAsarIntegrityValidation) in slice 1 of 1 is DISABLE, expected ENABLE`,
+        `  ${app}: GrantFileProtocolExtraPrivileges (electronFuses.grantFileProtocolExtraPrivileges) in slice 1 of 1 is ENABLE, expected DISABLE`
+      ].join('\n')
+    })
+  })
+
+  test('a universal binary whose second slice differs fails, though its first slice is as set', async () => {
+    const app = appWith(Buffer.concat([await packedSlice(ELECTRON_FUSES), await packedSlice({ ...ELECTRON_FUSES, runAsNode: true })]))
+    assert.throws(() => check(app), {
+      message: `${DIFFER}\n  ${app}: RunAsNode (electronFuses.runAsNode) in slice 2 of 2 is ENABLE, expected DISABLE`
+    })
+  })
+
+  test('a fuse wire of another version fails rather than being read as version 1', async () => {
+    const { SENTINEL } = writer()
+    const bytes = await packedSlice(ELECTRON_FUSES)
+    // flipFuses refuses a wire of another version, so the version byte is changed after it wrote the states
+    bytes[bytes.indexOf(SENTINEL) + SENTINEL.length] = 2
+    const app = appWith(bytes)
+    assert.throws(() => check(app), { message: `fuse wire 1 of 1 in ${frameworkOf(app)} is version 2; the fuse check reads version 1` })
+  })
+
+  test('a framework binary with no fuse wire fails, named', () => {
+    const app = appWith(Buffer.from('a framework binary with no fuse wire in it'))
+    assert.throws(() => check(app), { message: `no fuse wire in ${frameworkOf(app)}, so none of the fuses electronFuses sets can have been applied` })
+  })
+
+  test('a fuse beyond the end of a shorter wire fails, rather than being read from the bytes after the wire', async () => {
+    const app = appWith(await packedSlice({ runAsNode: false }, { wireLength: 4 }))
+    assert.throws(() => check(app, { runAsNode: false, grantFileProtocolExtraPrivileges: false }), {
+      message: `${DIFFER}\n  ${app}: GrantFileProtocolExtraPrivileges (electronFuses.grantFileProtocolExtraPrivileges) in slice 1 of 1 is not in the wire (it has 4 fuses), expected DISABLE`
+    })
+  })
+
+  test('without electronFuses nothing is read, and the log says so', () => {
+    const lines = []
+    mac.checkFuses([{ arch: 'arm64', app: path.join(tempDir(), 'no-framework.app') }], { fuses: [], library: null, log: (line) => lines.push(line) })
+    assert.deepEqual(lines, ['[mac] electron-builder.yml sets no electronFuses, so no fuse is checked'])
+  })
+
+  for (const [profile, env] of [['local', { CSC_LINK: 'base64-p12' }], ['release', { CSC_LINK: 'base64-p12', ...APPLE_ENV }]]) {
+    test(`a ${profile} packaging with an app whose fuse differs stops after the build, before any signature, launch or DMG check`, async () => {
+      const passing = await packedSlice(ELECTRON_FUSES)
+      const outputDir = tempDir()
+      const { commands, run } = buildRunner(outputDir, {
+        frameworks: { mac: passing, 'mac-universal': Buffer.concat([passing, passing]), 'mac-arm64': await packedSlice({ ...ELECTRON_FUSES, runAsNode: true }) }
+      })
+      const { calls, launch } = launcher()
+      assert.throws(() => pkg(outputDir, run, profile, env, false, launch, { fuses: mac.configuredFuses({ electronFuses: ELECTRON_FUSES }) }), {
+        message: `${DIFFER}\n  ${appPath(outputDir, 'mac-arm64')}: RunAsNode (electronFuses.runAsNode) in slice 1 of 1 is ENABLE, expected DISABLE`
+      })
+      assert.ok(commands.some((c) => c.startsWith('electron-builder ')), commands.join('\n'))
+      assert.deepEqual(commands.filter((c) => c.startsWith('codesign') || c.startsWith('xcrun')), [])
+      assert.equal(calls.length, 0)
+    })
+  }
+
+  test('a packaging whose apps all have their fuses as set completes, and the log names every app with the slices it read', async () => {
+    const passing = await packedSlice(ELECTRON_FUSES)
+    const outputDir = tempDir()
+    const { run } = buildRunner(outputDir, { frameworks: { mac: passing, 'mac-arm64': passing, 'mac-universal': Buffer.concat([passing, passing]) } })
+    const lines = []
+    const result = pkg(outputDir, run, 'local', undefined, false, undefined, { fuses: mac.configuredFuses({ electronFuses: ELECTRON_FUSES }), log: (line) => lines.push(line) })
+    assert.deepEqual(result.dmgs, ARCHES.map((arch) => dmgPath(outputDir, arch)))
+    assert.deepEqual(lines.filter((line) => line.includes('electronFuses')), [
+      `[mac] ${appPath(outputDir, 'mac-universal')}: every fuse electronFuses sets is as set (slices read: 2)`,
+      `[mac] ${appPath(outputDir, 'mac-arm64')}: every fuse electronFuses sets is as set (slices read: 1)`,
+      `[mac] ${appPath(outputDir, 'mac')}: every fuse electronFuses sets is as set (slices read: 1)`
+    ])
   })
 })
 
@@ -898,6 +1122,16 @@ describe('command line', () => {
   test('outside the project root it says so instead of guessing', () => {
     const elsewhere = tempDir()
     assert.throws(() => mac.main(['local'], {}, elsewhere), { message: `run from the project root: no electron-builder.yml in ${elsewhere}` })
+  })
+
+  test('a packaging refuses an electronFuses key it cannot check before running any command', () => {
+    // Were the key not refused before the packaging starts, the hook path check would fail first: this file is outside the fixture project
+    const root = tempDir()
+    fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ version: VERSION }))
+    fs.writeFileSync(path.join(root, 'electron-builder.yml'), mac.yamlParser().dump({ ...CONFIG, electronFuses: { runAsNode: false, someLaterFuse: true } }))
+    assert.throws(() => mac.main(['local'], { CSC_LINK: 'base64-p12' }, root), {
+      message: 'electron-builder.yml sets electronFuses.someLaterFuse, which mac-packaging.cjs cannot map to a fuse, so it could not check that the build applied it'
+    })
   })
 
   test('the DMG gate checks the artifact set before running any command', () => {

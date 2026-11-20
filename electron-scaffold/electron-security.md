@@ -47,7 +47,7 @@
 | # | 条目 | 判据 | 难度 |
 |---|---|---|---|
 | **7** | CSP | 经 `session.webRequest.onHeadersReceived` 注入(比 `<meta>` 可靠);**两档策略**——prod 严格,dev 必须放宽(vite/webpack HMR 要 inline+eval+ws,否则开发环境跑不起来);渲染他人内容时 `img-src` **不含 http(s)**,否则文档里的外部图会真外联(隐私泄漏) | 中低 |
-| **19** | Fuses | 打包配置关 `runAsNode`/`nodeOptions`/`nodeCliInspect`,开 `onlyLoadAppFromAsar`/asar 完整性/cookie 加密。**判据是读产物而非看配置**:配置写对不代表生效(版本/平台/配置段位置错都会静默跳过),须读二进制的 fuse wire 校验 | 低 |
+| **19** | Fuses | 打包配置关 `runAsNode`/`nodeOptions`/`nodeCliInspect`,开 `onlyLoadAppFromAsar`/asar 完整性/cookie 加密。**判据是读产物而非看配置**:配置写对不代表生效(版本/平台/配置段位置错都会静默跳过),须读二进制的 fuse wire 校验,期望值只取打包配置的 `electronFuses`,不得另抄一份。macOS 打包用打包资产的,每次打包都由它读每个产物的 fuse wire,任一 fuse 与 `electronFuses` 不符即失败(macos-signing.md 第 6 节);其余打包必须在每次打包后自己做同样的检查 | 低 |
 | **18** | 避免 file://,用自定义协议 | `registerSchemesAsPrivileged`(app ready **前**,`standard+secure+supportFetchAPI`)+ `protocol.handle` 映射到产物目录;**路径解析必须防穿越**——注意明文 `..` 会被 WHATWG URL 在解析层钳掉,真正要拦的是**编码穿越**(`%2e%2e%2f`);读盘用 `net.fetch(file://)` 免维护 MIME 表,且**必须 `await`**(某些输入会 reject 而非返 404,直接 return promise 会漏成 unhandled rejection) | 中 |
 | **1** | 只加载安全内容 | 纯本地应用不适用;有远程内容则一律 HTTPS/WSS | 视情况 |
 
@@ -69,7 +69,7 @@ Electron **只维护最新 3 个 major**,落后 4 个以上即无任何安全 ba
 |---|---|---|
 | **#19 Fuses · ASAR 完整性** | **E39** | 低于 39:`embeddedAsarIntegrityValidation` 是**实验性且仅 macOS**;E36 才有 Windows 侧改进。台账不能按"已转正"记 |
 | **#19 Fuses · ASAR digest** | **E41** | 低于 41:无 digest(对完整性信息本身再签一层防篡改),校验数据自身可被改 |
-| **#19 Fuses · `wasmTrapHandlers`** | **E41** | 低于 41:该 fuse 不存在(wire 长度 8 而非 9)。不设期望值则无损失;**按下标读 fuse 的校验脚本在两侧都能跑**(只追加不重排) |
+| **#19 Fuses · `wasmTrapHandlers`** | **E41** | 低于 41:该 fuse 不存在(wire 长度 8 而非 9)。`electronFuses` 不设它则无损失;**按下标只读 `electronFuses` 设了的 fuse 的校验在两侧都能跑**(只追加不重排),打包资产即这样读 |
 | **#3 contextIsolation 默认开** | E12 | 低于 12 必须显式设 |
 | **#4 sandbox 默认开** | E20 | 低于 20 必须显式设 |
 | **#2 nodeIntegration 默认关** | E5 | 低于 5 必须显式设 |
@@ -117,8 +117,8 @@ macOS 信任的是这个签名包,用户授给它的权限属于在它里面运�
 - 判定层纯函数:`isAppUrl(url, appBase)`(导航放行)、`externalOpenTarget(raw)`(外链白名单)、`assertTrustedSender(...)`(IPC)、`cspFor(isDev)`(策略)、`resolveAppPath(...)`(协议路径)、`refusedLaunchInputs(args, env)`(启动入口)
 - 必测的**绕过向量**:origin 前缀相似(`localhost:5173.attacker.com`)、大小写(`JaVaScRiPt:`)、userinfo(`https://good.com@evil.com`)、编码穿越(`%2e%2e%2f`)、不可解析输入;启动入口另测前导空白(空格、制表符)、一个短横线的写法、形似允许项的写法(更长、大小写不同、缺 `=`)、无人列出的开关、裸的 `--`、不像开关的参数、大小写不同的变量名,并断言 `-psn_` 照常放行、值里的内容不进结果
 - e2e 必断言:打包版 URL 以自定义协议开头(回退到 `file://` 会静默丢保护)、文档内链接点击后**窗口 URL 不变**
-- 打包后跑 fuses 校验脚本(读产物二进制),并实跑产物核对启动入口(#21)
+- 打包后读产物二进制核对 fuses(#19),并实跑产物核对启动入口(#21)
 
 ## 参考实现
 
-`agentshed` 项目:`src/main/security.ts` + `security.test.ts`(判定层与绕过向量)、`src/main/app-protocol.ts` + 测试(#18)、`scripts/check-fuses.mjs`(#19 产物校验)、`src/main/launch-inputs.ts` + `launch-guard.ts` + 测试(#21)、`docs/ops/electron-security.md`(逐条现状台账)。
+`agentshed` 项目:`src/main/security.ts` + `security.test.ts`(判定层与绕过向量)、`src/main/app-protocol.ts` + 测试(#18)、`src/main/launch-inputs.ts` + `launch-guard.ts` + 测试(#21)、`docs/ops/electron-security.md`(逐条现状台账)。#19 的产物校验在本 skill 的打包资产 [`assets/mac-packaging.cjs`](./assets/mac-packaging.cjs) 里。
