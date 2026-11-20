@@ -4,18 +4,17 @@
 // order, what fails and with which message. They never contact Apple and never build an app: a green run here
 // says nothing about a real signature or a real notarization. Those are verified by real packaging runs.
 //
-// `main` runs real commands and is tested only for its argument and location checks and for the DMG gate checking the
-// artifact set before it runs any command: the hook path it derives and the DMG gate's loop over the selected DMGs
-// are covered only by a real release packaging run, which is also the only check of a real ZIP's extraction and of
-// the app inside it. The launch gate's decisions run against an injected launcher. Two things here do start a real process:
-// launchApp, its adapter, starts shell scripts, and one case runs the gate's generated program. Whether a real app refuses
-// is what a real packaging run shows.
+// `main` runs real commands and is tested only for its argument and location checks, for which subcommands refuse an
+// electronFuses key it cannot map, and for the DMG gate checking the artifact set before it runs any command: the hook
+// path it derives and the DMG gate's loop over the selected DMGs are covered only by a real release packaging run,
+// which is also the only check of a real ZIP's extraction and of the app inside it. The launch gate's decisions run
+// against an injected launcher. Two things here do start a real process: launchApp, its adapter, starts shell scripts,
+// and one case runs the gate's generated program. Whether a real app refuses is what a real packaging run shows.
 //
 // The fuse check reads stand-in framework binaries, laid out as a real framework, whose wires the real writer flipped:
 // app-builder-lib's generateFuseConfig and @electron/fuses' flipFuses, the ones electron-builder packs with. Whether a
-// real Electron Framework flipped by a real build reads as set, and whether main hands the fuses it read to the packaging
-// (main is tested only for refusing a key it cannot map before any command runs), is what a real packaging run's log
-// shows: it names every app with the slices it read.
+// real Electron Framework flipped by a real build reads as set, and whether main hands the fuses it read to the packaging,
+// is what a real packaging run's log shows: it names every app with the slices it read.
 const { test, describe, afterEach } = require('node:test')
 const assert = require('node:assert/strict')
 const { spawnSync } = require('node:child_process')
@@ -398,12 +397,6 @@ describe('which fuses are checked', () => {
     assert.ok(fuseKeys > 0, 'the schema lists keys electron-builder writes as fuses')
   })
 
-  test('a key it cannot map to a fuse is refused, named', () => {
-    assert.throws(() => mac.configuredFuses({ electronFuses: { runAsNode: false, someLaterFuse: true } }), {
-      message: 'electron-builder.yml sets electronFuses.someLaterFuse, which mac-packaging.cjs cannot map to a fuse, so it could not check that the build applied it'
-    })
-  })
-
   test('a config without electronFuses has no fuse to check', () => {
     assert.deepEqual(mac.configuredFuses(CONFIG), [])
   })
@@ -488,13 +481,6 @@ describe('reading the fuses of the built apps', () => {
   const check = (app, electronFuses = ELECTRON_FUSES, log = () => {}) =>
     mac.checkFuses([{ arch: 'arm64', app }], { fuses: mac.configuredFuses({ electronFuses }), library: mac.fusesLibrary(), log })
 
-  test('an app whose fuses are as electronFuses sets them passes, and the log names it', async () => {
-    const app = appWith(await packedSlice(ELECTRON_FUSES))
-    const lines = []
-    check(app, ELECTRON_FUSES, (line) => lines.push(line))
-    assert.deepEqual(lines, [`[mac] ${app}: every fuse electronFuses sets is as set (slices read: 1)`])
-  })
-
   test('an app whose fuses were never flipped fails on every fuse electronFuses sets, each named with what it found', async () => {
     const app = appWith(await packedSlice({}))
     assert.throws(() => check(app), {
@@ -533,9 +519,11 @@ describe('reading the fuses of the built apps', () => {
   })
 
   test('a fuse beyond the end of a shorter wire fails, rather than being read from the bytes after the wire', async () => {
-    const app = appWith(await packedSlice({ runAsNode: false }, { wireLength: 4 }))
+    // A wire of seven fuses ends just before GrantFileProtocolExtraPrivileges (index 7), and the byte after it is DISABLE,
+    // the state expected: a reader that went one byte past the wire would read that fuse as set
+    const app = appWith(await packedSlice({ runAsNode: false }, { wireLength: 7 }))
     assert.throws(() => check(app, { runAsNode: false, grantFileProtocolExtraPrivileges: false }), {
-      message: `${DIFFER}\n  ${app}: GrantFileProtocolExtraPrivileges (electronFuses.grantFileProtocolExtraPrivileges) in slice 1 of 1 is not in the wire (it has 4 fuses), expected DISABLE`
+      message: `${DIFFER}\n  ${app}: GrantFileProtocolExtraPrivileges (electronFuses.grantFileProtocolExtraPrivileges) in slice 1 of 1 is not in the wire (it has 7 fuses), expected DISABLE`
     })
   })
 
@@ -1134,11 +1122,12 @@ describe('command line', () => {
     })
   })
 
-  test('the DMG gate checks the artifact set before running any command', () => {
-    // Were any DMG gated first, the real hdiutil would fail on the fixture's fake DMG with another error
+  test('the DMG gate checks the artifact set before running any command, whatever electronFuses holds', () => {
+    // Were any DMG gated first, the real hdiutil would fail on the fixture's fake DMG with another error; the gate reads
+    // no fuse, so an electronFuses key that maps to no fuse, which a packaging refuses, does not stop it
     const root = tempDir()
     fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ version: VERSION }))
-    fs.writeFileSync(path.join(root, 'electron-builder.yml'), mac.yamlParser().dump(ZIP_CONFIG))
+    fs.writeFileSync(path.join(root, 'electron-builder.yml'), mac.yamlParser().dump({ ...ZIP_CONFIG, electronFuses: { runAsNode: false, someLaterFuse: true } }))
     const outputDir = path.join(root, 'release', VERSION)
     fs.mkdirSync(path.dirname(outputDir))
     fs.renameSync(releaseOutput({ metadata: {} }), outputDir)

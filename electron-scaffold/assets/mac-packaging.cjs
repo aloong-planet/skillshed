@@ -45,14 +45,19 @@ const DMG_ARTIFACT_NAME = '${productName}-${version}-mac-${arch}.dmg'
 // electron-builder takes no zip-specific options, so the ZIP is named by the mac-wide pattern
 const ZIP_ARTIFACT_NAME = '${productName}-${version}-mac-${arch}.${ext}'
 
+/** A module from electron-builder's dependency tree, resolved from the app-builder-lib electron-builder depends on */
+function fromBuilderTree(id, resolve) {
+  const builderLib = path.dirname(resolve('app-builder-lib/package.json', { paths: [path.dirname(resolve('electron-builder/package.json'))] }))
+  return require(resolve(id, { paths: [builderLib] }))
+}
+
 /**
  * The js-yaml electron-builder depends on, resolved through electron-builder's own dependency tree so the project
  * needs no YAML parser of its own. `resolve` is injectable for tests.
  */
 function yamlParser(resolve = require.resolve) {
   try {
-    const builderLib = path.dirname(resolve('app-builder-lib/package.json', { paths: [path.dirname(resolve('electron-builder/package.json'))] }))
-    return require(resolve('js-yaml', { paths: [builderLib] }))
+    return fromBuilderTree('js-yaml', resolve)
   } catch (error) {
     throw new Error(
       'cannot load js-yaml through electron-builder (electron-builder → app-builder-lib → js-yaml); ' +
@@ -74,8 +79,7 @@ const FUSES_CONSTANTS = '@electron/fuses/dist/constants'
 function fusesLibrary(resolve = require.resolve) {
   const load = (id) => {
     try {
-      const builderLib = path.dirname(resolve('app-builder-lib/package.json', { paths: [path.dirname(resolve('electron-builder/package.json'))] }))
-      return require(resolve(id, { paths: [builderLib] }))
+      return fromBuilderTree(id, resolve)
     } catch (error) {
       throw new Error(
         `cannot load ${id} through electron-builder (electron-builder → app-builder-lib → @electron/fuses), which the fuse check reads ` +
@@ -869,7 +873,6 @@ function main(argv, env = process.env, root = process.cwd()) {
   if (!fs.existsSync(configFile)) throw new Error(`run from the project root: no electron-builder.yml in ${root}`)
   const config = yamlParser().load(fs.readFileSync(configFile, 'utf8'))
   const layout = resolveLayout(config, fs.readFileSync(path.join(root, 'package.json'), 'utf8'))
-  const fuses = configuredFuses(config)
   const outputDir = path.join(root, layout.outputDir)
 
   if (command === 'notarize-dmg') {
@@ -893,6 +896,7 @@ function main(argv, env = process.env, root = process.cwd()) {
     return ids
   }
 
+  const fuses = configuredFuses(config)
   // electron-builder resolves the hook relative to the project root, wherever this file was copied to
   const hookPath = path.relative(root, __filename)
   if (hookPath.startsWith('..') || path.isAbsolute(hookPath)) throw new Error(`this script must live inside the project: ${__filename}`)
