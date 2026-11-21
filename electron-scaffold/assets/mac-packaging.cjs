@@ -419,10 +419,11 @@ const LAUNCH_ENV = ['HOME', 'PATH', 'TMPDIR', 'USER', 'LOGNAME', 'LANG']
  * `--type=relauncher --- <program>` (with --type=relauncher first) runs the program after `---`, on a direct start,
  * through `open`, and through the main executable or a helper executable (all measured); but macOS holds the caller, or
  * the program itself, responsible for it, not the signed app, so it inherits none of the app's granted permissions and
- * crosses no privilege boundary. It
- * is an accepted trade-off the project's security ledger records, not a packaging defect this check (which starts the
- * process directly, as the caller does) can catch, so no --type input is tried. The variable is the URL the common
- * Electron templates load in development; a project's own test seams are its own unit tests' to cover.
+ * crosses no privilege boundary. This check starts the process directly, as the caller does, so it cannot catch that
+ * path; whether the relauncher is closed is the project's own decision, recorded in its security ledger per the
+ * launch-input item (a known risk unless the project adds its own mitigation), so no --type input is tried here. The
+ * variable is the URL the common Electron templates load in development; a project's own test seams are its own unit
+ * tests' to cover.
  */
 function launchInputs(program) {
   const named = (input) => ({ name: input.split('=')[0], args: [input] })
