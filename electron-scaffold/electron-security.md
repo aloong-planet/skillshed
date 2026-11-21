@@ -98,7 +98,8 @@ macOS 信任的是这个签名包,用户授给它的权限属于在它里面运�
 | `--gpu-launcher=<程序>` | 运行该程序 |
 | `--renderer-cmd-prefix`、`--utility-cmd-prefix` | 不运行程序,进程崩溃 |
 | `--type=`,值为空,再带上述开关 | 与普通启动一样进入主进程,端口打开 |
-| `--type=<进程类型>` | Chromium 在任何 JS 之前读它,不进入主进程;手工启动时进程崩溃,不开端口、不运行程序 |
+| `--type=<进程类型>`,名为 gpu-process、renderer、utility、zygote、browser 或未知名 | Chromium 在任何 JS 之前读它,不进入主进程;手工启动时进程崩溃,不开端口、不运行程序 |
+| `--type=relauncher --- <程序>`(`--type=relauncher` 须为第一个参数) | Chromium 在任何 JS 之前读它,不进入主进程;relauncher 进程类型(`app.relaunch()` 用的那个)运行 `---` 之后的程序——直接启动、经 `open`、以及经主程序或某个 helper 可执行文件启动,都运行(均实测);该程序被归因于调用者或其自身,得不到签名包授予的权限 |
 | `ELECTRON_RENDERER_URL=<地址>`,主进程按它加载窗口时 | 窗口加载该地址,IPC 校验信任它,preload 的接口全部暴露给它 |
 
 #### 怎么算做到
