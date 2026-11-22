@@ -1,6 +1,6 @@
 # 陈述核对
 
-本文适用于 `/implement`「收口票路径」第 4 项:把收口票写进仓库的事实陈述逐句对照证据核对,再处置发现。入口:[SKILL.md](SKILL.md)「收口票路径」节。
+本文适用于 `/implement`「收口票路径」第 5 项:把收口票写进仓库的事实陈述逐句对照证据核对,再处置发现。入口:[SKILL.md](SKILL.md)「收口票路径」节。
 
 本文的固定名称写进记录时,必须按 [本文的小表](../repo-scaffold/artifact-names/implement.claim-check.md) 书写。
 
