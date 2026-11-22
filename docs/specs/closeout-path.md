@@ -32,9 +32,11 @@ A ticket that states it is a closeout ticket runs `/implement`'s closeout path. 
 - closeout-path::REQ-003/AC-04: Every line is judged and recorded before any finding is handled, so the record keeps what each statement got wrong. Missing evidence is gathered when the finding is handled.
 - closeout-path::REQ-003/AC-05: A fix that adds or rewrites a statement has those lines checked again. Evidence gathered for a statement left as it is rejudges that line, and a fix that only deletes a statement needs no check. An executable fix does not restart the check: lines already judged stay as they are.
 
-### closeout-path::REQ-004 The runs (direct acceptance)
+### closeout-path::REQ-004 The runs
 
-The closeout's runs follow [delivery-flow::REQ-001](delivery-flow.md). Its ticket does not name the project's full verification command as an acceptance item, since that would bypass the rule on which commands run.
+- closeout-path::REQ-004/AC-01: The closeout's runs follow [delivery-flow::REQ-001](delivery-flow.md).
+- closeout-path::REQ-004/AC-02: Its ticket does not name the project's full verification command as an acceptance item.
+- closeout-path::REQ-004/AC-03: Where nothing executable changed, the closeout makes the run of [delivery-flow::REQ-001/AC-01](delivery-flow.md) over what it wrote into the repository, before the claim check.
 
 ### closeout-path::REQ-005 When the independent review is skipped
 
