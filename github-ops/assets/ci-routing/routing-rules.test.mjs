@@ -2,7 +2,8 @@
 // skill's template; ci-routing.test.mjs beside it tests the fixed behaviour and is not edited.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { classifyPath, readConfig } from './ci-scope.mjs'
+import { execFileSync } from 'node:child_process'
+import { classifyPath, localReadFailures, readConfig } from './ci-scope.mjs'
 
 const config = readConfig()
 
@@ -35,13 +36,9 @@ test('each pattern of routing.json routes a real path to the scopes written here
 })
 
 test('each command that "local" declares reads only files that select its scope', () => {
-  // Write { "<declared command>": [a tracked path it reads, ...] } for each command "local" declares: which paths,
-  // and the note above each list, as the github-ops skill's checks-gate.md, "Write routing.json", says.
+  // Write { "<declared command>": ["<pattern>", ...] } for each command "local" declares: which patterns, and the
+  // note above each list, as the github-ops skill's checks-gate.md, "Write routing.json", says.
   const reads = {}
-  assert.deepEqual(Object.keys(reads).sort(), [...config.local.keys()].sort())
-  for (const [command, paths] of Object.entries(reads)) {
-    const scope = config.local.get(command)
-    assert.ok(paths.length > 0, command)
-    for (const path of paths) assert.ok(classifyPath(path, config).select.includes(scope), `${command}: ${path}`)
-  }
+  const tracked = execFileSync('git', ['ls-files', '-z', '--full-name', '--', ':/'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+  assert.deepEqual(localReadFailures(config, reads, tracked.split('\0').filter((path) => path !== '')), [])
 })

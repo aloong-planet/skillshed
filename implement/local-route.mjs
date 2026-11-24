@@ -21,11 +21,13 @@
 // routing exiting with another code, killed or not finishing in time, or GITHUB_OUTPUT with a line of another form,
 // a key written twice, no line for any scope, or a declared scope with no line.
 //
-// Tests: local-route.test.mjs next to this file; its header says how to run it.
+// Tests: local-route.test.mjs next to this file for its rules, delivery-flow.test.mjs for its command line; each
+// header says how to run it.
 import { spawnSync } from 'node:child_process'
 import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, relative, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const ROUTING_TIMEOUT_MS = 120_000
 
@@ -38,7 +40,8 @@ function git(args, cwd) {
   return r.stdout
 }
 
-function parseArgs(argv) {
+/** The arguments as { base, router, command }; throws a usage error unless each flag is given once with a value. */
+export function parseArgs(argv) {
   const flags = { '--base': null, '--router': null, '--command': null }
   for (let i = 0; i < argv.length; i += 2) {
     const [flag, value] = [argv[i], argv[i + 1]]
@@ -52,7 +55,7 @@ function parseArgs(argv) {
 }
 
 /** GITHUB_OUTPUT as the routing wrote it: each scope true or false, and the scope it declares the command under. */
-function readOutput(text) {
+export function readOutput(text) {
   if (text !== '' && !text.endsWith('\n')) throw new Error('the routing output does not end with a line break')
   const scopes = new Map()
   let declared = null
@@ -70,6 +73,11 @@ function readOutput(text) {
   if (scopes.size === 0) throw new Error('the routing wrote no line for any scope')
   if (declared !== null && !scopes.has(declared)) throw new Error(`the routing declares the command under ${declared}, which has no line`)
   return { scopes, declared }
+}
+
+/** The exit code for GITHUB_OUTPUT as readOutput reads it: 0 where it declares a scope it writes false for, else 1. */
+export function decision({ scopes, declared }) {
+  return declared === null || scopes.get(declared) ? 1 : 0
 }
 
 function main(argv) {
@@ -109,22 +117,25 @@ function main(argv) {
     if (r.status !== 0) throw new Error(`the routing exited ${r.status === null ? `on ${r.signal}` : r.status}`)
     const text = readFileSync(output, 'utf8')
     console.log(`local-route: ${router} wrote into GITHUB_OUTPUT ${JSON.stringify(text)}`)
-    const { scopes, declared } = readOutput(text)
-    if (declared === null) {
-      console.log(`local-route: ${router} declares no scope for ${JSON.stringify(command)}: it runs`)
-      return 1
-    }
-    const on = scopes.get(declared)
-    console.log(`local-route: ${router} declares ${JSON.stringify(command)} under ${declared}, and ${declared}=${on}: ${on ? 'it runs' : 'it does not run'}`)
-    return on ? 1 : 0
+    const written = readOutput(text)
+    const code = decision(written)
+    const { declared } = written
+    console.log(declared === null
+      ? `local-route: ${router} declares no scope for ${JSON.stringify(command)}: it runs`
+      : `local-route: ${router} declares ${JSON.stringify(command)} under ${declared}, and ${declared}=${written.scopes.get(declared)}: ${code === 1 ? 'it runs' : 'it does not run'}`)
+    return code
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
 }
 
-try {
-  process.exitCode = main(process.argv.slice(2))
-} catch (e) {
-  console.error(`local-route: ${e instanceof Usage ? 'usage' : 'error'}: ${e.message}; no decision, so the command runs`)
-  process.exitCode = 2
+// Both sides resolved: through a symbolic link they would differ, main would not run, and the exit code 0 would
+// read as "does not run"
+if (process.argv[1] !== undefined && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
+  try {
+    process.exitCode = main(process.argv.slice(2))
+  } catch (e) {
+    console.error(`local-route: ${e instanceof Usage ? 'usage' : 'error'}: ${e.message}; no decision, so the command runs`)
+    process.exitCode = 2
+  }
 }

@@ -98,7 +98,7 @@ The change-scope helper, the local-route helper, the action-pin check, the ADR c
 
 ```sh
 node --test implement/change-scope.test.mjs
-node --test implement/local-route.test.mjs
+node --test implement/local-route.test.mjs implement/delivery-flow.test.mjs
 node --test github-ops/check-action-pins.test.mjs
 node --test domain-modeling/project-documents.test.mjs
 node --test to-spec/project-documents-spec-check.test.mjs

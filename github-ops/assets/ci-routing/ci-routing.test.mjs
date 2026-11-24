@@ -2,6 +2,8 @@
 // rules are tested in routing-rules.test.mjs. Copied unchanged with the two scripts. Run: node --test .github/ci/*.test.mjs
 // Gap: GitHub's scheduling — job-level skips, a newer push cancelling a run, the required check — shows only on
 // the hosted runner: in the pull request's run, and for a push in the default-branch run after a merge.
+// Gap: routing-rules.test.mjs hands localReadFailures a declaration only where routing.json declares a command, which
+// the template's own routing.json does not.
 import { after, test } from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync as exec, spawnSync } from 'node:child_process'
@@ -9,7 +11,9 @@ import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameS
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { classifyPath, classifyPaths, collectChanges, comparisonForEvent, parseConfig } from './ci-scope.mjs'
+import {
+  classifyPath, classifyPaths, collectChanges, comparisonForEvent, localCommand, localLine, localReadFailures, parseConfig
+} from './ci-scope.mjs'
 import { gateFailures } from './ci-gate.mjs'
 
 const FIXTURE = {
@@ -76,6 +80,51 @@ test('routing.json is refused unless it has exactly the documented shape', () =>
     ))
   ]
   for (const value of bad) assert.throws(() => parseConfig(value), /^Error: routing\.json: /, JSON.stringify(value))
+})
+
+const LOCAL = { 'pnpm smoke': 'app', 'pnpm tool:check': 'tool' }
+const declaring = parseConfig({ ...FIXTURE, local: LOCAL })
+
+test('a local call names one command, and only a command equal to a key of "local" adds a line', () => {
+  assert.equal(localCommand([]), null)
+  assert.equal(localCommand(['--local-command', 'pnpm smoke']), 'pnpm smoke')
+  for (const args of [['--bogus'], ['--local-command'], ['--local-command', ''], ['--local-command', 'a', 'b'], ['--other', 'a']]) {
+    assert.throws(() => localCommand(args), /^Error: Usage: /, JSON.stringify(args))
+  }
+  const cases = [
+    // [the configuration, the command, the line]
+    [declaring, null, ''],
+    [declaring, 'pnpm smoke', 'local-scope=app\n'],
+    [declaring, 'pnpm tool:check', 'local-scope=tool\n'],
+    [declaring, 'pnpm smoke --headed', ''],
+    [config, 'pnpm smoke', '']
+  ]
+  for (const [routing, command, line] of cases) assert.equal(localLine(routing, command), line, String(command))
+})
+
+test('every tracked file a declared command reads must select its scope, by patterns over the tracked paths', () => {
+  // package.json is shared input, scripts/ matches no rule and .github/ is fixed: each selects every scope
+  const tracked = ['.github/ci/routing.json', 'README.md', 'package.json', 'scripts/smoke.sh', 'site/index.html', 'src/a.ts', 'src/fixtures/s.json']
+  const good = { 'pnpm smoke': ['src/**', 'package.json', 'scripts/*.sh', '.github/ci/**'], 'pnpm tool:check': ['package.json'] }
+  assert.deepEqual(localReadFailures(declaring, good, tracked), [])
+  assert.deepEqual(localReadFailures(config, {}, tracked), [])
+  const cases = [
+    // [the files each command reads, as patterns; the failures]
+    [{ 'pnpm smoke': good['pnpm smoke'] }, ['"pnpm tool:check": no list of the files it reads']],
+    [{ ...good, 'pnpm e2e': ['src/**'] }, ['"pnpm e2e": "local" does not declare it']],
+    [{ ...good, 'pnpm smoke': [] }, ['"pnpm smoke": no pattern listed']],
+    [{ ...good, 'pnpm smoke': 'src/**' }, ['"pnpm smoke": no pattern listed']],
+    [{ ...good, 'pnpm smoke': ['src/**', 'lib/**'] }, ['"pnpm smoke": "lib/**" matches no tracked path']],
+    [{ ...good, 'pnpm smoke': ['src/a?.ts'] }, ['"pnpm smoke": pattern "src/a?.ts" uses a character that is not special here']],
+    [{ ...good, 'pnpm smoke': ['src/**', 'site/**'] }, ['"pnpm smoke": "site/index.html" selects site (Website), not app']],
+    [{ ...good, 'pnpm smoke': ['*.md'] }, ['"pnpm smoke": "README.md" selects no scope (Documentation), not app']],
+    // Each command against its own scope: src/ selects app, which pnpm smoke is declared under
+    [{ ...good, 'pnpm tool:check': ['package.json', 'src/a.ts'] }, ['"pnpm tool:check": "src/a.ts" selects app (Application), not tool']]
+  ]
+  for (const [reads, failures] of cases) assert.deepEqual(localReadFailures(declaring, reads, tracked), failures, JSON.stringify(reads))
+  // A later rule that takes part of a listed pattern's files out of the scope fails on each of those files
+  const carved = parseConfig({ ...FIXTURE, rules: [{ reason: 'Fixtures no job reads', select: [], paths: ['src/fixtures/**'] }, ...FIXTURE.rules], local: LOCAL })
+  assert.deepEqual(localReadFailures(carved, good, tracked), ['"pnpm smoke": "src/fixtures/s.json" selects no scope (Fixtures no job reads), not app'])
 })
 
 test('only a pull request is compared, and an unsupported event or malformed commits fail', () => {
@@ -229,20 +278,14 @@ test('the command line publishes each scope from a real pull-request diff, every
 })
 
 test('a local call adds the scope its command is declared under, and the CI call writes what it wrote without "local"', () => {
-  const declared = JSON.stringify({ ...FIXTURE, local: { 'pnpm smoke': 'app', 'pnpm tool:check': 'tool' } })
+  const declared = JSON.stringify({ ...FIXTURE, local: LOCAL })
   const scopes = 'app=true\nsite=true\ntool=false\n'
   const cases = [
     // The CI passes no argument: the same literal as the pull request above, whose routing has no "local"
     [declared, [], scopes],
-    [declared, ['--local-command', 'pnpm smoke'], `${scopes}local-scope=app\n`],
-    // Declared under a scope this change does not select, so the line cannot come from the selection
+    // The second key, under a scope this change does not select, so the line comes from that key alone
     [declared, ['--local-command', 'pnpm tool:check'], `${scopes}local-scope=tool\n`],
-    // A command is declared only where it equals a key
-    [declared, ['--local-command', 'pnpm smoke --headed'], scopes],
-    [undefined, ['--local-command', 'pnpm smoke'], scopes],
-    [declared, ['--bogus'], null],
-    [declared, ['--local-command'], null],
-    [declared, ['--local-command', ''], null]
+    [declared, ['--bogus'], null]
   ]
   for (const [i, [routing, args, expected]] of cases.entries()) {
     const { run, output } = runScope(`local-${i}`, 'pull_request', pr(advanced, head), routing, args)
