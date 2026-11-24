@@ -85,7 +85,7 @@ Applies to a test command the CI workflow does not carry, on a project whose CI 
 - delivery-flow::REQ-007/AC-04: A failure runs the command: the checkout has uncommitted changes, the fork point cannot be found or is not a commit, the routing exits with a code other than 0, its output has a line of another form or no line for any scope, or it declares a scope with no line or with a value other than `true` or `false`. Nothing stops to ask.
 - delivery-flow::REQ-007/AC-05: The delivery note gives the command that made the decision, its output and its exit code, and where the declaration is.
 - delivery-flow::REQ-007/AC-06: The decision holds for the commit delivered. Another commit delivered later, as after a failed CI run, is decided again.
-- delivery-flow::REQ-007/AC-07: A command is declared under a scope only where every tracked file it reads selects that scope or every scope, so a command that reads a file of another scope is not declared. The routing's tests fail on a declaration under a scope the routing does not define, and hold, for each routing rule that matches a file the command reads, a case with a real tracked path that expects that scope; they state how the list of files the command reads was made complete.
+- delivery-flow::REQ-007/AC-07: A command is declared under a scope only where every tracked file it reads selects that scope or every scope, so a command that reads a file of another scope is not declared. The routing's tests fail on a declaration under a scope the routing does not define, and check every tracked file a declared command reads: they list those files as patterns, and fail where a pattern matches no tracked file or a file it matches does not select that scope. They state how the list of files the command reads was made complete.
 
 ## Constraints
 
@@ -110,7 +110,7 @@ Applies to: the clauses on sub-agents and their models. They name what is handed
 13. **What some piece of evidence takes cannot all be listed.** The gathering goes to the sub-agent, however few commands, files, interface operations and screenshots were listed (REQ-006/AC-03).
 14. **The sub-agent that gathers evidence changed a tracked file, or the checkout's head moved while it worked.** The main agent changes nothing and tells the user (REQ-006/AC-08).
 15. **A fix is made after the evidence was gathered**, as when a CI run fails. Nothing requires the evidence to be gathered again. The main agent judges whether a piece the fix bears on is.
-16. **A later change routes a file that a declared command reads to another scope, or to none**, as when the CI's routing is tuned for a file no CI job reads. The routing test case that REQ-007/AC-07 asks for that file fails in that change.
+16. **A later change routes a file that a declared command reads to another scope, or to none**, as when the CI's routing is tuned for a file no CI job reads. The routing test that REQ-007/AC-07 asks for fails in that change.
 
 ## Implementation Decisions
 
