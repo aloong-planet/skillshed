@@ -144,6 +144,7 @@ cp ~/.claude/skills/electron-scaffold/assets/smoke.sh.template <项目>/scripts/
 | ubuntu 而非 macos runner | 私有仓库 macOS 按 10 倍计费;e2e 断言平台无关,macOS 专属面归发版流程 |
 
 smoke **不进 CI**:macOS 本地专用(BSD stat、进程路径),价值在开发机真实数据形态,容器里等于 e2e 劣化版。
+写 `routing.json` 时,必须按 github-ops 的 [checks-gate.md](../github-ops/checks-gate.md)「写 routing.json」判运行 smoke 的命令能否在 `local` 里声明;能的,声明到 `app` 范围。
 必需检查只登记 `CI gate`,`e2e(Electron)` 与 `typecheck + unit tests` 经它强制,不单独登记 → **github-ops 的 [checks-gate.md](../github-ops/checks-gate.md)**(单一出处,此处不复制)。
 
 ## 7. 主进程读文件的耗时只认 Electron 下的实测

@@ -8,7 +8,7 @@ Once the tests of a change passed, much of what followed kept records in step in
 
 ## Solution
 
-The main agent writes the change and its tests, runs the tests the change touches, and deals with the findings of the review. What only it knows, it writes into the spec, an ADR or the glossary. The rest goes to sub-agents: the document check, the gathering of the evidence a delivery still lacks when that takes three or more commands, files, interface operations and screenshots, and the delivery. A test command runs in full once for a delivery, in the pull request's CI where the CI carries it. One record is kept, the delivery note, and nothing is written after the merge.
+The main agent writes the change and its tests, runs the tests the change touches, and deals with the findings of the review. What only it knows, it writes into the spec, an ADR or the glossary. The rest goes to sub-agents: the document check, the gathering of the evidence a delivery still lacks when that takes three or more commands, files, interface operations and screenshots, and the delivery. A test command runs in full once for a delivery, in the pull request's CI where the CI carries it. One that only runs locally is left out where the project's routing shows that the change cannot reach what it tests. One record is kept, the delivery note, and nothing is written after the merge.
 
 ## Functional Requirements
 
@@ -18,7 +18,7 @@ Applies to the runs that verify a change once it is written. The runs made while
 
 - delivery-flow::REQ-001/AC-01: After the implementation and before the review, the main agent runs the type check, the lint, and the tests the change touches: the test files it wrote or changed, the test files that import a module it changed, and the test files that read a configuration or data file it changed. The list comes from a search, not from memory. The run also takes in each check that scans the repository's files or reads its documents and reads any file the change modified, whether or not the CI carries it. The checks are looked for in the CI workflow's steps, in the project's script entry points and among the commands the project's `AGENTS.md` or root README names to run. Whether a check reads a file is judged as AC-06 judges it for a type check or lint, the files the check's own code selects included. Running a whole test command instead of the files selected from it also meets this.
 - delivery-flow::REQ-001/AC-02: After the fixes to the review's findings, and after any other change made once the run of AC-01 was done, the same run for what they touch: its tests and its checks are found again for the files they changed.
-- delivery-flow::REQ-001/AC-03: Each test command runs in full once for a delivery, on the code being delivered: in the pull request's CI where the CI workflow carries the command, and locally before the delivery where it does not or where there is no pull request. A check that scans the repository's files or reads its documents follows the same rule.
+- delivery-flow::REQ-001/AC-03: Each test command runs in full once for a delivery, on the code being delivered: in the pull request's CI where the CI workflow carries the command, and locally before the delivery where it does not or where there is no pull request, except as delivery-flow::REQ-007 says. A check that scans the repository's files or reads its documents follows the same rule.
 - delivery-flow::REQ-001/AC-04: Beyond AC-01 to AC-03 nothing runs: no run before the review other than AC-01, no full local run of a test command the CI carries beyond what AC-01's last sentence allows, and no local run because the default branch was merged into the branch.
 - delivery-flow::REQ-001/AC-05: A test command is not run again on code whose executable content is unchanged since that command last passed on it. A command that is not a test command is not run again only where the checkout is identical to the commit it last passed on.
 - delivery-flow::REQ-001/AC-06: A change whose executable content is the same as at its fork point runs no test command, whatever AC-01 to AC-03 would have it run, and whether or not the fork point has a CI run. That includes a command the CI workflow does not carry, such as a smoke test that runs only locally. Commands that are not test commands still run: the lint, the type check, and any check that scans the repository's files or reads its documents. The one exception is a type check or lint that reads none of the files that differ from the fork point: it does not run either. Whether it reads a file is judged on every file it reads, among them: those its arguments and its configuration's file patterns and ignores select; those it reads by following their imports, as a type check and a type-aware lint both do; and those its rules or plugins read as they run, such as the documents a custom rule checks. For TypeScript, the files read through imports are those `tsc --listFilesOnly` lists for each tsconfig the command uses, which include files imported from outside the tsconfig's include. A file that cannot be told of counts as read. A script that chains a test command with other commands is split, so that the others still run.
@@ -75,6 +75,18 @@ Applies to the evidence a delivery still lacks once the local runs of REQ-001/AC
 - delivery-flow::REQ-006/AC-11: The main agent opens every screenshot handed back. It attaches one to the delivery note only if it shows the interface point and the state the handoff named and takes in what the handoff asked; one that does not is a piece lacking under AC-09.
 - delivery-flow::REQ-006/AC-12: Where the tool cannot send a sub-agent, the main agent obtains the evidence itself.
 
+### delivery-flow::REQ-007 A local test command follows the routing by changed paths
+
+Applies to a test command the CI workflow does not carry, on a project whose CI routes its jobs by changed paths. It is an exception to delivery-flow::REQ-001/AC-03; delivery-flow::REQ-001/AC-06 comes before it, and so does delivery-flow::REQ-001/AC-04 for a merge of the default branch into the branch.
+
+- delivery-flow::REQ-007/AC-01: Before the delivery, the main agent runs the project's routing once on the change from the fork point to the commit it delivers, the routing being the one at that commit; a delivery without a pull request does so too. Where the routing declares the command under a scope and does not select that scope, the command does not run for this delivery. In every other case it runs.
+- delivery-flow::REQ-007/AC-02: The routing is the Node script that the CI workflow's `changes` job runs. It is run from the repository's root with the argument `--local-command <command>` and the interface of a GitHub Actions run for a pull request: the event is named `pull_request`, its file gives the fork point as the base and the commit delivered as the head, and the routing writes a line `<scope>=true` or `<scope>=false` for each scope into the output file. A routing that is not a Node script, or has another interface, is wrapped by the project in a Node script that the `changes` job runs.
+- delivery-flow::REQ-007/AC-03: The declaration is part of the routing. Called with `--local-command`, the routing adds a line `local-scope=<scope>` to its output for a command declared under that scope, and no line for any other command. Called without it, as the CI calls it, the routing writes nothing it would not write without a declaration.
+- delivery-flow::REQ-007/AC-04: A failure runs the command: the checkout has uncommitted changes, the fork point cannot be found or is not a commit, the routing script is not a tracked file, the routing exits with a code other than 0, is killed or does not finish within two minutes, its output has a line of another form, a scope or the declaration written twice, or no line for any scope, or it declares a scope with no line or with a value other than `true` or `false`. Nothing stops to ask.
+- delivery-flow::REQ-007/AC-05: The delivery note gives the command that made the decision, its output and its exit code, and where the declaration is.
+- delivery-flow::REQ-007/AC-06: The decision holds for the commit delivered. Another commit delivered later, as after a failed CI run, is decided again.
+- delivery-flow::REQ-007/AC-07: A command is declared under a scope only where every tracked file it reads selects that scope or every scope, so a command that reads a file of another scope is not declared. The routing's tests fail on a declaration under a scope the routing does not define, and check every tracked file a declared command reads: they list those files as patterns, and fail where a pattern matches no tracked file or a file it matches does not select that scope. They state how the list of files the command reads was made complete.
+
 ## Constraints
 
 ### delivery-flow::CON-001 Tool-independent wording (direct acceptance)
@@ -83,7 +95,7 @@ Applies to: the clauses on sub-agents and their models. They name what is handed
 
 ## Failure modes and boundaries
 
-1. **The CI does not carry a test command**, such as a smoke test that runs only on the author's machine. It runs locally once before the delivery (REQ-001/AC-03).
+1. **The CI does not carry a test command**, such as a smoke test that runs only on the author's machine. It runs locally once before the delivery (delivery-flow::REQ-001/AC-03), unless delivery-flow::REQ-007 leaves it out.
 2. **The default branch moved and was merged into the branch.** Nothing runs locally for that; the CI runs on the new head and the delivery waits for it (REQ-001/AC-04, AC-09).
 3. **A CI run fails.** The fix is made, passes the run of REQ-001/AC-02 and is pushed. It is not reviewed again, and the note says so ([post-implementation-check::REQ-008/AC-07](post-implementation-check.md)).
 4. **The pull request's head is not the commit that was handed over.** The main agent does not report the delivery complete; it finds what differs and tells the user (REQ-002/AC-05).
@@ -98,15 +110,15 @@ Applies to: the clauses on sub-agents and their models. They name what is handed
 13. **What some piece of evidence takes cannot all be listed.** The gathering goes to the sub-agent, however few commands, files, interface operations and screenshots were listed (REQ-006/AC-03).
 14. **The sub-agent that gathers evidence changed a tracked file, or the checkout's head moved while it worked.** The main agent changes nothing and tells the user (REQ-006/AC-08).
 15. **A fix is made after the evidence was gathered**, as when a CI run fails. Nothing requires the evidence to be gathered again. The main agent judges whether a piece the fix bears on is.
+16. **A later change routes a file that a declared command reads to another scope, or to none**, as when the CI's routing is tuned for a file no CI job reads (delivery-flow::REQ-007/AC-07).
 
 ## Implementation Decisions
 
-- The planned-case list is a rule of `/tdd`, the skill loaded when tests are written. `/review-tests` loses its design-review time point.
-- The rules on per-ticket records and on the sync checklist leave `/to-tickets` and `/implement`; `/implement` keeps the order of the steps and the reference files for the runs and the handoffs.
-- `change-scope.mjs` still decides whether executable content changed.
+- The planned-case list is a rule of `/tdd`, the skill loaded when tests are written. `/review-tests` has no design-review time point.
+- `/implement` holds the order of the steps and the reference files for the runs and the handoffs.
+- `change-scope.mjs` decides whether executable content changed. A script beside it makes the decision of delivery-flow::REQ-007: exit 0 where the command does not run, 1 where it runs, any other code on a failure (delivery-flow::REQ-007/AC-04). In the github-ops routing asset, the declaration is the optional `local` key of `routing.json`, an object from a command to a scope name; a command is declared only where it equals a key.
 - The delivery sub-agent waits for the CI itself, with the script `/github-ops` already has for that.
 - The sub-agent that gathers evidence loads no skill. What binds it is written into its handoff, and that includes what `/ui-design` asks of a screenshot, which the main agent writes there.
-- The fixed names that only the removed records had leave the artifact-name tables.
 - The owner's global instructions outline the flow and list the working records. That file is outside this repository, and its outline and list follow this spec.
 
 ## Out of Scope
@@ -115,3 +127,4 @@ Applies to: the clauses on sub-agents and their models. They name what is handed
 - The record `/to-spec` keeps of its check of sources against the spec.
 - A check that the merge commit's tree equals the pull request's head.
 - Removing or migrating the records projects already have.
+- Leaving out, by the routing, a check that the CI does not carry. Such a check is cheap, and delivery-flow::REQ-001/AC-01 already decides when it runs.

@@ -10,20 +10,30 @@
 //     and a deletion counts. Each path takes the first rule that matches it.
 //   - a path under .github/ (workflows, these scripts, routing.json) selects every scope.
 //   - a path no rule matches selects every scope.
-//   - any other event, a malformed event or routing.json, or a failed Git command: exit 1, and no output is written.
+//   - any other event, a malformed event or routing.json, an argument other than `--local-command <command>`, or a
+//     failed Git command: exit 1, and no output is written.
+//   - a local call, `--local-command <command>`, adds the line `local-scope=<scope>` after the scopes for a command
+//     that the "local" of routing.json declares, and none for any other. The CI passes no argument, so the outputs it
+//     reads do not depend on "local".
 //
 // routing.json:
 //   { "scopes": { "<scope>": ["<job id>", ...], ... },
-//     "rules": [ { "reason": "<text>", "select": "all" | ["<scope>", ...], "paths": ["<pattern>", ...] }, ... ] }
+//     "rules": [ { "reason": "<text>", "select": "all" | ["<scope>", ...], "paths": ["<pattern>", ...] }, ... ],
+//     "local": { "<command>": "<scope>", ... } }
 //   A scope name is [a-z][a-z0-9_]* and becomes the output `<scope>=true|false` of the `changes` job. Its job ids
 //   are the jobs ci-gate.mjs requires when the scope is selected. `"select": []` selects no scope: repository
 //   policy still runs.
 //   A pattern is a path from the repository root. `*` matches any characters but `/`; `**` as a whole segment
 //   matches any number of segments, none included at the start or middle and at least one at the end. No other
 //   character is special, and a pattern under .github/ is refused: that directory is fixed above.
+//   "local" is optional: a test command the CI does not run, written exactly as it is run, and the one scope that
+//   every change able to affect the command selects (checks-gate.md, "Write routing.json", says which command may be
+//   declared). A command matches only where it equals a key; one that is empty, starts or ends with white space or
+//   holds a line break or NUL is refused, and so is a scope that "scopes" does not name.
 //
 // Usage, in a workflow step at the repository root: node .github/ci/ci-scope.mjs
-// It reads GITHUB_EVENT_NAME, GITHUB_EVENT_PATH, GITHUB_OUTPUT and, when set, GITHUB_STEP_SUMMARY.
+// It reads GITHUB_EVENT_NAME, GITHUB_EVENT_PATH, GITHUB_OUTPUT and, when set, GITHUB_STEP_SUMMARY. A local call
+// passes --local-command <command> and the same variables for a pull_request event.
 import { execFileSync } from 'node:child_process'
 import { appendFileSync, readFileSync, realpathSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -40,10 +50,12 @@ function validPath(path) {
     path.split('/').every((part) => part !== '' && part !== '.' && part !== '..')
 }
 
-function compilePattern(pattern) {
-  if (!validPath(pattern)) fail(`invalid pattern ${JSON.stringify(pattern)}`)
-  if (/[?[\]{}!\\]/.test(pattern)) fail(`pattern ${JSON.stringify(pattern)} uses a character that is not special here`)
-  if (pattern.startsWith(FIXED_DIR)) fail(`pattern ${JSON.stringify(pattern)} is under ${FIXED_DIR}, which selects every scope`)
+/** A pattern's regular expression. `refuse` throws with the reason a pattern is not one; a pattern under .github/
+ * is refused unless `fixedDirAllowed`. */
+function patternRegex(pattern, refuse, fixedDirAllowed) {
+  if (!validPath(pattern)) refuse(`invalid pattern ${JSON.stringify(pattern)}`)
+  if (/[?[\]{}!\\]/.test(pattern)) refuse(`pattern ${JSON.stringify(pattern)} uses a character that is not special here`)
+  if (!fixedDirAllowed && pattern.startsWith(FIXED_DIR)) refuse(`pattern ${JSON.stringify(pattern)} is under ${FIXED_DIR}, which selects every scope`)
   const segments = pattern.split('/')
   let source = ''
   segments.forEach((segment, i) => {
@@ -52,16 +64,20 @@ function compilePattern(pattern) {
       source += last ? '[^]+' : '(?:[^/]+/)*'
       return
     }
-    if (segment.includes('**')) fail(`pattern ${JSON.stringify(pattern)}: ** must be a whole segment`)
+    if (segment.includes('**')) refuse(`pattern ${JSON.stringify(pattern)}: ** must be a whole segment`)
     source += segment.split('*').map((part) => part.replace(/[.+^$()|]/g, '\\$&')).join('[^/]*') + (last ? '' : '/')
   })
   return new RegExp(`^${source}$`)
 }
 
+function compilePattern(pattern) {
+  return patternRegex(pattern, fail, false)
+}
+
 /** The parsed routing.json; throws on anything but the documented shape. */
 export function parseConfig(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) fail('must be an object')
-  for (const key of Object.keys(value)) if (key !== 'scopes' && key !== 'rules') fail(`unknown key ${JSON.stringify(key)}`)
+  for (const key of Object.keys(value)) if (!['scopes', 'rules', 'local'].includes(key)) fail(`unknown key ${JSON.stringify(key)}`)
   const { scopes, rules } = value
   if (!scopes || typeof scopes !== 'object' || Array.isArray(scopes) || Object.keys(scopes).length === 0) fail('scopes must name at least one scope')
   const jobs = new Map()
@@ -90,7 +106,16 @@ export function parseConfig(value) {
     if (!Array.isArray(rule.paths) || rule.paths.length === 0) fail(`rule ${i} needs at least one pattern`)
     return { reason: rule.reason, select, patterns: rule.paths.map((pattern) => ({ pattern, regex: compilePattern(pattern) })) }
   })
-  return { scopes: jobs, rules: compiled }
+  const local = new Map()
+  if ('local' in value) {
+    if (!value.local || typeof value.local !== 'object' || Array.isArray(value.local)) fail('local must be an object')
+    for (const [command, scope] of Object.entries(value.local)) {
+      if (command === '' || command.trim() !== command || /[\0\r\n]/.test(command)) fail(`local has an invalid command ${JSON.stringify(command)}`)
+      if (typeof scope !== 'string' || !jobs.has(scope)) fail(`local declares ${JSON.stringify(command)} under an unknown scope ${JSON.stringify(scope)}`)
+      local.set(command, scope)
+    }
+  }
+  return { scopes: jobs, rules: compiled, local }
 }
 
 /** routing.json beside this script, parsed. */
@@ -169,8 +194,64 @@ export function isMain(url) {
   return process.argv[1] !== undefined && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(url))
 }
 
+/**
+ * For the commands "local" declares, one line per way the files listed for them fail: a declared command with no
+ * list, a listed command "local" does not declare, a list that is empty or not a list, a pattern that is invalid or
+ * matches no tracked path, and each tracked path a pattern matches that does not select the command's scope. `reads`
+ * maps a command to patterns written as routing.json's, where one under .github/ is accepted too; `tracked` is every
+ * tracked path.
+ */
+export function localReadFailures(config, reads, tracked) {
+  const failures = []
+  for (const command of config.local.keys()) {
+    if (!Object.hasOwn(reads, command)) failures.push(`${JSON.stringify(command)}: no list of the files it reads`)
+  }
+  for (const [command, patterns] of Object.entries(reads)) {
+    const scope = config.local.get(command)
+    if (scope === undefined) {
+      failures.push(`${JSON.stringify(command)}: "local" does not declare it`)
+      continue
+    }
+    if (!Array.isArray(patterns) || patterns.length === 0) {
+      failures.push(`${JSON.stringify(command)}: no pattern listed`)
+      continue
+    }
+    for (const pattern of patterns) {
+      let regex
+      try {
+        regex = patternRegex(pattern, (message) => { throw new Error(message) }, true)
+      } catch (error) {
+        failures.push(`${JSON.stringify(command)}: ${error.message}`)
+        continue
+      }
+      const paths = tracked.filter((path) => regex.test(path))
+      if (paths.length === 0) failures.push(`${JSON.stringify(command)}: ${JSON.stringify(pattern)} matches no tracked path`)
+      for (const path of paths) {
+        const { select, reason } = classifyPath(path, config)
+        if (!select.includes(scope)) {
+          failures.push(`${JSON.stringify(command)}: ${JSON.stringify(path)} selects ${select.length ? select.join(', ') : 'no scope'} (${reason}), not ${scope}`)
+        }
+      }
+    }
+  }
+  return failures
+}
+
+/** The command a local call asks about, or null for the CI's call, which passes no argument. */
+export function localCommand(args) {
+  if (args.length === 0) return null
+  if (args.length === 2 && args[0] === '--local-command' && args[1] !== '') return args[1]
+  throw new Error('Usage: ci-scope.mjs [--local-command <command>]')
+}
+
+/** The line a local call adds for `command`: its declared scope, or nothing where "local" does not declare it. */
+export function localLine(config, command) {
+  return command !== null && config.local.has(command) ? `local-scope=${config.local.get(command)}\n` : ''
+}
+
 if (isMain(import.meta.url)) {
   try {
+    const command = localCommand(process.argv.slice(2))
     const { GITHUB_EVENT_NAME, GITHUB_EVENT_PATH, GITHUB_OUTPUT, GITHUB_STEP_SUMMARY } = process.env
     if (!GITHUB_EVENT_PATH || !GITHUB_OUTPUT) throw new Error('GITHUB_EVENT_PATH and GITHUB_OUTPUT are required')
     const config = readConfig()
@@ -180,7 +261,7 @@ if (isMain(import.meta.url)) {
     console.log(report)
     if (GITHUB_STEP_SUMMARY) appendFileSync(GITHUB_STEP_SUMMARY, `${report}\n`)
     // Outputs are written last, so a failure above leaves none.
-    appendFileSync(GITHUB_OUTPUT, Object.entries(result.scopes).map(([name, on]) => `${name}=${on}\n`).join(''))
+    appendFileSync(GITHUB_OUTPUT, Object.entries(result.scopes).map(([name, on]) => `${name}=${on}\n`).join('') + localLine(config, command))
   } catch (error) {
     console.error(error.message)
     process.exitCode = 1
