@@ -70,6 +70,9 @@ test('routing.json is refused unless it has exactly the documented shape', () =>
     { scopes: { app: ['x'] }, rules: [{ reason: 'r', select: [], paths: ['a'], when: 'x' }] },
     ...['/a', 'a/../b', 'a//b', 'a?.md', 'a[0].md', '{a,b}', '!a', 'a**/b', '.github/x', '.github/**'].map((pattern) => (
       { scopes: { app: ['x'] }, rules: [{ reason: 'r', select: [], paths: [pattern] }] }
+    )),
+    ...[[], null, 'x', { 'pnpm smoke': 'web' }, { 'pnpm smoke': 1 }, { '': 'app' }, { ' pnpm smoke': 'app' }, { 'a\nb': 'app' }].map((local) => (
+      { scopes: { app: ['x'] }, rules: [], local }
     ))
   ]
   for (const value of bad) assert.throws(() => parseConfig(value), /^Error: routing\.json: /, JSON.stringify(value))
@@ -181,11 +184,11 @@ git('add', 'only-on-main.js')
 git('commit', '-qm', 'base advances independently')
 const advanced = git('rev-parse', 'HEAD')
 
-const runScope = (i, name, event, routing) => {
+const runScope = (i, name, event, routing, args = []) => {
   const files = { event: join(dir, `event-${i}.json`), output: join(dir, `output-${i}`), summary: join(dir, `summary-${i}`) }
   writeFileSync(files.event, JSON.stringify(event))
   if (routing !== undefined) writeFileSync(join(dir, 'ci', 'routing.json'), routing)
-  const run = spawnSync(process.execPath, [join(dir, 'ci', 'ci-scope.mjs')], {
+  const run = spawnSync(process.execPath, [join(dir, 'ci', 'ci-scope.mjs'), ...args], {
     cwd: dir, encoding: 'utf8',
     env: { ...process.env, GITHUB_EVENT_NAME: name, GITHUB_EVENT_PATH: files.event, GITHUB_OUTPUT: files.output, GITHUB_STEP_SUMMARY: files.summary }
   })
@@ -222,6 +225,35 @@ test('the command line publishes each scope from a real pull-request diff, every
       assert.ok(run.stdout.includes(JSON.stringify('site/space and\nnewline.html')))
       assert.ok(!run.stdout.includes('only-on-main.js'))
     }
+  }
+})
+
+test('a local call adds the scope its command is declared under, and the CI call writes what it wrote without "local"', () => {
+  const declared = JSON.stringify({ ...FIXTURE, local: { 'pnpm smoke': 'app', 'pnpm tool:check': 'tool' } })
+  const scopes = 'app=true\nsite=true\ntool=false\n'
+  const cases = [
+    // The CI passes no argument: the same literal as the pull request above, whose routing has no "local"
+    [declared, [], scopes],
+    [declared, ['--local-command', 'pnpm smoke'], `${scopes}local-scope=app\n`],
+    // Declared under a scope this change does not select, so the line cannot come from the selection
+    [declared, ['--local-command', 'pnpm tool:check'], `${scopes}local-scope=tool\n`],
+    // A command is declared only where it equals a key
+    [declared, ['--local-command', 'pnpm smoke --headed'], scopes],
+    [undefined, ['--local-command', 'pnpm smoke'], scopes],
+    [declared, ['--bogus'], null],
+    [declared, ['--local-command'], null],
+    [declared, ['--local-command', ''], null]
+  ]
+  for (const [i, [routing, args, expected]] of cases.entries()) {
+    const { run, output } = runScope(`local-${i}`, 'pull_request', pr(advanced, head), routing, args)
+    if (expected === null) {
+      assert.equal(run.status, 1, `${i}: ${run.stderr}`)
+      assert.ok(run.stderr.trim().length > 0, String(i))
+      assert.equal(existsSync(output), false, String(i))
+      continue
+    }
+    assert.equal(run.status, 0, `${i}: ${run.stderr}`)
+    assert.equal(readFileSync(output, 'utf8'), expected, String(i))
   }
 })
 
