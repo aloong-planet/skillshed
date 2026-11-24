@@ -77,7 +77,7 @@ Applies to the evidence a delivery still lacks once the local runs of REQ-001/AC
 
 ### delivery-flow::REQ-007 A local test command follows the routing by changed paths
 
-Applies to a test command the CI workflow does not carry, on a project whose CI routes its jobs by changed paths. It is an exception to REQ-001/AC-03, and REQ-001/AC-06 comes before it.
+Applies to a test command the CI workflow does not carry, on a project whose CI routes its jobs by changed paths. It is an exception to REQ-001/AC-03; REQ-001/AC-06 comes before it, and so does REQ-001/AC-04 for a merge of the default branch into the branch.
 
 - delivery-flow::REQ-007/AC-01: Before the delivery, the main agent runs the project's routing once on the change from the fork point to the commit it delivers, the routing being the one at that commit; a delivery without a pull request does so too. Where the routing declares the command under a scope and does not select that scope, the command does not run for this delivery. In every other case it runs.
 - delivery-flow::REQ-007/AC-02: The routing is the Node script that the CI workflow's `changes` job runs. It is run from the repository's root with the argument `--local-command <command>` and the interface of a GitHub Actions run for a pull request: the event is named `pull_request`, its file gives the fork point as the base and the commit delivered as the head, and the routing writes a line `<scope>=true` or `<scope>=false` for each scope into the output file. A routing that is not a Node script, or has another interface, is wrapped by the project in a Node script that the `changes` job runs.

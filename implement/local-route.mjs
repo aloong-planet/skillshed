@@ -5,8 +5,8 @@
 //
 // Usage, from anywhere inside the repository, on a checkout with nothing uncommitted:
 //   node local-route.mjs --base <fork point> --router <path> --command <command>
-// <path> is the Node script that the CI workflow's `changes` job runs, from the repository root as the workflow
-// names it, and a file tracked there; <command> is the test command exactly as it is run.
+// <path> is the routing script, from the repository root, and must be a file tracked there; <command> is passed to
+// the routing as given, and the routing compares it with its declarations.
 //
 // The routing is run as a GitHub Actions run of a pull request runs it, with one argument added: `node <path>
 // --local-command <command>` from the repository root, with GITHUB_EVENT_NAME=pull_request, GITHUB_EVENT_PATH a file

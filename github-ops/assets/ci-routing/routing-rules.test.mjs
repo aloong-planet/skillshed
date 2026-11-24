@@ -7,8 +7,8 @@ import { classifyPath, readConfig } from './ci-scope.mjs'
 const config = readConfig()
 
 test('each pattern of routing.json routes a real path to the scopes written here', () => {
-  // [a tracked path, the scopes it must select]. Take each path from the repository's tracked tree, and write
-  // the scopes as literals: computing them from routing.json would only repeat it.
+  // [a tracked path, the scopes it must select], written as the github-ops skill's checks-gate.md, "Write
+  // routing.json", says.
   const cases = [
     ['package.json', ['app']],
     ['pnpm-lock.yaml', ['app']],
@@ -35,8 +35,8 @@ test('each pattern of routing.json routes a real path to the scopes written here
 })
 
 test('each command that "local" declares reads only files that select its scope', () => {
-  // { "<declared command>": [a tracked path it reads, ...] } for each command "local" declares; which paths, and the
-  // note above each list, as the github-ops skill's checks-gate.md, "Write routing.json", says.
+  // Write { "<declared command>": [a tracked path it reads, ...] } for each command "local" declares: which paths,
+  // and the note above each list, as the github-ops skill's checks-gate.md, "Write routing.json", says.
   const reads = {}
   assert.deepEqual(Object.keys(reads).sort(), [...config.local.keys()].sort())
   for (const [command, paths] of Object.entries(reads)) {

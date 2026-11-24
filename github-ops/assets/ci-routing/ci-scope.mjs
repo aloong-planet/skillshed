@@ -10,11 +10,11 @@
 //     and a deletion counts. Each path takes the first rule that matches it.
 //   - a path under .github/ (workflows, these scripts, routing.json) selects every scope.
 //   - a path no rule matches selects every scope.
-//   - any other event, a malformed event or routing.json, an argument other than the one below, or a failed Git
-//     command: exit 1, and no output is written.
+//   - any other event, a malformed event or routing.json, an argument other than `--local-command <command>`, or a
+//     failed Git command: exit 1, and no output is written.
 //   - a local call, `--local-command <command>`, adds the line `local-scope=<scope>` after the scopes for a command
-//     that "local" declares, and none for any other. The CI passes no argument, so what it reads does not depend on
-//     "local".
+//     that the "local" of routing.json declares, and none for any other. The CI passes no argument, so the outputs it
+//     reads do not depend on "local".
 //
 // routing.json:
 //   { "scopes": { "<scope>": ["<job id>", ...], ... },
@@ -26,8 +26,8 @@
 //   A pattern is a path from the repository root. `*` matches any characters but `/`; `**` as a whole segment
 //   matches any number of segments, none included at the start or middle and at least one at the end. No other
 //   character is special, and a pattern under .github/ is refused: that directory is fixed above.
-//   "local" is optional: a test command the CI does not carry, written exactly as it is run, and the one scope whose
-//   selection lets it run before a delivery (checks-gate.md, "Write routing.json", says which command may be
+//   "local" is optional: a test command the CI does not run, written exactly as it is run, and the one scope that
+//   every change able to affect the command selects (checks-gate.md, "Write routing.json", says which command may be
 //   declared). A command matches only where it equals a key; one that is empty, starts or ends with white space or
 //   holds a line break or NUL is refused, and so is a scope that "scopes" does not name.
 //

@@ -3,8 +3,8 @@
 //   node --test implement/local-route.test.mjs
 // The first group's routing is the CI routing asset of github-ops (github-ops/assets/ci-routing/ci-scope.mjs),
 // copied as a project copies it, so those cases also check that the asset answers the interface this script uses.
-// Gap: a routing that does not finish in time is not driven, as the limit is two minutes; a routing killed by a
-// signal, the other way it can end without an exit code, is.
+// Gap: a routing that does not finish in time is not driven, as the limit is the script's ROUTING_TIMEOUT_MS; a
+// routing killed by a signal, the other way it can end without an exit code, is.
 import { after, test } from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync, spawnSync } from 'node:child_process'

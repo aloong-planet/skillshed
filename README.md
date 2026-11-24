@@ -94,10 +94,11 @@ A change to a specification under `docs/specs/` is also checked, before it is co
 node to-spec/check-spec.mjs --base "$(git merge-base HEAD origin/main)"
 ```
 
-The change-scope helper, the action-pin check, the ADR check, the spec check and the CI routing scripts can be tested directly (the ADR check and the spec check need python3 3.11 or later):
+The change-scope helper, the local-route helper, the action-pin check, the ADR check, the spec check and the CI routing scripts can be tested directly (the ADR check and the spec check need python3 3.11 or later):
 
 ```sh
 node --test implement/change-scope.test.mjs
+node --test implement/local-route.test.mjs
 node --test github-ops/check-action-pins.test.mjs
 node --test domain-modeling/project-documents.test.mjs
 node --test to-spec/project-documents-spec-check.test.mjs
