@@ -22,6 +22,10 @@ Applies to every wait for the CI made with the watch script of `/github-ops`, wh
 - ci-watch::REQ-001/AC-04: Where the line fails ci-watch::REQ-001/AC-02 in the handback and again in the wait's output file when the sending agent reads it, the sending agent does not judge by that file: it sends a sub-agent again, and where that handback fails ci-watch::REQ-001/AC-02 too, it runs the wait itself.
 - ci-watch::REQ-001/AC-05: The commands with which the sub-agent sent to watch reads a run that did not succeed are run inside the checkout too, entered in the same call.
 
+### ci-watch::REQ-002 A wait in the background ends its command with its own exit code (direct acceptance)
+
+Applies to the wait that a sub-agent sent to watch, or the delivery sub-agent of [delivery-flow::REQ-002/AC-03](delivery-flow.md), starts in the background. The command that starts the wait records the wait's exit code for the sub-agent to read and then ends with that same code.
+
 ## Failure modes and boundaries
 
 1. **The wait is started from another checkout of the same repository**, as where a sub-agent's shell starts every call in the main session's directory while the change is in a worktree. The wait watches that checkout's head and can end with exit code 0 (ci-watch::REQ-001/AC-02).
