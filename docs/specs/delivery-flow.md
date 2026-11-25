@@ -1,6 +1,6 @@
 # Delivery flow
 
-> Related: [post-implementation-check](post-implementation-check.md) · [project-documents](project-documents.md) · [closeout-path](closeout-path.md) · [risk-tiers](risk-tiers.md) · `/implement` ([SKILL.md](../../implement/SKILL.md)) · `/tdd` ([SKILL.md](../../tdd/SKILL.md)) · `/to-tickets` ([SKILL.md](../../to-tickets/SKILL.md)) · `/ui-design` ([SKILL.md](../../ui-design/SKILL.md)) · `/github-ops` ([SKILL.md](../../github-ops/SKILL.md), [delivery.md](../../github-ops/delivery.md))
+> Related: [post-implementation-check](post-implementation-check.md) · [project-documents](project-documents.md) · [closeout-path](closeout-path.md) · [risk-tiers](risk-tiers.md) · [ci-watch](ci-watch.md) · `/implement` ([SKILL.md](../../implement/SKILL.md)) · `/tdd` ([SKILL.md](../../tdd/SKILL.md)) · `/to-tickets` ([SKILL.md](../../to-tickets/SKILL.md)) · `/ui-design` ([SKILL.md](../../ui-design/SKILL.md)) · `/github-ops` ([SKILL.md](../../github-ops/SKILL.md), [delivery.md](../../github-ops/delivery.md))
 
 ## Problem Statement
 
@@ -35,8 +35,8 @@ Applies to the runs that verify a change once it is written. The runs made while
 - delivery-flow::REQ-002/AC-05: On the delivery handback the main agent checks that the pull request's head is the commit it handed over and that every conclusion is success, before it reports the delivery complete.
 - delivery-flow::REQ-002/AC-06: The merge waits for the user's approval, except where [risk-tiers::REQ-006](risk-tiers.md) has the main agent merge. After the merge nothing is written: no record, no edit to a ticket, no comment. The main agent tells the user the merge commit.
 - delivery-flow::REQ-002/AC-07: Where the tool cannot send a sub-agent, the main agent does these steps itself.
-- delivery-flow::REQ-002/AC-08: The delivery sub-agent runs each command that takes the repository or the branch from the current directory inside the checkout it was handed, entering it in the same call as the command.
-- delivery-flow::REQ-002/AC-09: The delivery handback carries the first line of the output of the wait for the CI. The main agent takes the CI conclusions as those of the commit it handed over only where that line passes [ci-watch::REQ-001/AC-02](ci-watch.md) for that commit. Where the line is missing or fails, the main agent hands the delivery over once more; where the second handback is the same, it waits for that commit's CI itself.
+- delivery-flow::REQ-002/AC-08: The delivery sub-agent of delivery-flow::REQ-002/AC-03 runs each command that takes the repository or the branch from the current directory inside the checkout it was handed, entering it in the same call as the command.
+- delivery-flow::REQ-002/AC-09: Beside what delivery-flow::REQ-002/AC-03 lists, the delivery handback carries the first line of the output of the wait for the CI. Beyond the check of delivery-flow::REQ-002/AC-05, the main agent takes the CI conclusions as those of the commit it handed over only where that line passes [ci-watch::REQ-001/AC-02](ci-watch.md) for that commit. Where the line is missing or fails, the main agent hands the delivery over once more; where the second handback is the same, it waits for that commit's CI itself.
 
 ### delivery-flow::REQ-003 What is written down
 
@@ -105,7 +105,7 @@ Applies to: the clauses on sub-agents and their models. They name what is handed
 6. **Local ticket files, or a tracker that cannot close a ticket from a pull request.** Nothing is edited; the ticket is done when its change is in the default branch (REQ-005/AC-03).
 7. **A ticket cut under the earlier rules**, with checkboxes and process-acceptance items. It is implemented as it stands; its boxes are not ticked and the records it names are not written (REQ-005, REQ-003/AC-06).
 8. **The fork point's CI did not pass, or never ran.** REQ-001/AC-06 still applies: the change cannot have altered what a test command does, nor what a type check or lint that reads none of the files it changed reports. A default branch that is failing is not found by this delivery.
-9. **A light-tier change** ([risk-tiers::REQ-004](risk-tiers.md)). It gets the main agent's own review in place of the independent one and hands over no document check. REQ-001, REQ-003, REQ-004, REQ-006 and the delivery of REQ-002/AC-03 to AC-06 apply to it as to any change.
+9. **A light-tier change** ([risk-tiers::REQ-004](risk-tiers.md)). It gets the main agent's own review in place of the independent one and hands over no document check. REQ-001, REQ-003, REQ-004, REQ-006 and the delivery of REQ-002/AC-03 to AC-06, AC-08 and AC-09 apply to it as to any change.
 10. **The user reports on a change already delivered.** A defect or added scope is a new delivery, continued on the pull request's branch where that pull request is not merged yet. An acceptance writes nothing (REQ-003/AC-05, REQ-005/AC-03).
 11. **The CI carries a command but its job did not run on the pull request's head.** Where the job was skipped by the CI's own routing by changed paths and the workflow's gate passed, the command does not run for this delivery. In any other case the CI did not carry it this time, and it runs locally on that head (REQ-001/AC-03).
 12. **No CI is triggered by a pull request in the repository.** Every test command and check runs locally before the delivery, and the delivery does not wait for a CI (REQ-001/AC-03, AC-09). A change under REQ-001/AC-06 still runs no test command, and no type check or lint that reads none of the files that differ from the fork point.
@@ -113,7 +113,7 @@ Applies to: the clauses on sub-agents and their models. They name what is handed
 14. **The sub-agent that gathers evidence changed a tracked file, or the checkout's head moved while it worked.** The main agent changes nothing and tells the user (REQ-006/AC-08).
 15. **A fix is made after the evidence was gathered**, as when a CI run fails. Nothing requires the evidence to be gathered again. The main agent judges whether a piece the fix bears on is.
 16. **A later change routes a file that a declared command reads to another scope, or to none**, as when the CI's routing is tuned for a file no CI job reads (delivery-flow::REQ-007/AC-07).
-17. **The delivery sub-agent's wait for the CI watched another commit.** The main agent does not take its conclusions (delivery-flow::REQ-002/AC-09).
+17. **The delivery sub-agent's wait for the CI watched another commit** (delivery-flow::REQ-002/AC-09).
 
 ## Implementation Decisions
 
