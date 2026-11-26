@@ -17,7 +17,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { existsSync, readFileSync, realpathSync, symlinkSync } from 'node:fs'
+import { existsSync, readFileSync, realpathSync, renameSync, symlinkSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { scratchRepos, write } from '../scripts/test-support/scratch-repos.mjs'
@@ -231,9 +231,18 @@ test('a case alias in the selector directory preserves gate ownership', t => {
   const script = join(r.dir, 'TOOLS/local-route.mjs')
   if (!existsSync(script)) return t.skip('requires a case-insensitive directory')
   commit(r, { 'tools/change-scope.mjs': 'export default 2' })
-  const out = route(r, ['--local-inputs', '--base', r.base, '--command', 'app'], { script })
-  assert.equal(out.code, 1, out.out + out.err)
-  assert.match(out.out, /selection changed at "tools\/change-scope.mjs"/)
+  function assertSelected() {
+    const out = route(r, ['--local-inputs', '--base', r.base, '--command', 'app'], { script })
+    assert.equal(out.code, 1, out.out + out.err)
+    assert.match(out.out, /selection changed at "tools\/change-scope.mjs"/)
+  }
+  assertSelected()
+  renameSync(join(r.dir, 'tools'), join(r.dir, 'TOOLS'))
+  assert.equal(r.g('status', '--porcelain'), '')
+  assertSelected()
+  r.g('rm', 'tools/change-scope.mjs')
+  r.g('commit', '-qm', 'remove gate')
+  assertSelected()
 })
 
 test('the dependencies of a linked executable-content gate keep independent commands', () => {

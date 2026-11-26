@@ -103,9 +103,9 @@ export function readInputs(text, pathSyntax = nativePath) {
   return declarations
 }
 
-function selectorPaths(root, entry, changedPaths) {
+function selectorPaths(root, entry, present, deleted) {
   const paths = new Set()
-  const linksOnDisk = new Set()
+  const componentsOnDisk = new Set()
   function trace(absolute) {
     let current = nativePath.parse(absolute).root
     const parts = absolute.slice(current.length).split(sep)
@@ -114,11 +114,11 @@ function selectorPaths(root, entry, changedPaths) {
       current = join(current, parts.shift())
       const stat = lstatSync(current, { throwIfNoEntry: false, bigint: true })
       if (!stat) continue
+      componentsOnDisk.add(`${stat.dev}:${stat.ino}`)
       if (!stat.isSymbolicLink()) {
         current = realpathSync.native(current)
         continue
       }
-      linksOnDisk.add(`${stat.dev}:${stat.ino}`)
       paths.add(relative(root, current).split(sep).join('/'))
       if (++links > 64) throw new Error(`too many symbolic links in ${absolute}`)
       const target = readlinkSync(current)
@@ -133,9 +133,16 @@ function selectorPaths(root, entry, changedPaths) {
   trace(join(dir, 'inert-path.mjs'))
   const gateDir = nativePath.dirname(trace(join(dir, 'change-scope.mjs')))
   for (const file of ['inert-path.mjs', 'vendor/typescript/typescript.cjs']) trace(join(gateDir, file))
-  for (const path of changedPaths) {
+  for (const path of present) {
     const stat = lstatSync(join(root, path), { throwIfNoEntry: false, bigint: true })
-    if (stat?.isSymbolicLink() && linksOnDisk.has(`${stat.dev}:${stat.ino}`)) paths.add(path)
+    if (stat && componentsOnDisk.has(`${stat.dev}:${stat.ino}`)) paths.add(path)
+  }
+  for (const path of deleted) {
+    let parent = nativePath.dirname(join(root, path))
+    while (!lstatSync(parent, { throwIfNoEntry: false })?.isDirectory()) parent = nativePath.dirname(parent)
+    const canonical = join(realpathSync.native(parent), relative(parent, join(root, path)))
+    const name = relative(root, canonical).split(sep).join('/')
+    if ([...paths].some(file => file === name || file.startsWith(`${name}/`))) paths.add(path)
   }
   return paths
 }
@@ -192,16 +199,17 @@ function main(argv) {
       }
     }
     const diff = git(['diff', '--raw', '--no-renames', '--ignore-submodules=none', '-z', baseSha, head, '--'], root).split('\0').slice(0, -1)
-    const changed = [], links = [], containers = new Set()
+    const changed = [], present = [], deleted = [], containers = new Set()
     for (let i = 0; i < diff.length; i += 2) {
       const [before, after] = diff[i].slice(1).split(' ')
       const path = diff[i + 1]
       changed.push(path)
-      if (after === '120000') links.push(path)
+      if (after === '000000') deleted.push(path)
+      else present.push(path)
       if ([before, after].some(mode => mode === '120000' || mode === '160000')) containers.add(path)
     }
     const scriptPath = relative(root, realpathSync(fileURLToPath(import.meta.url))).split(sep).join('/')
-    const reason = localRunReason(declarations, changed, command, scriptPath, selectorPaths(root, process.argv[1], links), containers)
+    const reason = localRunReason(declarations, changed, command, scriptPath, selectorPaths(root, process.argv[1], present, deleted), containers)
     console.log(`local-route: ${MANIFEST}, ${JSON.stringify(command)}: ${reason ?? 'no input changed'}; ${reason === null ? 'it does not run' : 'it runs'}`)
     return reason === null ? 0 : 1
   }
