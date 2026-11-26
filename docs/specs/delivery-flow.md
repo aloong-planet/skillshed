@@ -79,7 +79,7 @@ Applies to the evidence a delivery still lacks once the local runs of REQ-001/AC
 
 ### delivery-flow::REQ-007 A local test command follows the routing by changed paths
 
-Applies to a test command the CI workflow does not carry, on a project whose CI routes its jobs by changed paths. It is an exception to delivery-flow::REQ-001/AC-03; delivery-flow::REQ-001/AC-06 comes before it, and so does delivery-flow::REQ-001/AC-04 for a merge of the default branch into the branch.
+Applies to a test command the CI workflow does not carry. It is an exception to delivery-flow::REQ-001/AC-03; delivery-flow::REQ-001/AC-06 comes before it, and so does delivery-flow::REQ-001/AC-04 for a merge of the default branch into the branch. Where the project has a CI router, delivery-flow::REQ-007/AC-01 to delivery-flow::REQ-007/AC-07 govern it. Otherwise delivery-flow::REQ-007/AC-08 to delivery-flow::REQ-007/AC-10 govern selection, with the same evidence and commit lifetime as delivery-flow::REQ-007/AC-05 and delivery-flow::REQ-007/AC-06.
 
 - delivery-flow::REQ-007/AC-01: Before the delivery, the main agent runs the project's routing once on the change from the fork point to the commit it delivers, the routing being the one at that commit; a delivery without a pull request does so too. Where the routing declares the command under a scope and does not select that scope, the command does not run for this delivery. In every other case it runs.
 - delivery-flow::REQ-007/AC-02: The routing is the Node script that the CI workflow's `changes` job runs. It is run from the repository's root with the argument `--local-command <command>` and the interface of a GitHub Actions run for a pull request: the event is named `pull_request`, its file gives the fork point as the base and the commit delivered as the head, and the routing writes a line `<scope>=true` or `<scope>=false` for each scope into the output file. A routing that is not a Node script, or has another interface, is wrapped by the project in a Node script that the `changes` job runs.
@@ -88,6 +88,9 @@ Applies to a test command the CI workflow does not carry, on a project whose CI 
 - delivery-flow::REQ-007/AC-05: The delivery note gives the command that made the decision, its output and its exit code, and where the declaration is.
 - delivery-flow::REQ-007/AC-06: The decision holds for the commit delivered. Another commit delivered later, as after a failed CI run, is decided again.
 - delivery-flow::REQ-007/AC-07: A command is declared under a scope only where every tracked file it reads selects that scope or every scope, so a command that reads a file of another scope is not declared. The routing's tests fail on a declaration under a scope the routing does not define, and check every tracked file a declared command reads: they list those files as patterns, and fail where a pattern matches no tracked file or a file it matches does not select that scope. They state how the list of files the command reads was made complete.
+- delivery-flow::REQ-007/AC-08: Without CI path routing, a repository can declare local test inputs in a regular tracked file `local-test-inputs.json` at its root. Its JSON value is an array of pairs `[command, inputs]`: a distinct, exact test command string and a nonempty array of distinct literal, repository-relative file paths. These are data, not commands to execute. The declaration affects neither CI jobs, repository checks nor release verification.
+- delivery-flow::REQ-007/AC-09: Compare the fork point to the clean delivery commit, counting deletions and both names of moves. For a change whose paths all have known ownership, run every declared command with a changed input and skip the other declared commands. An input can belong to several commands. Declare a command only with evidence covering its tracked inputs, including imports, files copied or read and subprocess inputs; a command whose inputs cannot be bounded runs unconditionally.
+- delivery-flow::REQ-007/AC-10: An undeclared command runs. An unowned changed path, a change to the declaration or its selection machinery, an absent or invalid declaration, a dirty checkout or an unavailable comparison keeps all local commands. No fallback to a less conservative selector is made.
 
 ## Constraints
 
@@ -108,12 +111,15 @@ Applies to: the clauses on sub-agents and their models. They name what is handed
 9. **A light-tier change** ([risk-tiers::REQ-004](risk-tiers.md)). It gets the main agent's own review in place of the independent one and hands over no document check. REQ-001, REQ-003, REQ-004, REQ-006 and the delivery of REQ-002/AC-03 to AC-06, AC-08 and AC-09 apply to it as to any change.
 10. **The user reports on a change already delivered.** A defect or added scope is a new delivery, continued on the pull request's branch where that pull request is not merged yet. An acceptance writes nothing (REQ-003/AC-05, REQ-005/AC-03).
 11. **The CI carries a command but its job did not run on the pull request's head.** Where the job was skipped by the CI's own routing by changed paths and the workflow's gate passed, the command does not run for this delivery. In any other case the CI did not carry it this time, and it runs locally on that head (REQ-001/AC-03).
-12. **No CI is triggered by a pull request in the repository.** Every test command and check runs locally before the delivery, and the delivery does not wait for a CI (REQ-001/AC-03, AC-09). A change under REQ-001/AC-06 still runs no test command, and no type check or lint that reads none of the files that differ from the fork point.
+12. **No CI is triggered by a pull request in the repository.** The delivery does not wait for CI; local runs follow delivery-flow::REQ-001/AC-03, delivery-flow::REQ-001/AC-06 and delivery-flow::REQ-007.
 13. **What some piece of evidence takes cannot all be listed.** The gathering goes to the sub-agent, however few commands, files, interface operations and screenshots were listed (REQ-006/AC-03).
 14. **The sub-agent that gathers evidence changed a tracked file, or the checkout's head moved while it worked.** The main agent changes nothing and tells the user (REQ-006/AC-08).
 15. **A fix is made after the evidence was gathered**, as when a CI run fails. Nothing requires the evidence to be gathered again. The main agent judges whether a piece the fix bears on is.
 16. **A later change routes a file that a declared command reads to another scope, or to none**, as when the CI's routing is tuned for a file no CI job reads (delivery-flow::REQ-007/AC-07).
 17. **The delivery sub-agent's wait for the CI watched another commit** (delivery-flow::REQ-002/AC-09).
+18. **One suite imports a shared fixture and another copies a sibling module before testing it** (delivery-flow::REQ-007/AC-09).
+19. **A move crosses module boundaries, or a new file could affect a command but has no recorded owner** (delivery-flow::REQ-007/AC-09, delivery-flow::REQ-007/AC-10).
+20. **The change alters the mechanism that would exempt its own tests** (delivery-flow::REQ-007/AC-10).
 
 ## Implementation Decisions
 
