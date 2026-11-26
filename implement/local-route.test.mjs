@@ -3,17 +3,18 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { posix, win32 } from 'node:path'
 import { decision, localRunReason, parseArgs, readInputs, readOutput } from './local-route.mjs'
 
 test('every consumer runs for a shared input and every command runs for unknown scope', () => {
   const declarations = new Map([['a', ['one', 'shared']], ['b', ['two', 'shared']], ['c', ['three']]])
   // Even declaring the selection files as inputs of one command cannot exempt the others.
-  const selectors = ['local-test-inputs.json', 'implement/local-route.mjs', 'implement/change-scope.mjs', 'implement/vendor/typescript/typescript.cjs', 'tools/selector.mjs']
-  declarations.get('a').push(...selectors)
+  const selectors = ['local-test-inputs.json', 'tools/selector.mjs', 'tools/change-scope.mjs', 'tools/vendor/typescript/typescript.cjs']
+  declarations.get('a').push(...selectors, 'implement/change-scope.mjs')
   for (const [paths, command, runs] of [
     [['one', 'shared'], 'b', true], [['shared'], 'a', true], [['shared'], 'c', false],
     [['one', 'new'], 'c', true], [['one'], 'A', true],
-    ...selectors.map(path => [[path], 'b', true])
+    ...selectors.map(path => [[path], 'b', true]), [['implement/change-scope.mjs'], 'b', false]
   ]) {
     assert.equal(localRunReason(declarations, paths, command, 'tools/selector.mjs') !== null, runs, `${command}: ${paths}`)
   }
@@ -30,7 +31,7 @@ test('Skillshed selects the suites that import the shared Git fixture or copy th
     ['github-ops/assets/ci-routing/ci-scope.mjs', [route]],
     ['github-ops/check-action-pins.mjs', [pins]]
   ]) {
-    const selected = [route, adr, spec, pins].filter(command => localRunReason(declarations, [path], command) !== null)
+    const selected = [route, adr, spec, pins].filter(command => localRunReason(declarations, [path], command, 'implement/local-route.mjs') !== null)
     assert.deepEqual(selected, runs, path)
   }
 })
@@ -43,6 +44,11 @@ test('one invalid entry invalidates the entire declaration', () => {
     ...[{}, [], ['p', 'p'], [42], [''], ['/a'], ['a/../b'], ['./b'], ['a//b'], ['a/'], ['a\0b']].map(inputs => [valid, ['b', inputs]])
   ]) assert.throws(() => readInputs(JSON.stringify(value)), /local-test-inputs/, JSON.stringify(value))
   assert.throws(() => readInputs('['), SyntaxError)
+  for (const input of ['C:/outside/file', 'C:file', String.raw`\\server\share\file`, String.raw`\outside\file`, String.raw`dir\file`]) {
+    const text = JSON.stringify([valid, ['b', [input]]])
+    assert.throws(() => readInputs(text, win32), /invalid.*input/, input)
+    assert.deepEqual(readInputs(text, posix).get('b'), [input])
+  }
 })
 
 test('the arguments are the fork point, the routing and the command, each given once with a value', () => {

@@ -53,11 +53,12 @@ function route(r, args, { sub = '', vars = {} } = {}) {
 
 test('a delivery without CI runs the command whose input changed and skips the independent command', () => {
   const r = repo({
-    'local-test-inputs.json': JSON.stringify([['node a', ['a']], ['node b', ['b']]]),
-    a: 'first', b: 'second'
+    'local-test-inputs.json': JSON.stringify([['node a', ['a']], ['node b', ['b']], ['node c', ['c']]]),
+    a: 'first', b: 'second', c: 'third'
   })
-  commit(r, { a: 'updated' })
-  for (const [command, code] of [['node b', 0], ['node a', 1]]) {
+  commit(r, { a: 'updated first' })
+  commit(r, { c: 'updated last' })
+  for (const [command, code] of [['node b', 0], ['node a', 1], ['node c', 1]]) {
     const out = route(r, ['--local-inputs', '--base', r.base, '--command', command])
     assert.equal(out.code, code, out.out + out.err)
   }
@@ -80,6 +81,9 @@ test('only a tracked regular declaration and a usable fork point permit a skip',
   const manifest = 'local-test-inputs.json'
   const r = repo({ [manifest]: JSON.stringify([['a', ['a']]]), a: 'test a' })
   const query = base => route(r, ['--local-inputs', '--base', base, '--command', 'a'])
+  const later = commit(r, { a: 'later revision' })
+  r.g('checkout', '-q', '--detach', r.base)
+  assert.equal(query(later).code, 2)
   assert.equal(query('missing-ref').code, 2)
   write(r.dir, { untracked: 'dirty' })
   assert.equal(query(r.base).code, 2)
@@ -90,6 +94,23 @@ test('only a tracked regular declaration and a usable fork point permit a skip',
   r.g('add', manifest)
   r.g('commit', '-qm', 'symlink declaration')
   assert.equal(query(r.g('rev-parse', 'HEAD')).code, 2)
+})
+
+test('a dirty submodule keeps the command even when the project hides its changes', () => {
+  const r = repo({ 'local-test-inputs.json': JSON.stringify([['child test', ['child']]]) })
+  r.g('init', '-q', 'child')
+  write(r.dir, { 'child/input': 'original' })
+  r.g('-C', 'child', 'add', 'input')
+  r.g('-C', 'child', 'commit', '-qm', 'initial input')
+  r.g('submodule', 'add', './child', 'child')
+  r.g('commit', '-qm', 'track child')
+  r.g('config', 'submodule.child.ignore', 'dirty')
+  const args = ['--local-inputs', '--base', 'HEAD', '--command', 'child test']
+  assert.equal(route(r, args).code, 0)
+  write(r.dir, { 'child/input': 'modified' })
+  assert.equal(r.g('status', '--porcelain'), '')
+  const out = route(r, args)
+  assert.equal(out.code, 2, out.out + out.err)
 })
 
 /** A fresh file path for PROBE_LOG, outside every repository */

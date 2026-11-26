@@ -27,7 +27,7 @@
 import { spawnSync } from 'node:child_process'
 import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, relative, resolve, sep } from 'node:path'
+import nativePath, { join, posix, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROUTING_TIMEOUT_MS = 120_000
@@ -85,7 +85,7 @@ export function decision({ scopes, declared }) {
 
 const MANIFEST = 'local-test-inputs.json'
 
-export function readInputs(text) {
+export function readInputs(text, pathSyntax = nativePath) {
   const rows = JSON.parse(text)
   if (!Array.isArray(rows)) throw new Error(`${MANIFEST} must contain an array of command/input pairs`)
   const declarations = new Map()
@@ -94,7 +94,8 @@ export function readInputs(text) {
     const [command, inputs] = row
     if (typeof command !== 'string' || !command.trim() || declarations.has(command)) throw new Error(`invalid or duplicate command in ${MANIFEST}`)
     if (!Array.isArray(inputs) || !inputs.length || new Set(inputs).size !== inputs.length || inputs.some(path =>
-      typeof path !== 'string' || path.includes('\0') || path.split('/').some(part => ['', '.', '..'].includes(part))
+      typeof path !== 'string' || path.includes('\0') || pathSyntax.parse(path).root !== '' ||
+      (pathSyntax.sep !== '/' && path.includes(pathSyntax.sep)) || path.split('/').some(part => ['', '.', '..'].includes(part))
     )) throw new Error(`invalid or duplicate input for ${JSON.stringify(command)} in ${MANIFEST}`)
     declarations.set(command, inputs)
   }
@@ -104,7 +105,8 @@ export function readInputs(text) {
 export function localRunReason(declarations, changed, command, scriptPath) {
   const inputs = declarations.get(command)
   if (!inputs) return 'the command has no declaration'
-  const machinery = new Set([MANIFEST, 'implement/local-route.mjs', 'implement/change-scope.mjs', 'implement/vendor/typescript/typescript.cjs', scriptPath])
+  const skillDir = posix.dirname(scriptPath)
+  const machinery = new Set([MANIFEST, scriptPath, posix.join(skillDir, 'change-scope.mjs'), posix.join(skillDir, 'vendor/typescript/typescript.cjs')])
   const owned = new Set([...declarations.values()].flat())
   for (const path of changed) {
     if (machinery.has(path)) return `selection changed at ${JSON.stringify(path)}`
@@ -117,7 +119,7 @@ export function localRunReason(declarations, changed, command, scriptPath) {
 function main(argv) {
   const { base, router, command } = parseArgs(argv)
   const root = realpathSync(git(['rev-parse', '--show-toplevel']).trim())
-  const dirty = git(['status', '--porcelain', '--untracked-files=all'], root)
+  const dirty = git(['status', '--porcelain', '--untracked-files=all', '--ignore-submodules=none'], root)
   if (dirty !== '') throw new Error(`the checkout has uncommitted changes, so HEAD is not what is delivered:\n${dirty.trimEnd()}`)
   let baseSha
   try {
