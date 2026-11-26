@@ -700,7 +700,12 @@ if (hit.signalParent) process.kill(process.ppid, hit.signalParent)
 const stdout = hit.stdout ?? ''
 if (args[0] === 'pr' && args[1] === 'view' && !hit.code) {
   const fields = args[args.indexOf('--json') + 1].split(',')
-  process.stdout.write(JSON.stringify(Object.fromEntries(Object.entries(JSON.parse(stdout)).filter(([key]) => fields.includes(key)))))
+  const response = JSON.parse(stdout)
+  for (const field of fields) if (!Object.hasOwn(response, field)) {
+    process.stderr.write('Unknown JSON field: ' + field)
+    process.exit(1)
+  }
+  process.stdout.write(JSON.stringify(Object.fromEntries(fields.map((key) => [key, response[key]]))))
 } else process.stdout.write(stdout)
 process.stderr.write(hit.stderr ?? '')
 process.exit(hit.code ?? 0)
@@ -743,7 +748,7 @@ function project({ base = { 'capabilities.toml': CAPABILITIES, '.github/workflow
   return { root, origin, checkout, home, tip, head, main }
 }
 
-const prJson = (p, over = {}) => JSON.stringify({ number: 7, title: 'Write the area spec', body: 'Writes the area spec.\n\nCloses #12\n', state: 'OPEN', headRefOid: p.head, baseRefName: p.main, mergeable: 'MERGEABLE', mergeStateStatus: 'CLEAN', closingIssuesReferences: [ref(12)], mergeCommit: null, ...over })
+const prJson = (p, over = {}) => JSON.stringify({ number: 7, title: 'Write the area spec', body: 'Writes the area spec.\n\nCloses #12\n', state: 'OPEN', headRefOid: p.head, baseRefName: p.main, mergeable: 'MERGEABLE', mergeStateStatus: 'CLEAN', statusCheckRollup: [], closingIssuesReferences: [ref(12)], mergeCommit: null, ...over })
 
 const restRun = (head, id, workflow = 101) => ({ id, workflow_id: workflow, name: 'CI', event: 'pull_request', head_sha: head, created_at: '2026-01-02T02:59:55Z' })
 const runPage = (head, page) => `^api repos/example-org/demo/actions/runs\\?head_sha=${head}&event=pull_request&per_page=100&page=${page}$`
@@ -840,6 +845,22 @@ test('before passes a pull request that holds every rule, runs the real document
   assert.match(r.out, /^ {4}changed-files: A docs\/specs\/area\.md$/m)
   assertCleanedUp(p)
   assert.ok(r.calls.length > 0)
+})
+
+// merge-check::CON-002/AC-01
+test('before leaves initialized submodule refs alone even when the checkout fetches recursively', () => {
+  const p = project()
+  const upstream = join(p.root, 'library')
+  git(p.root, 'init', '-q', '-b', 'main', upstream)
+  const original = commitAs(p.root, upstream, { 'lib.txt': 'one' }, 'Start library')
+  git(p.checkout, 'clone', '-q', upstream, 'dep')
+  git(p.checkout, 'submodule', 'add', '-q', upstream, 'dep')
+  commitAs(p.root, p.checkout, {}, 'Use the library locally')
+  git(p.checkout, 'config', 'fetch.recurseSubmodules', 'true')
+  commitAs(p.root, upstream, { 'lib.txt': 'two' }, 'Update library')
+  const r = cli(p, beforeArgs(p))
+  assert.equal(r.code, 0, r.out + r.err)
+  assert.equal(git(join(p.checkout, 'dep'), 'rev-parse', 'origin/main'), original)
 })
 
 // merge-check::REQ-003/AC-06: the first read of the pull request and the read again after UNKNOWN each ask for the rollup
@@ -1088,11 +1109,14 @@ test('gh failing to read the pull request is an ERROR and the run exits 2', () =
 // merge-check::REQ-004/AC-02
 test('a head that does not contain the tip of the default branch fails up-to-date', () => {
   const p = project()
-  commitAs(p.root, p.checkout, { 'README.md': '# Demo, moved on\n' }, 'Move main on')
-  git(p.checkout, 'push', '-q', 'origin', 'main')
+  const publisher = join(p.root, 'publisher')
+  git(p.root, 'clone', '-q', p.origin, publisher)
+  commitAs(p.root, publisher, { 'README.md': '# Demo, moved on\n' }, 'Move main on')
+  git(publisher, 'push', '-q', 'origin', 'main')
   const r = cli(p, beforeArgs(p))
   assert.equal(r.code, 1, r.out + r.err)
   assert.match(r.out, /^FAIL up-to-date: origin\/main [0-9a-f]{7} is not in the head: merge or rebase onto it$/m)
+  assert.match(r.out, /^FAIL ci: the CI tested the head against an older default branch$/m)
 })
 
 // merge-check::REQ-001/AC-02, AC-03
