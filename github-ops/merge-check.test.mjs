@@ -236,7 +236,7 @@ for (const [id, scenario] of Object.entries(FAILING)) {
 test('--list prints every check and report with its modes and dependencies', () => {
   const lines = listLines()
   assert.equal(lines.length, CHECKS.length)
-  assert.ok(lines.some((l) => l === 'pr-mergeable (check; before; needs before: pr-open): mergeable is MERGEABLE and mergeStateStatus CLEAN, or UNSTABLE where --ignore-job matched a job of the ci runs and every statusCheckRollup entry not passing is a check run it matches; read up to 5 times 3 s apart while UNKNOWN'), lines.join('\n'))
+  assert.ok(lines.some((l) => l === 'pr-mergeable (check; before; needs before: pr-open): mergeable is MERGEABLE and mergeStateStatus CLEAN, or UNSTABLE where --ignore-job matched a job of the ci runs and at least one statusCheckRollup entry is not passing and all such entries are check runs matched by --ignore-job; read up to 5 times 3 s apart while UNKNOWN'), lines.join('\n'))
   assert.ok(lines.some((l) => l.startsWith('closing-keywords (check; before, after; needs before: pr-head, head-ref; after: pr-merged): ')))
 })
 
@@ -883,7 +883,7 @@ for (const [which, first] of [['first read', () => []], ['read after UNKNOWN', (
 
 // merge-check::REQ-014/AC-03: the head's workflow files are the *.yml and *.yaml directly in .github/workflows/
 test('before skips action-pins on a head whose .github/workflows/ holds no workflow file of its own', () => {
-  const p = project({ base: { 'capabilities.toml': CAPABILITIES, 'README.md': '# Demo\n' }, branch: { '.github/workflows/README.md': '# Workflows\n', '.github/workflows/templates/ci.yml': WORKFLOW } })
+  const p = project({ base: { 'capabilities.toml': CAPABILITIES, 'README.md': '# Demo\n' }, branch: { '.github/workflows/README.md': '# Workflows\n', '.github/workflows/templates.yml/ci.yml': WORKFLOW } })
   const r = cli(p, beforeArgs(p))
   assert.equal(r.code, 0, r.out + r.err)
   assert.match(r.out, /^SKIP action-pins: no workflow file at the head$/m)

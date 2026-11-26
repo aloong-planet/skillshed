@@ -85,7 +85,7 @@ export const CHECKS = [
   { id: 'pr-merged', kind: 'check', modes: ['after'], needs: both([]), rule: 'the pull request is MERGED and names its merge commit' },
   { id: 'pr-head', kind: 'check', modes: ['before', 'after'], needs: both([]), rule: 'headRefOid is --head' },
   { id: 'pr-base', kind: 'check', modes: ['before'], needs: both([]), rule: 'baseRefName is the default branch' },
-  { id: 'pr-mergeable', kind: 'check', modes: ['before'], needs: both(['pr-open']), rule: 'mergeable is MERGEABLE and mergeStateStatus CLEAN, or UNSTABLE where --ignore-job matched a job of the ci runs and every statusCheckRollup entry not passing is a check run it matches; read up to 5 times 3 s apart while UNKNOWN' },
+  { id: 'pr-mergeable', kind: 'check', modes: ['before'], needs: both(['pr-open']), rule: 'mergeable is MERGEABLE and mergeStateStatus CLEAN, or UNSTABLE where --ignore-job matched a job of the ci runs and at least one statusCheckRollup entry is not passing and all such entries are check runs matched by --ignore-job; read up to 5 times 3 s apart while UNKNOWN' },
   { id: 'head-ref', kind: 'check', modes: ['before', 'after'], needs: both([]), rule: 'pull/<N>/head fetched from origin is --head' },
   { id: 'up-to-date', kind: 'check', modes: ['before'], needs: both(HEAD_NEEDS), rule: 'the fetched tip of origin/<default branch> is an ancestor of the head or the head' },
   { id: 'merged-tree', kind: 'check', modes: ['after'], needs: both(['pr-merged', ...HEAD_NEEDS]), rule: "the merge commit's tree is the head's tree" },
@@ -97,7 +97,7 @@ export const CHECKS = [
   { id: 'forbidden-words', kind: 'check', modes: ['before', 'after'], needs: { before: HEAD_NEEDS, after: ['pr-merged'] }, rule: 'no --forbid match in the texts' },
   { id: 'bare-refs', kind: 'check', modes: ['before', 'after'], needs: { before: HEAD_NEEDS, after: ['pr-merged'] }, rule: 'every bare #N in the texts is an issue or pull request of --repo' },
   { id: 'commit-identity', kind: 'check', modes: ['before'], needs: both(HEAD_NEEDS), rule: 'every commit of the branch is authored and committed with the expected noreply address' },
-  { id: 'ci', kind: 'check', modes: ['before'], needs: both(HEAD_NEEDS), rule: "require the complete list of pull_request runs on the head (ERROR if incomplete). With no runs, skip only if the head has no workflow files. Otherwise verify that the latest run of each workflow tested the head merged into the current tip and passed" },
+  { id: 'ci', kind: 'check', modes: ['before'], needs: both(HEAD_NEEDS), rule: "require the complete list of pull_request runs on the head (ERROR if incomplete). With no runs, skip if the head has no workflow files and fail otherwise. For the latest run of each workflow, require a successful completed run unless a job is ignored; require every non-ignored job to have completed successfully or been skipped, with at least one current-tip merge line across their logs and no other merge target" },
   { id: 'spec-check', kind: 'check', modes: ['before'], needs: both(HEAD_NEEDS), rule: 'check-spec.mjs exits 0 when the diff changes docs/specs/' },
   { id: 'adr-check', kind: 'check', modes: ['before'], needs: both(HEAD_NEEDS), rule: 'check-adr.mjs exits 0 when docs/adr/ exists at the head and the diff changes docs/specs/ or docs/adr/' },
   { id: 'action-pins', kind: 'check', modes: ['before'], needs: both(HEAD_NEEDS), rule: 'check-action-pins.mjs exits 0 when the diff changes .github/workflows/ and the head has a *.yml or *.yaml directly in it' },
@@ -693,7 +693,7 @@ function realFacts(args, pre, squashBodyText) {
     runView: memoBy((id) => json('gh', ['run', 'view', String(id), '-R', args.repo, '--json', 'headSha,status,conclusion,jobs'], top)),
     jobLog: (id) => out('gh', ['api', `repos/${args.repo}/actions/jobs/${id}/logs`, '--allow-escape-sequences'], top),
     // check-action-pins.mjs's own workflow files: the *.yml and *.yaml entries directly in .github/workflows
-    workflowFilesAtHead: memo(() => { fetch(); return git('ls-tree', '--name-only', ref, '--', '.github/workflows/').split('\n').some((p) => /\.ya?ml$/.test(basename(p))) }),
+    workflowFilesAtHead: memo(() => { fetch(); return git('ls-tree', '-z', ref, '--', '.github/workflows/').split('\0').some((entry) => /^\d+ blob [0-9a-f]+\t[\s\S]*\.ya?ml$/.test(entry)) }),
     workflowsAtHead: memo(() => { fetch(); return git('ls-tree', '-r', '--name-only', ref, '--', '.github/workflows/').trim() !== '' }),
     adrAtHead: memo(() => { fetch(); return git('ls-tree', '-d', '--name-only', ref, '--', 'docs/adr').trim() !== '' }),
     runScript: (name, scriptArgs) => {
