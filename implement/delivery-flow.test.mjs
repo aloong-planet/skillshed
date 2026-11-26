@@ -1,7 +1,7 @@
 // The command line of local-route.mjs (delivery-flow::REQ-007). Each case group builds a throwaway Git repository
-// holding a routing under .github/ci/ and runs the script as implement/full-verification-gate.md says to:
+// with local inputs or a routing under .github/ci/ and exercises the decision used before delivery. Run:
 //   node --test implement/delivery-flow.test.mjs
-// The first group's routing is the CI routing asset of github-ops (github-ops/assets/ci-routing/ci-scope.mjs),
+// The CI compatibility case uses the CI routing asset of github-ops (github-ops/assets/ci-routing/ci-scope.mjs),
 // copied as a project copies it, so those cases also check that the asset answers the interface this script uses.
 // The rules the script applies are tested in local-route.test.mjs.
 // Gap: a routing that does not finish in time is not driven, as the limit is the script's ROUTING_TIMEOUT_MS; a
@@ -12,11 +12,12 @@
 // routing of another form is wrapped (AC-02), that a fork point that cannot be found runs the command and that
 // nothing stops to ask (AC-04), what the delivery note gives (AC-05), that a later commit is decided again (AC-06),
 // and that a command is declared only after every file it reads is enumerated (AC-07). Testing them takes an agent
-// replaying a delivery.
+// replaying a delivery. The same gap applies to CI precedence, input audits, and keeping checks and release
+// verification outside local selection (AC-08 to AC-10).
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { readFileSync, realpathSync } from 'node:fs'
+import { readFileSync, realpathSync, symlinkSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { scratchRepos, write } from '../scripts/test-support/scratch-repos.mjs'
@@ -49,6 +50,47 @@ function route(r, args, { sub = '', vars = {} } = {}) {
   const out = spawnSync(process.execPath, [SCRIPT, ...args], { cwd: join(r.dir, sub), encoding: 'utf8', env: { ...env, ...vars } })
   return { code: out.status, out: out.stdout, err: out.stderr }
 }
+
+test('a delivery without CI runs the command whose input changed and skips the independent command', () => {
+  const r = repo({
+    'local-test-inputs.json': JSON.stringify([['node a', ['a']], ['node b', ['b']]]),
+    a: 'first', b: 'second'
+  })
+  commit(r, { a: 'updated' })
+  for (const [command, code] of [['node b', 0], ['node a', 1]]) {
+    const out = route(r, ['--local-inputs', '--base', r.base, '--command', command])
+    assert.equal(out.code, code, out.out + out.err)
+  }
+})
+
+test('a deletion and both names of a move reach the commands that own them', () => {
+  const old = 'first/old\nname', next = 'second/new name'
+  const r = repo({
+    'local-test-inputs.json': JSON.stringify([['first', [old]], ['second', [next]], ['third', ['third']], ['removed', ['removed']]]),
+    [old]: 'moved', third: 'unchanged', removed: 'deleted'
+  })
+  commit(r, { [old]: null, [next]: 'moved', removed: null })
+  for (const [command, code] of [['first', 1], ['second', 1], ['removed', 1], ['third', 0]]) {
+    const out = route(r, ['--local-inputs', '--base', r.base, '--command', command], { sub: 'second' })
+    assert.equal(out.code, code, out.out + out.err)
+  }
+})
+
+test('only a tracked regular declaration and a usable fork point permit a skip', () => {
+  const manifest = 'local-test-inputs.json'
+  const r = repo({ [manifest]: JSON.stringify([['a', ['a']]]), a: 'test a' })
+  const query = base => route(r, ['--local-inputs', '--base', base, '--command', 'a'])
+  assert.equal(query('missing-ref').code, 2)
+  write(r.dir, { untracked: 'dirty' })
+  assert.equal(query(r.base).code, 2)
+  commit(r, { untracked: null, [manifest]: null })
+  assert.equal(query(r.g('rev-parse', 'HEAD')).code, 2)
+  // A symlink's blob contains its target name. Make that name parse as a valid declaration.
+  symlinkSync('[["a",["a"]]]', join(r.dir, manifest))
+  r.g('add', manifest)
+  r.g('commit', '-qm', 'symlink declaration')
+  assert.equal(query(r.g('rev-parse', 'HEAD')).code, 2)
+})
 
 /** A fresh file path for PROBE_LOG, outside every repository */
 const logPath = () => join(realpathSync(scratch()), 'probe.json')

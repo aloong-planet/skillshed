@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-// Whether a test command the CI workflow does not carry runs before a delivery, for the run rules in
-// implement/full-verification-gate.md: the project's CI routing is run once on the change from the fork point to
-// HEAD, and the command runs unless the routing declares it under a scope that the change does not select.
+// Decide whether a full local test command runs for a clean delivery commit (implement/full-verification-gate.md).
+// Without CI path routing, use tracked command/input pairs from the repository root:
+//   node local-route.mjs --local-inputs --base <fork point> --command <command>
+// Exit 0 skips a declared command when all changed paths have owners and none affect it. Every other result runs it.
 //
-// Usage, from anywhere inside the repository, on a checkout with nothing uncommitted:
+// With CI routing, run from anywhere inside the clean checkout:
 //   node local-route.mjs --base <fork point> --router <path> --command <command>
 // <path> is the routing script, from the repository root, and must be a file tracked there; <command> is passed to
 // the routing as given, and the routing compares it with its declarations.
@@ -26,7 +27,7 @@
 import { spawnSync } from 'node:child_process'
 import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, relative, resolve } from 'node:path'
+import { join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROUTING_TIMEOUT_MS = 120_000
@@ -34,23 +35,25 @@ const ROUTING_TIMEOUT_MS = 120_000
 class Usage extends Error {}
 
 function git(args, cwd) {
-  const r = spawnSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 1 << 30 })
+  const r = spawnSync('git', args, { cwd, maxBuffer: 1 << 30 })
   if (r.error) throw r.error
-  if (r.status !== 0) throw new Error(`git ${args.join(' ')} exited ${r.status}: ${r.stderr.trim()}`)
-  return r.stdout
+  if (r.status !== 0) throw new Error(`git ${args.join(' ')} exited ${r.status}: ${r.stderr.toString().trim()}`)
+  return new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(r.stdout)
 }
 
-/** The arguments as { base, router, command }; throws a usage error unless each flag is given once with a value. */
+/** Parse an explicit routing mode and its required arguments. */
 export function parseArgs(argv) {
-  const flags = { '--base': null, '--router': null, '--command': null }
-  for (let i = 0; i < argv.length; i += 2) {
+  const local = argv[0] === '--local-inputs'
+  const flags = local ? { '--base': null, '--command': null } : { '--base': null, '--router': null, '--command': null }
+  const usage = local ? 'expected "--local-inputs --base <fork point> --command <command>"' : 'expected "--base <fork point> --router <path> --command <command>", each once'
+  for (let i = local ? 1 : 0; i < argv.length; i += 2) {
     const [flag, value] = [argv[i], argv[i + 1]]
     if (!Object.hasOwn(flags, flag) || flags[flag] !== null || value === undefined || value === '') {
-      throw new Usage('expected "--base <fork point> --router <path> --command <command>", each once')
+      throw new Usage(usage)
     }
     flags[flag] = value
   }
-  if (Object.values(flags).includes(null)) throw new Usage('expected "--base <fork point> --router <path> --command <command>", each once')
+  if (Object.values(flags).includes(null)) throw new Usage(usage)
   return { base: flags['--base'], router: flags['--router'], command: flags['--command'] }
 }
 
@@ -80,6 +83,37 @@ export function decision({ scopes, declared }) {
   return declared === null || scopes.get(declared) ? 1 : 0
 }
 
+const MANIFEST = 'local-test-inputs.json'
+
+export function readInputs(text) {
+  const rows = JSON.parse(text)
+  if (!Array.isArray(rows)) throw new Error(`${MANIFEST} must contain an array of command/input pairs`)
+  const declarations = new Map()
+  for (const row of rows) {
+    if (!Array.isArray(row) || row.length !== 2) throw new Error(`invalid pair in ${MANIFEST}`)
+    const [command, inputs] = row
+    if (typeof command !== 'string' || !command.trim() || declarations.has(command)) throw new Error(`invalid or duplicate command in ${MANIFEST}`)
+    if (!Array.isArray(inputs) || !inputs.length || new Set(inputs).size !== inputs.length || inputs.some(path =>
+      typeof path !== 'string' || path.includes('\0') || path.split('/').some(part => ['', '.', '..'].includes(part))
+    )) throw new Error(`invalid or duplicate input for ${JSON.stringify(command)} in ${MANIFEST}`)
+    declarations.set(command, inputs)
+  }
+  return declarations
+}
+
+export function localRunReason(declarations, changed, command, scriptPath) {
+  const inputs = declarations.get(command)
+  if (!inputs) return 'the command has no declaration'
+  const machinery = new Set([MANIFEST, 'implement/local-route.mjs', 'implement/change-scope.mjs', 'implement/vendor/typescript/typescript.cjs', scriptPath])
+  const owned = new Set([...declarations.values()].flat())
+  for (const path of changed) {
+    if (machinery.has(path)) return `selection changed at ${JSON.stringify(path)}`
+    if (!owned.has(path)) return `no command owns ${JSON.stringify(path)}`
+    if (inputs.includes(path)) return `input changed at ${JSON.stringify(path)}`
+  }
+  return null
+}
+
 function main(argv) {
   const { base, router, command } = parseArgs(argv)
   const root = realpathSync(git(['rev-parse', '--show-toplevel']).trim())
@@ -92,6 +126,16 @@ function main(argv) {
     throw new Error(`the fork point ${JSON.stringify(base)} is not a commit`)
   }
   const head = git(['rev-parse', '--verify', 'HEAD^{commit}'], root).trim()
+  if (router === undefined) {
+    git(['merge-base', '--is-ancestor', baseSha, head], root)
+    if (!/^100(?:644|755) blob /.test(git(['ls-tree', head, '--', MANIFEST], root))) throw new Error(`${MANIFEST} is not a regular tracked file`)
+    const declarations = readInputs(git(['show', `${head}:${MANIFEST}`], root))
+    const changed = git(['diff', '--name-only', '--no-renames', '--ignore-submodules=none', '-z', baseSha, head, '--'], root).split('\0').slice(0, -1)
+    const scriptPath = relative(root, realpathSync(fileURLToPath(import.meta.url))).split(sep).join('/')
+    const reason = localRunReason(declarations, changed, command, scriptPath)
+    console.log(`local-route: ${MANIFEST}, ${JSON.stringify(command)}: ${reason ?? 'no input changed'}; ${reason === null ? 'it does not run' : 'it runs'}`)
+    return reason === null ? 0 : 1
+  }
   let script
   try {
     script = realpathSync(resolve(root, router))

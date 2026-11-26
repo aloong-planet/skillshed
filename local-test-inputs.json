@@ -1,0 +1,29 @@
+[
+  ["node --test implement/change-scope.test.mjs", [
+    "implement/change-scope.test.mjs",
+    "implement/change-scope.mjs",
+    "implement/vendor/typescript/typescript.cjs"
+  ]],
+  ["node --test implement/local-route.test.mjs implement/delivery-flow.test.mjs", [
+    "implement/local-route.test.mjs",
+    "implement/delivery-flow.test.mjs",
+    "implement/local-route.mjs",
+    "local-test-inputs.json",
+    "scripts/test-support/scratch-repos.mjs",
+    "github-ops/assets/ci-routing/ci-scope.mjs"
+  ]],
+  ["node --test github-ops/check-action-pins.test.mjs", [
+    "github-ops/check-action-pins.test.mjs",
+    "github-ops/check-action-pins.mjs"
+  ]],
+  ["node --test domain-modeling/project-documents.test.mjs", [
+    "domain-modeling/project-documents.test.mjs",
+    "domain-modeling/check-adr.mjs",
+    "scripts/test-support/scratch-repos.mjs"
+  ]],
+  ["node --test to-spec/project-documents-spec-check.test.mjs", [
+    "to-spec/project-documents-spec-check.test.mjs",
+    "to-spec/check-spec.mjs",
+    "scripts/test-support/scratch-repos.mjs"
+  ]]
+]

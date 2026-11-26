@@ -105,6 +105,14 @@ node --test to-spec/project-documents-spec-check.test.mjs
 node --test github-ops/assets/ci-routing/ci-routing.test.mjs github-ops/assets/ci-routing/routing-rules.test.mjs
 ```
 
+For a local delivery from a clean checkout, look up each full test command with the selector. For example, given the verified fork point in `base`:
+
+```sh
+node implement/local-route.mjs --local-inputs --base "$base" --command 'node --test github-ops/check-action-pins.test.mjs'
+```
+
+Exit 0 skips that command. Any other result runs it. The [input declaration](local-test-inputs.json) lists each eligible command and every repository file it consumes, including shared helpers and copied assets. Keep those lists current when changing a suite. A change with an unowned path keeps every command. The CI routing suite reads the Git index, and the packaging suite loads an external dependency tree, so both run on every delivery subject to suite selection. Repository checks above and release verification retain their own rules. Projects with CI path routing use the CI router as described in the [verification gate](implement/full-verification-gate.md).
+
 The packaging helper's tests also need `electron-builder` and its dependency tree. To provide them without adding dependencies to this checkout, install them in a temporary directory with pnpm:
 
 ```sh
