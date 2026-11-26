@@ -2,7 +2,7 @@
 // Decide whether a full local test command runs for a clean delivery commit (implement/full-verification-gate.md).
 // Without CI path routing, use tracked command/input pairs from the repository root:
 //   node local-route.mjs --local-inputs --base <fork point> --command <command>
-// Exit 0 skips a declared command when all changed paths have owners and none affect it. Every other result runs it.
+// Skip a declared command only when its inputs and the selection machinery are unchanged and all unowned changes are inert.
 //
 // With CI routing, run from anywhere inside the clean checkout:
 //   node local-route.mjs --base <fork point> --router <path> --command <command>
@@ -29,6 +29,7 @@ import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from '
 import { tmpdir } from 'node:os'
 import nativePath, { join, posix, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { isInert } from './inert-path.mjs'
 
 const ROUTING_TIMEOUT_MS = 120_000
 
@@ -106,11 +107,11 @@ export function localRunReason(declarations, changed, command, scriptPath) {
   const inputs = declarations.get(command)
   if (!inputs) return 'the command has no declaration'
   const skillDir = posix.dirname(scriptPath)
-  const machinery = [MANIFEST, scriptPath, posix.join(skillDir, 'change-scope.mjs'), posix.join(skillDir, 'vendor/typescript/typescript.cjs')]
+  const machinery = [MANIFEST, scriptPath, posix.join(skillDir, 'change-scope.mjs'), posix.join(skillDir, 'inert-path.mjs'), posix.join(skillDir, 'vendor/typescript/typescript.cjs')]
   const owned = new Set([...declarations.values()].flat())
   for (const path of changed) {
     if (machinery.some(file => file === path || file.startsWith(`${path}/`))) return `selection changed at ${JSON.stringify(path)}`
-    if (!owned.has(path)) return `no command owns ${JSON.stringify(path)}`
+    if (!owned.has(path) && !isInert(path)) return `no command owns ${JSON.stringify(path)}`
     if (inputs.includes(path)) return `input changed at ${JSON.stringify(path)}`
   }
   return null

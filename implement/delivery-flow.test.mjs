@@ -132,7 +132,10 @@ test('a dirty submodule keeps the command even when the project hides its change
 
 test('upgrading a selector installed as a submodule keeps independent commands', () => {
   const r = repo({ 'local-test-inputs.json': JSON.stringify([['tool test', ['tools']], ['app test', ['app.js']]]), 'app.js': 'app' })
-  const tools = addSubmodule(r.dir, 'tools', { 'local-route.mjs': readFileSync(SCRIPT, 'utf8') })
+  const tools = addSubmodule(r.dir, 'tools', {
+    'local-route.mjs': readFileSync(SCRIPT, 'utf8'),
+    'inert-path.mjs': readFileSync(join(HERE, 'inert-path.mjs'), 'utf8')
+  })
   const base = r.g('rev-parse', 'HEAD')
   write(tools, { 'change-scope.mjs': 'export const version = 2' })
   git(tools, 'add', 'change-scope.mjs')
@@ -141,6 +144,7 @@ test('upgrading a selector installed as a submodule keeps independent commands',
   r.g('commit', '-qm', 'upgrade tools')
   const out = route(r, ['--local-inputs', '--base', base, '--command', 'app test'], { script: join(tools, 'local-route.mjs') })
   assert.equal(out.code, 1, out.out + out.err)
+  assert.match(out.out, /selection changed at "tools"/)
 })
 
 /** A fresh file path for PROBE_LOG, outside every repository */

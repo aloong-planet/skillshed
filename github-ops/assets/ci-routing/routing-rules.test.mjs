@@ -39,6 +39,8 @@ test('each command that "local" declares reads only files that select its scope'
   // Write { "<declared command>": ["<pattern>", ...] } for each command "local" declares: which patterns, and the
   // note above each list, as the github-ops skill's checks-gate.md, "Write routing.json", says.
   const reads = {}
-  const tracked = execFileSync('git', ['ls-files', '-z', '--full-name', '--', ':/'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
-  assert.deepEqual(localReadFailures(config, reads, tracked.split('\0').filter((path) => path !== '')), [])
+  const tracked = Object.keys(reads).length === 0 ? [] : execFileSync('git', ['ls-files', '-z', '--full-name', '--', ':/'], {
+    encoding: 'utf8', maxBuffer: 64 * 1024 * 1024
+  }).split('\0').filter(path => path !== '')
+  assert.deepEqual(localReadFailures(config, reads, tracked), [])
 })

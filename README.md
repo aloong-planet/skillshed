@@ -111,14 +111,15 @@ For a local delivery from this repository, first apply the [verification gate](i
 node implement/local-route.mjs --local-inputs --base "$base" --command 'node --test github-ops/check-action-pins.test.mjs'
 ```
 
-Exit 0 skips that command. Any other result runs it. The [input declaration](local-test-inputs.json) lists each eligible command and every repository file it consumes, including shared helpers and copied assets. Keep those lists current when changing a suite. A change with an unowned path keeps every command. The CI routing suite reads the Git index, and the packaging suite loads an external dependency tree, so both run on every delivery subject to suite selection. Repository checks above and release verification retain their own rules. Projects with CI path routing use the CI router as described in the [verification gate](implement/full-verification-gate.md).
+Exit 0 skips that command. Any other result runs it. The [input declaration](local-test-inputs.json) lists each eligible command and every repository file it consumes, including shared helpers and copied assets. Keep those lists current when changing a suite. An unowned path outside `docs/` keeps every command unless its extension is `.md` (case-insensitive). For example, changing `github-ops/check-action-pins.mjs` together with its README or spec selects only the action-pin suite. Changing `electron-scaffold/assets/mac-packaging.cjs` selects the packaging suite. Neither query needs the packaging dependencies. Repository checks above and release verification retain their own rules. Projects with CI path routing use the CI router as described in the [verification gate](implement/full-verification-gate.md).
 
 The packaging helper's tests also need `electron-builder` and its dependency tree. To provide them without adding dependencies to this checkout, install them in a temporary directory with pnpm:
 
 ```sh
 skillshed_test_deps="$(mktemp -d)"
 pnpm --dir "$skillshed_test_deps" add --ignore-scripts electron-builder
-NODE_PATH="$skillshed_test_deps/node_modules" node --test electron-scaffold/assets/mac-packaging.test.cjs
+export NODE_PATH="$skillshed_test_deps/node_modules"
+node --test electron-scaffold/assets/mac-packaging.test.cjs
 ```
 
 These checks cover specific consistency rules and helper behavior. Review changes to the instructions themselves against the workflow they describe.

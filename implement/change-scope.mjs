@@ -48,12 +48,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { extname, join } from 'node:path'
-
-// The inert files of implement/full-verification-gate.md; docs/ holds the documentation and process records of the
-// layout /repo-scaffold sets up. implement/SKILL.md forbids the tests that a test command runs from reading them,
-// and a command that reads one does not count as a test command, so this script's verdict never skips it where a
-// file it reads differs from the base.
-const isInert = (path) => path === 'docs' || path.startsWith('docs/') || extname(path).toLowerCase() === '.md'
+import { isInert } from './inert-path.mjs'
 
 const JS_TS = new Set(['.js', '.jsx', '.mjs', '.cjs', '.ts', '.tsx', '.mts', '.cts'])
 const PYTHON = new Set(['.py', '.pyi'])

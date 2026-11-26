@@ -9,29 +9,38 @@ import { decision, localRunReason, parseArgs, readInputs, readOutput } from './l
 test('every consumer runs for a shared input and every command runs for unknown scope', () => {
   const declarations = new Map([['a', ['one', 'shared']], ['b', ['two', 'shared']], ['c', ['three']]])
   // Even declaring the selection files as inputs of one command cannot exempt the others.
-  const selectors = ['local-test-inputs.json', 'tools/selector.mjs', 'tools/change-scope.mjs', 'tools/vendor/typescript/typescript.cjs']
+  const selectors = ['local-test-inputs.json', 'tools/selector.mjs', 'tools/change-scope.mjs', 'tools/inert-path.mjs', 'tools/vendor/typescript/typescript.cjs']
   declarations.get('a').push(...selectors, 'implement/change-scope.mjs')
   for (const [paths, command, runs] of [
     [['one', 'shared'], 'b', true], [['shared'], 'a', true], [['shared'], 'c', false],
-    [['one', 'new'], 'c', true], [['one'], 'A', true],
+    [['README.MD', 'docs/specs/input.json', 'one'], 'b', false],
+    [['README.MD', 'docs/specs/input.json', 'one'], 'a', true],
+    [['one', 'docs-old/new.js'], 'c', true], [['one'], 'A', true],
     ...selectors.map(path => [[path], 'b', true]), [['implement/change-scope.mjs'], 'b', false]
   ]) {
     assert.equal(localRunReason(declarations, paths, command, 'tools/selector.mjs') !== null, runs, `${command}: ${paths}`)
   }
 })
 
-test('Skillshed selects the suites that import the shared Git fixture or copy the CI router', () => {
+test('Skillshed selects only consumers of each repository input across its seven suites', () => {
   const declarations = readInputs(readFileSync(new URL('../local-test-inputs.json', import.meta.url), 'utf8'))
   const route = 'node --test implement/local-route.test.mjs implement/delivery-flow.test.mjs'
   const adr = 'node --test domain-modeling/project-documents.test.mjs'
   const spec = 'node --test to-spec/project-documents-spec-check.test.mjs'
   const pins = 'node --test github-ops/check-action-pins.test.mjs'
+  const scope = 'node --test implement/change-scope.test.mjs'
+  const ci = 'node --test github-ops/assets/ci-routing/ci-routing.test.mjs github-ops/assets/ci-routing/routing-rules.test.mjs'
+  const packaging = 'node --test electron-scaffold/assets/mac-packaging.test.cjs'
+  const commands = [scope, route, pins, adr, spec, ci, packaging]
   for (const [path, runs] of [
+    ['github-ops/check-action-pins.mjs', [pins]],
     ['scripts/test-support/scratch-repos.mjs', [route, adr, spec]],
-    ['github-ops/assets/ci-routing/ci-scope.mjs', [route]],
-    ['github-ops/check-action-pins.mjs', [pins]]
+    ['github-ops/assets/ci-routing/ci-scope.mjs', [route, ci]],
+    ['github-ops/assets/ci-routing/routing.json', [ci]],
+    ['electron-scaffold/assets/mac-packaging.cjs', [packaging]],
+    ['electron-scaffold/assets/mac-packaging.test.cjs', [packaging]]
   ]) {
-    const selected = [route, adr, spec, pins].filter(command => localRunReason(declarations, [path], command, 'implement/local-route.mjs') !== null)
+    const selected = commands.filter(command => localRunReason(declarations, [path], command, 'implement/local-route.mjs') !== null)
     assert.deepEqual(selected, runs, path)
   }
 })
