@@ -598,8 +598,9 @@ function realFacts(args, pre, squashBodyText) {
   const { checkout: top, defaultBranch, ref, worktree } = pre
   const origin = `refs/remotes/origin/${defaultBranch}`
   const made = { ref: false, worktree: false, dirs: [] }
-  // log.showSignature off: a user's setting would put signature lines before the formatted output of git log
-  const git = (...a) => out('git', ['-c', 'log.showSignature=false', ...a], top)
+  // Settings of the user's that reshape the output parsed here: signature lines before git log's format, quoted paths
+  // that are not ASCII, and diff hunks merged across unchanged lines
+  const git = (...a) => out('git', ['-c', 'log.showSignature=false', '-c', 'core.quotepath=false', '-c', 'diff.interHunkContext=0', ...a], top)
   const pr = memo(() => json('gh', ['pr', 'view', String(args.pr), '-R', args.repo, '--json', PR_FIELDS], top))
   const fetch = memo(() => {
     made.ref = true
@@ -607,7 +608,8 @@ function realFacts(args, pre, squashBodyText) {
   })
   const rev = (r) => { fetch(); return git('rev-parse', '--verify', '--quiet', r).trim() }
   const forkPoint = memo(() => { fetch(); return git('merge-base', ref, origin).trim() })
-  const diffArgs = () => ['-c', 'core.quotepath=false', 'diff', '--no-renames', '--no-color', '--no-ext-diff', forkPoint(), ref]
+  // The prefixes given, so diff.noprefix and diff.mnemonicPrefix leave the paths of the patch as addedLines reads them
+  const diffArgs = () => ['diff', '--no-renames', '--no-color', '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/', forkPoint(), ref]
   const worktreeDir = memo(() => {
     fetch()
     const missing = []

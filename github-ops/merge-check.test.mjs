@@ -584,8 +584,10 @@ test('ci fails when every job is ignored, and matches a job name whole and with 
   assert.match(exact.out, /job ci gate concluded failure/)
 })
 
-test('ci judges the latest run of each workflow', async () => {
-  const runs = [run({ databaseId: 10, createdAt: '2026-01-02T02:00:00Z' }), run({ databaseId: 11, createdAt: '2026-01-02T03:00:00Z' }), run({ databaseId: 30, workflowName: 'Docs', workflowDatabaseId: 102, createdAt: '2026-01-02T01:00:00Z' })]
+// gh lists the newest run first; the other order shows that the order does not choose the run
+for (const order of ['newest first', 'oldest first']) test(`ci judges the latest run of each workflow, listed ${order}`, async () => {
+  const newestFirst = [run({ databaseId: 11, createdAt: '2026-01-02T03:00:00Z' }), run({ databaseId: 10, createdAt: '2026-01-02T02:00:00Z' }), run({ databaseId: 30, workflowName: 'Docs', workflowDatabaseId: 102, createdAt: '2026-01-02T01:00:00Z' })]
+  const runs = order === 'newest first' ? newestFirst : [...newestFirst].reverse()
   const viewed = []
   const runView = (id) => { viewed.push(id); return view([job('checks')], id === 10 ? { conclusion: 'failure' } : {})() }
   const r = await ci({ ciRuns: () => runs, runView })
@@ -595,7 +597,7 @@ test('ci judges the latest run of each workflow', async () => {
 
 // merge-check::REQ-013: a workflow is its workflowDatabaseId; two workflow files may share a name
 test('ci judges each of two workflows that share a name', async () => {
-  const runs = [run({ databaseId: 10, workflowDatabaseId: 103, createdAt: '2026-01-02T02:59:55Z' }), run({ databaseId: 11, createdAt: '2026-01-02T03:00:00Z' })]
+  const runs = [run({ databaseId: 11, createdAt: '2026-01-02T03:00:00Z' }), run({ databaseId: 10, workflowDatabaseId: 103, createdAt: '2026-01-02T02:59:55Z' })]
   const r = await ci({ ciRuns: () => runs, runView: (id) => view([job('checks')], id === 10 ? { conclusion: 'failure' } : {})() })
   assert.match(r.line, /^FAIL ci: /, r.out)
   assert.match(r.out, /^ {4}run 10 \(CI\): conclusion failure$/m)
@@ -832,6 +834,26 @@ test('before skips action-pins on a head whose .github/workflows/ holds no workf
   assertCleanedUp(p)
 })
 
+// merge-check::REQ-014/AC-03: git quotes a path that is not ASCII unless told not to
+test('before runs action-pins on a workflow file whose name is not ASCII', () => {
+  const p = project({ base: { 'capabilities.toml': CAPABILITIES, 'README.md': '# Demo\n' }, branch: { '.github/workflows/构建.yml': WORKFLOW } })
+  const r = cli(p, beforeArgs(p))
+  assert.equal(r.code, 0, r.out + r.err)
+  assert.match(r.out, /^PASS action-pins: check-action-pins\.mjs exited 0$/m)
+  assertCleanedUp(p)
+})
+
+// merge-check::REQ-002/AC-01, REQ-005: a diff configuration of the user's does not move the line or path of an added line
+test('before names an added line by its path and line under the user\'s diff.noprefix and diff.interHunkContext', () => {
+  const p = project({ base: { 'capabilities.toml': CAPABILITIES, '.github/workflows/ci.yml': WORKFLOW, 'b/g.txt': '1\n2\n3\n4\n5\n6\n' }, branch: { 'b/g.txt': '1\nA\n3\n4\nthe secret plan\n6\n' } })
+  git(p.checkout, 'config', 'diff.noprefix', 'true')
+  git(p.checkout, 'config', 'diff.interHunkContext', '5')
+  const r = cli(p, [...beforeArgs(p), '--forbid', 'secret'])
+  assert.equal(r.code, 1, r.out + r.err)
+  assert.match(r.out, /^FAIL forbidden-words: 1 forbidden word\(s\)\n {4}diff b\/g\.txt:\+5: --forbid secret: the secret plan$/m)
+  assertCleanedUp(p)
+})
+
 // merge-check::REQ-001/AC-02
 test('stops before any check when the checkout is another repository', () => {
   const p = project()
@@ -983,7 +1005,7 @@ test('after reads the author of a signed merge commit while the checkout shows s
 // merge-check::REQ-013: gh lists the runs with the workflow's id, which two workflows that share a name do not share
 test('before judges each of two workflows that share a name', () => {
   const p = project()
-  const listed = [{ conclusion: 'failure', createdAt: '2026-01-02T02:59:55Z', databaseId: 10, event: 'pull_request', headSha: p.head, status: 'completed', workflowDatabaseId: 103, workflowName: 'CI' }, { conclusion: 'success', createdAt: '2026-01-02T03:00:00Z', databaseId: 11, event: 'pull_request', headSha: p.head, status: 'completed', workflowDatabaseId: 101, workflowName: 'CI' }]
+  const listed = [{ conclusion: 'success', createdAt: '2026-01-02T03:00:00Z', databaseId: 11, event: 'pull_request', headSha: p.head, status: 'completed', workflowDatabaseId: 101, workflowName: 'CI' }, { conclusion: 'failure', createdAt: '2026-01-02T02:59:55Z', databaseId: 10, event: 'pull_request', headSha: p.head, status: 'completed', workflowDatabaseId: 103, workflowName: 'CI' }]
   const gh = answers(p, [
     { match: `^run list -R example-org/demo --commit ${p.head} --json \\S*workflowDatabaseId`, stdout: JSON.stringify(listed) },
     { match: '^run view 10 ', stdout: JSON.stringify({ headSha: p.head, status: 'completed', conclusion: 'failure', jobs: [{ databaseId: 31, name: 'checks', status: 'completed', conclusion: 'failure', steps: [], url: 'https://github.com/example-org/demo/actions/runs/10/job/31' }] }) },
