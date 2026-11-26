@@ -17,7 +17,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { readFileSync, realpathSync, symlinkSync } from 'node:fs'
+import { existsSync, readFileSync, realpathSync, symlinkSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { scratchRepos, write } from '../scripts/test-support/scratch-repos.mjs'
@@ -118,6 +118,24 @@ function addSubmodule(parent, name, files) {
   return child
 }
 
+test('directories reached through a directory link or a submodule invalidate the declaration', async t => {
+  for (const kind of ['link', 'submodule']) await t.test(kind, () => {
+    const r = repo({ 'local-test-inputs.json': JSON.stringify([['dir', ['child/src']], ['unit', ['unit.js']], ['app', ['app.js']]]), 'unit.js': 'export default 1' })
+    if (kind === 'submodule') addSubmodule(r.dir, 'child', { 'src/a.js': 'export default 1' })
+    else {
+      write(r.dir, { 'lib/src/a.js': 'export default 1' })
+      symlinkSync('lib', join(r.dir, 'child'), 'dir')
+      r.g('add', '-A')
+      r.g('commit', '-qm', 'add directory link')
+    }
+    const base = r.g('rev-parse', 'HEAD')
+    commit(r, { 'unit.js': 'export default 2' })
+    const out = route(r, ['--local-inputs', '--base', base, '--command', 'app'])
+    assert.equal(out.code, 2, out.out + out.err)
+    assert.match(out.err, /directory.*"child\/src"/)
+  })
+})
+
 test('a dirty submodule keeps the command even when the project hides its changes', async t => {
   const r = repo({ 'local-test-inputs.json': JSON.stringify([['child test', ['child']]]) })
   const child = addSubmodule(r.dir, 'child', { input: 'original' })
@@ -155,6 +173,15 @@ test('upgrading a submodule selects consumers of files inside it', () => {
   }
 })
 
+test('editing a regular file skips a command watching a former descendant', () => {
+  const r = repo({ 'local-test-inputs.json': JSON.stringify([['file', ['src']], ['optional', ['src/api.js']]]), 'src/api.js': 'export default 1' })
+  r.g('rm', 'src/api.js')
+  const base = commit(r, { src: 'first' })
+  commit(r, { src: 'second' })
+  const out = route(r, ['--local-inputs', '--base', base, '--command', 'optional'])
+  assert.equal(out.code, 0, out.out + out.err)
+})
+
 test('upgrading a selector installed as a submodule keeps independent commands', () => {
   const r = repo({ 'local-test-inputs.json': JSON.stringify([['tool test', ['tools']], ['app test', ['app.js']]]), 'app.js': 'app' })
   const tools = addSubmodule(r.dir, 'tools', {
@@ -180,7 +207,7 @@ test('retargeting a link in the selector entry path keeps independent commands',
       [`${version}/inert-path.mjs`]: readFileSync(join(HERE, 'inert-path.mjs'), 'utf8')
     })
   }
-  symlinkSync('active', join(r.dir, 'current'), 'dir')
+  symlinkSync(existsSync(join(r.dir, 'V1')) ? 'ACTIVE' : 'active', join(r.dir, 'current'), 'dir')
   symlinkSync('v1', join(r.dir, 'active'), 'dir')
   r.g('add', '-A')
   r.g('commit', '-qm', 'install selector')
@@ -192,6 +219,27 @@ test('retargeting a link in the selector entry path keeps independent commands',
   const out = route(r, ['--local-inputs', '--base', base, '--command', 'app'], { script: join(r.dir, 'current/local-route.mjs') })
   assert.equal(out.code, 1, out.out + out.err)
   assert.match(out.out, /selection changed at "active"/)
+})
+
+test('the dependencies of a linked executable-content gate keep independent commands', () => {
+  const dependencies = ['inert-path.mjs', 'vendor/typescript/typescript.cjs']
+  const r = repo({
+    'local-test-inputs.json': JSON.stringify([['gate', dependencies.map(file => `gate/${file}`)], ['app', ['app.js']]]),
+    'tools/local-route.mjs': readFileSync(SCRIPT, 'utf8'), 'tools/inert-path.mjs': readFileSync(join(HERE, 'inert-path.mjs'), 'utf8'),
+    'gate/change-scope.mjs': readFileSync(join(HERE, 'change-scope.mjs'), 'utf8'),
+    'gate/inert-path.mjs': readFileSync(join(HERE, 'inert-path.mjs'), 'utf8'),
+    'gate/vendor/typescript/typescript.cjs': readFileSync(join(HERE, 'vendor/typescript/typescript.cjs'), 'utf8')
+  })
+  symlinkSync('../gate/change-scope.mjs', join(r.dir, 'tools/change-scope.mjs'))
+  r.g('add', 'tools/change-scope.mjs')
+  r.g('commit', '-qm', 'link gate')
+  for (const file of dependencies) {
+    const base = r.g('rev-parse', 'HEAD')
+    commit(r, { [`gate/${file}`]: readFileSync(join(r.dir, 'gate', file), 'utf8') + '\nvoid 0\n' })
+    const out = route(r, ['--local-inputs', '--base', base, '--command', 'app'], { script: join(r.dir, 'tools/local-route.mjs') })
+    assert.equal(out.code, 1, out.out + out.err)
+    assert.ok(out.out.includes(`selection changed at "gate/${file}"`), out.out)
+  }
 })
 
 /** A fresh file path for PROBE_LOG, outside every repository */

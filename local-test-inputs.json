@@ -8,6 +8,8 @@
   ["node --test implement/local-route.test.mjs implement/delivery-flow.test.mjs", [
     "implement/local-route.test.mjs",
     "implement/delivery-flow.test.mjs",
+    "implement/change-scope.mjs",
+    "implement/vendor/typescript/typescript.cjs",
     "implement/local-route.mjs",
     "implement/inert-path.mjs",
     "local-test-inputs.json",
