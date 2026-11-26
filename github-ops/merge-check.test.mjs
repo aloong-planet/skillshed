@@ -586,10 +586,15 @@ test('ci fails when every job is ignored, and matches a job name whole and with 
 
 // gh lists the newest run first; the other order shows that the order does not choose the run
 for (const order of ['newest first', 'oldest first']) test(`ci judges the latest run of each workflow, listed ${order}`, async () => {
-  const newestFirst = [run({ databaseId: 11, createdAt: '2026-01-02T03:00:00Z' }), run({ databaseId: 10, createdAt: '2026-01-02T02:00:00Z' }), run({ databaseId: 30, workflowName: 'Docs', workflowDatabaseId: 102, createdAt: '2026-01-02T01:00:00Z' })]
+  const newestFirst = [
+    run({ databaseId: 11, createdAt: '2026-01-02T03:00:00Z' }),
+    run({ databaseId: 10, createdAt: '2026-01-02T02:00:00Z' }),
+    run({ databaseId: 30, workflowName: 'Docs', workflowDatabaseId: 102, createdAt: '2026-01-02T01:00:00Z' }),
+    run({ databaseId: 29, workflowName: 'Docs', workflowDatabaseId: 102, createdAt: '2026-01-02T01:00:00Z' }),
+  ]
   const runs = order === 'newest first' ? newestFirst : [...newestFirst].reverse()
   const viewed = []
-  const runView = (id) => { viewed.push(id); return view([job('checks')], id === 10 ? { conclusion: 'failure' } : {})() }
+  const runView = (id) => { viewed.push(id); return view([job('checks')], id === 10 || id === 29 ? { conclusion: 'failure' } : {})() }
   const r = await ci({ ciRuns: () => runs, runView })
   assert.match(r.line, /^PASS ci: 2 run\(s\)/, r.out)
   assert.deepEqual(viewed.sort(), [11, 30])
@@ -692,7 +697,11 @@ if (!hit) { process.stderr.write('stub gh: no answer for: ' + args.join(' ') + '
 if (hit.exec) require('node:child_process').execFileSync(hit.exec[0], hit.exec.slice(1), { stdio: 'ignore' })
 if (hit.makeRef) require('node:child_process').execFileSync('git', ['-C', hit.makeRef.dir, 'update-ref', hit.makeRef.prefix + process.ppid, hit.makeRef.oid])
 if (hit.signalParent) process.kill(process.ppid, hit.signalParent)
-process.stdout.write(hit.stdout ?? '')
+const stdout = hit.stdout ?? ''
+if (args[0] === 'pr' && args[1] === 'view' && !hit.code) {
+  const fields = args[args.indexOf('--json') + 1].split(',')
+  process.stdout.write(JSON.stringify(Object.fromEntries(Object.entries(JSON.parse(stdout)).filter(([key]) => fields.includes(key)))))
+} else process.stdout.write(stdout)
 process.stderr.write(hit.stderr ?? '')
 process.exit(hit.code ?? 0)
 `
@@ -820,6 +829,7 @@ const READ_ONLY = [/^repo view --json \S+$/, /^pr view 7 -R example-org\/demo --
 // merge-check::REQ-001, REQ-014/AC-01, REQ-015, CON-001, CON-002/AC-03
 test('before passes a pull request that holds every rule, runs the real document checks and leaves nothing behind', () => {
   const p = project()
+  git(p.checkout, 'config', '--add', 'remote.origin.fetch', '+refs/pull/*/head:refs/remotes/origin/pr/*')
   const r = cli(p, beforeArgs(p))
   assert.equal(r.code, 0, r.out + r.err)
   assert.match(r.out, /^PASS spec-check: check-spec\.mjs exited 0$/m)
@@ -1037,9 +1047,10 @@ test('before judges a failing workflow first seen on the last page, even under a
     { match: '^run view 10 ', stdout: JSON.stringify({ headSha: p.head, status: 'completed', conclusion: 'failure', jobs: [{ databaseId: 31, name: 'checks', status: 'completed', conclusion: 'failure', steps: [], url: 'https://github.com/example-org/demo/actions/runs/10/job/31' }] }) },
     { match: '^api repos/example-org/demo/actions/jobs/31/logs ', stdout: jobLog(p.head, p.tip) + '\n' },
   ])
-  const r = cli(p, beforeArgs(p), { gh })
+  const r = cli(p, [...beforeArgs(p), '--ignore-job', 'optional'], { gh })
   assert.equal(r.code, 1, r.out + r.err)
   assert.match(r.out, /^ {4}run 10 \(CI\): conclusion failure$/m)
+  assert.match(r.out, /^ {4}ci: run 11 \(CI\): --ignore-job optional matched none$/m)
   assertCleanedUp(p)
 })
 

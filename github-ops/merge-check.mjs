@@ -637,7 +637,7 @@ function realFacts(args, pre, squashBodyText) {
   const pr = memo(() => json('gh', ['pr', 'view', String(args.pr), '-R', args.repo, '--json', PR_FIELDS], top))
   const fetch = memo(() => {
     made.ref = true
-    git('fetch', '--no-tags', '--no-write-fetch-head', '--quiet', 'origin', `+refs/heads/${defaultBranch}:${origin}`, `refs/pull/${args.pr}/head:${ref}`)
+    git('fetch', '--refmap=', '--no-tags', '--no-write-fetch-head', '--quiet', 'origin', `+refs/heads/${defaultBranch}:${origin}`, `refs/pull/${args.pr}/head:${ref}`)
   })
   const rev = (r) => { fetch(); return git('rev-parse', '--verify', '--quiet', r).trim() }
   const forkPoint = memo(() => { fetch(); return git('merge-base', ref, origin).trim() })
