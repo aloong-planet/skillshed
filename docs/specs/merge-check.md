@@ -8,7 +8,7 @@ Before an agent merges a pull request into a public repository, it checks a doze
 
 ## Solution
 
-One script in `/github-ops` runs every mechanical check, before the merge and again after it. For each check it prints whether it passed, with the lines that prove it, and lists what is left for the agent to judge. It only reads: it never merges, never deletes a branch and never writes to GitHub.
+One script in `/github-ops` runs every mechanical check, before the merge and again after it. For each check it prints whether it passed, with the lines that prove it, and lists what is left for the agent to judge. It only checks: it never merges, never deletes a branch and never writes to GitHub.
 
 ## Functional Requirements
 
@@ -25,7 +25,7 @@ merge-check.mjs --list
 - merge-check::REQ-001/AC-01: `--repo`, `--pr` and `--head` are required in both modes, and `--squash-body` is required in `before`. `--head` is the full SHA of the commit the caller reviewed, in either case. A missing or repeated required argument, an unknown argument, a `--repo` that is not `<owner>/<repo>`, a `--pr` that is not a positive integer, a `--head` that is not 40 hexadecimal digits, `--squash-body` or `--ignore-job` given in `after`, an unreadable `--squash-body` file, or a `--forbid` or `--ignore-job` that is not a valid JavaScript regular expression ends the run with exit code 2 and a usage message, before any check runs.
 - merge-check::REQ-001/AC-02: `--checkout` defaults to the top level of the git repository holding the current directory. Where that directory is in no git repository, or the checkout's repository as `gh repo view` names it (`nameWithOwner`) is not `--repo`, the run ends with exit code 2 before any check runs.
 - merge-check::REQ-001/AC-03: The default branch is the repository's `defaultBranchRef` as `gh repo view` reports it; no branch name is assumed.
-- merge-check::REQ-001/AC-04: `--list` prints, for every check and report, its id, the modes it runs in, the checks it depends on and its rule in one line, and exits 0. These are the checks the two modes run, and no other list of them exists.
+- merge-check::REQ-001/AC-04: `--list` prints, for every check and report, its id, the modes it runs in, the checks it depends on and its rule in one line, and exits 0. Its output is the list of the checks the two modes run.
 
 ### merge-check::REQ-002 Output and exit codes
 
@@ -42,7 +42,7 @@ In `before`, read from `gh pr view <N> -R <repo>`.
 - merge-check::REQ-003/AC-02: `pr-head`: `headRefOid` is `--head`.
 - merge-check::REQ-003/AC-03: `pr-base`: `baseRefName` is the default branch.
 - merge-check::REQ-003/AC-04: `pr-mergeable`: `mergeable` is `MERGEABLE` and `mergeStateStatus` is `CLEAN`. While either reads `UNKNOWN`, the pull request is read again, five reads in all, three seconds apart; still `UNKNOWN` after the fifth read gives `ERROR`, never `FAIL`.
-- merge-check::REQ-003/AC-05: Every check that reads the head's commits, tree or diff depends on `pr-head` and `head-ref`, and `pr-mergeable` depends on `pr-open`; `--list` prints each check's dependencies.
+- merge-check::REQ-003/AC-05: Every check that reads the head's commits, tree or diff depends on `pr-head` and `head-ref`, and `pr-mergeable` depends on `pr-open`.
 
 ### merge-check::REQ-004 The head and the default branch
 
@@ -137,7 +137,7 @@ They run in a detached worktree of the head (merge-check::CON-002), with node, f
 
 ### merge-check::REQ-015 Reported for the agent to judge (direct acceptance)
 
-In `before`, the `For review:` block lists: under the report `closing-issues`, the entries of `closingIssuesReferences`; under the report `changed-files`, every changed file with its change type, every changed file named `AGENTS.md` or `CLAUDE.md`, at any depth, and every changed binary file; under the report `documents-only`, whether the change is documents only, as `change-scope.mjs --base <fork point>` of `/implement` judges it in the worktree (exit 0 "no executable change", 1 "executable change", any other result `ERROR`); and the items merge-check::REQ-008/AC-03, merge-check::REQ-011 and merge-check::REQ-013 send there. None of them changes the exit code.
+In `before`, the `For review:` block lists: under the report `closing-issues`, the entries of `closingIssuesReferences`; under the report `changed-files`, every changed file with its change type, every changed file named `AGENTS.md` or `CLAUDE.md`, at any depth, and every changed binary file; under the report `documents-only`, whether the change is documents only, as `change-scope.mjs --base <fork point>` of `/implement` judges it in the worktree (exit 0 "no executable change", 1 "executable change", any other result `ERROR`); and the items merge-check::REQ-008/AC-03, merge-check::REQ-011 and merge-check::REQ-013 send there. Listing an item does not change the exit code; an `ERROR` of a report does (merge-check::REQ-002/AC-04).
 
 ### merge-check::REQ-016 After the merge
 

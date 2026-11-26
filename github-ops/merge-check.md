@@ -1,6 +1,6 @@
 # 合并前后的机械核对
 
-合并一个受本 skill 管辖的 PR 时使用本文件:按用户授权合并的、按 `docs-auto-merge` 例外合并的都一样。核对由本目录的 [merge-check.mjs](merge-check.mjs) 执行(需要 node;它跑 spec 检查时还需要 python3 3.11 或更高版本),它只读、不改 GitHub 上的任何东西。
+合并一个受本 skill 管辖的 PR 时使用本文件:按用户授权合并的、按 `docs-auto-merge` 例外合并的都一样。核对由本目录的 [merge-check.mjs](merge-check.mjs) 执行(需要 node;它跑 `spec-check` 或 `adr-check` 时还需要 python3 3.11 或更高版本),它只检查、不改 GitHub 上的任何东西。
 
 ## 1. 合并之前
 
