@@ -105,7 +105,7 @@ node --test to-spec/project-documents-spec-check.test.mjs
 node --test github-ops/assets/ci-routing/ci-routing.test.mjs github-ops/assets/ci-routing/routing-rules.test.mjs
 ```
 
-For a local delivery from a clean checkout, look up each full test command with the selector. For example, given the verified fork point in `base`:
+For a local delivery from this repository, first apply the [verification gate](implement/full-verification-gate.md). On a clean delivery commit, look up each full test command that still needs a run. For example, with the verified fork point in `base`:
 
 ```sh
 node implement/local-route.mjs --local-inputs --base "$base" --command 'node --test github-ops/check-action-pins.test.mjs'
