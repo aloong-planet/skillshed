@@ -17,8 +17,8 @@
 //
 // For each entry checked, a violation is:
 //   - a first line that is not `# ADR-NNNN: <title>`, or whose NNNN is not the file name's;
-//   - no status line `- Status: <value>` after the title, a value other than `Proposed` or `Accepted` followed by
-//     its date in parentheses, written YYYY-MM-DD with nothing else, such as `Accepted (2026-11-12)`, or any text
+//   - no status line `- Status: <value>` after the title, a value other than `Accepted` followed by its date in
+//     parentheses, written YYYY-MM-DD with nothing else, such as `Accepted (2026-11-12)`, or any text
 //     but blank lines between the title and the first section besides the status line;
 //   - sections, the `## ` headings outside fenced code, other than Context, Options, Decision, Consequences and
 //     Sources, in that order, or one of them empty;
@@ -333,8 +333,8 @@ export function checkEntry(fileName, text, names, language) {
   else {
     const date = '\\d{4}-\\d{2}-\\d{2}'
     const accepted = new RegExp(`^${escapeRegExp(names.Accepted)}\\s*(?:\\(${date}\\)|${ZH_OPEN_PAREN}${date}${ZH_CLOSE_PAREN})$`)
-    if (status.value !== names.Proposed && !accepted.test(status.value)) {
-      add(status.line, `the status is neither "${names.Proposed}" nor "${names.Accepted} (YYYY-MM-DD)": "${status.value}"`)
+    if (!accepted.test(status.value)) {
+      add(status.line, `the status is not "${names.Accepted} (YYYY-MM-DD)": "${status.value}"`)
     }
   }
   for (const h of rest) if (h.line !== status?.line) add(h.line, 'text outside the status line and the five sections')

@@ -126,7 +126,7 @@ const REAL = realEntry(EN)
 const SOURCES = /## Sources\n[\s\S]*$/.exec(REAL)[0]
 /** A minimal conforming entry whose text outside the title and status lines is `size` characters long */
 function sized(N, size) {
-  const head = `# ADR-0003: T\n\n- ${N.Status}: ${N.Proposed}\n\n`
+  const head = `# ADR-0003: T\n\n- ${N.Status}: ${N.Accepted} (2026-11-12)\n\n`
   const body = `## ${N.Context}\n\nA.\n\n## ${N.Options}\n\n1. A.\n\n## ${N.Decision}\n\nA.\n\n## ${N.Consequences}\n\n` +
     `- ${N.Positive}: a.\n- ${N.Negative}: b.\n- ${N.Neutral}: c.\n\n## ${N.Sources}\n\n`
   return `${head}${body}${'x'.repeat(size - body.length)}\n`
@@ -134,10 +134,11 @@ function sized(N, size) {
 
 for (const [what, text, expected, line, N = EN, language = 'en'] of [
   ['a title number that is not the file name\'s', mutate(REAL, '# ADR-0003:', '# ADR-0004:'), /title's number 0004 is not the file name's 0003/, 1],
-  ['Accepted without a parenthetical', mutate(REAL, 'Accepted (2026-11-12)', 'Accepted'), /status is neither/, 3],
-  ['a state outside the template', mutate(REAL, 'Accepted (2026-11-12)', 'Superseded (2026-11-12)'), /status is neither/, 3],
-  ['Accepted with a note in place of the date', mutate(REAL, 'Accepted (2026-11-12)', 'Accepted (v0.5.2 released, verified on the wire)'), /status is neither/, 3],
-  ['Accepted with a note after the date', mutate(REAL, 'Accepted (2026-11-12)', 'Accepted (2026-11-12; verified later)'), /status is neither/, 3],
+  ['Proposed, which is no longer a state', mutate(REAL, 'Accepted (2026-11-12)', 'Proposed'), /status is not "Accepted \(YYYY-MM-DD\)": "Proposed"/, 3],
+  ['Accepted without a parenthetical', mutate(REAL, 'Accepted (2026-11-12)', 'Accepted'), /status is not "Accepted \(YYYY-MM-DD\)"/, 3],
+  ['a state outside the template', mutate(REAL, 'Accepted (2026-11-12)', 'Superseded (2026-11-12)'), /status is not "Accepted \(YYYY-MM-DD\)"/, 3],
+  ['Accepted with a note in place of the date', mutate(REAL, 'Accepted (2026-11-12)', 'Accepted (v0.5.2 released, verified on the wire)'), /status is not "Accepted \(YYYY-MM-DD\)"/, 3],
+  ['Accepted with a note after the date', mutate(REAL, 'Accepted (2026-11-12)', 'Accepted (2026-11-12; verified later)'), /status is not "Accepted \(YYYY-MM-DD\)"/, 3],
   ['text between the status line and the first section', mutate(REAL, '(2026-11-12)\n', '(2026-11-12)\n\nSupersedes ADR-0002.\n'), /text outside the status line/, 5],
   ['a missing section', mutate(REAL, SOURCES, ''), /the sections are .*; expected/, 5],
   ['sections out of order', mutate(mutate(REAL, SOURCES, ''), '## Decision', `${SOURCES}\n## Decision`), /the sections are .*; expected/, 5],
