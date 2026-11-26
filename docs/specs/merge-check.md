@@ -31,8 +31,8 @@ merge-check.mjs --list
 
 - merge-check::REQ-002/AC-01: Each check prints one line `<STATUS> <id>: <summary>`, and the lines that prove the result are indented under it. Each evidence line names its source: `title`, `body:<line>`, `squash-body:<line>`, `commit <short sha>`, `diff <path>:+<line>`, `path <path>`, `message:<line>`, `closingIssuesReferences`, `statusCheckRollup` for an entry of the pull request's checks, `run <id> (<workflow>)` for a CI run, `<owner>/<repo>#<N>` for an issue, `committer` for the merge commit's committer, or the command whose output it quotes.
 - merge-check::REQ-002/AC-02: The statuses are `PASS`; `FAIL`, the check ran and its rule does not hold; `SKIP`, the check does not apply, with the reason on the same line; `ERROR`, the check could not be completed, with the reason; and `BLOCKED`, the check did not run because a check it depends on gave `FAIL` or `ERROR`, written `BLOCKED <id>: not run, <check id> failed` or `… errored`. A check that does not run while every check it depends on passed or was skipped is an `ERROR`, not `BLOCKED`.
-- merge-check::REQ-002/AC-03: After the checks a `For review:` block lists what the run reports without judging (merge-check::REQ-015), each item after the id of the check or report that gives it, and a last line gives the number of checks in each status. A report prints a status line only when it is `ERROR`; a report that did not run is listed under `For review:` as `<id>: not run, <check id> failed` or `… errored`.
-- merge-check::REQ-002/AC-04: Every check of the mode prints its line in every run. The exit code is 0 when every check is `PASS` or `SKIP`; 2 when any check or report is `ERROR`, the run stopped under merge-check::REQ-001, the script failed outside every check, or SIGINT or SIGTERM ended it, whatever the other checks gave; and 1 otherwise. A run that ends with 2 is no verdict on the pull request. The run takes SIGINT or SIGTERM at its next wait (merge-check::REQ-003/AC-04, merge-check::REQ-016/AC-06); a run with no wait left finishes its checks and gives their exit code.
+- merge-check::REQ-002/AC-03: After the checks a `For review:` block lists what the run reports without judging (merge-check::REQ-015), each item after the id of the check or report that gives it, and a last line counts the printed status lines in each status, including a report's `ERROR`. A report prints a status line only when it is `ERROR`; a report that did not run is listed under `For review:` as `<id>: not run, <check id> failed` or `… errored`.
+- merge-check::REQ-002/AC-04: When the checks run to completion, every check of the mode prints its line. Any `ERROR` from a check or report gives exit code 2. Otherwise the exit code is 0 if every check is `PASS` or `SKIP`, and 1 in all other cases. A run that stops under merge-check::REQ-001, fails outside a check, or ends on SIGINT or SIGTERM also exits 2. A run that ends with 2 is no verdict on the pull request. The run takes SIGINT or SIGTERM at its next wait (merge-check::REQ-003/AC-04, merge-check::REQ-016/AC-06); a run with no wait left finishes its checks and gives their exit code.
 
 ### merge-check::REQ-003 The pull request before the merge
 
@@ -64,12 +64,12 @@ In `before`, read from `gh pr view <N> -R <repo>`.
 
 | Check | Texts |
 |---|---|
-| `closing-keywords` (REQ-006) | title, body, commit messages, squash body, landed message |
-| `closing-links` (REQ-007) | body, squash body, landed message |
-| `privacy` (REQ-008) | every text above |
-| `attribution` (REQ-009) | title, body, commit messages, squash body, landed message |
-| `forbidden-words` (REQ-010) | every text above |
-| `bare-refs` (REQ-011) | title, body, commit messages, squash body, landed message |
+| `closing-keywords` (merge-check::REQ-006) | title, body, commit messages, squash body, landed message |
+| `closing-links` (merge-check::REQ-007) | body, squash body, landed message |
+| `privacy` (merge-check::REQ-008) | every text above |
+| `attribution` (merge-check::REQ-009) | title, body, commit messages, squash body, landed message |
+| `forbidden-words` (merge-check::REQ-010) | every text above |
+| `bare-refs` (merge-check::REQ-011) | title, body, commit messages, squash body, landed message |
 
 - merge-check::REQ-005/AC-01: Each check reads exactly the texts its row names, in the modes those texts exist in; a match is reported with its source as merge-check::REQ-002/AC-01 writes it.
 
@@ -96,7 +96,7 @@ The values are derived when the run starts, from the environment the run is in:
 - the local part of each such address, except where it equals the `login` of `gh api user`, ignoring case.
 
 - merge-check::REQ-008/AC-01: `privacy` fails on every case-insensitive occurrence of a derived value in its texts.
-- merge-check::REQ-008/AC-02: `$HOME` or `$USER` unset or empty, or a derived value shorter than 3 characters, gives `ERROR`.
+- merge-check::REQ-008/AC-02: When `privacy` runs, an unset or empty `$HOME` or `$USER`, or a derived value shorter than 3 characters, gives `ERROR`. In `before`, an unset or empty `$HOME` stops the run before any check because the worktree path in merge-check::CON-002/AC-02 requires it. The run exits 2.
 - merge-check::REQ-008/AC-03: The generic paths `/Users/`, `/home/` and `~/`, matched case-insensitively in the same texts, never fail the check; each occurrence is listed under `For review:`.
 
 ### merge-check::REQ-009 AI attribution (direct acceptance)
@@ -121,12 +121,12 @@ The expected noreply address is `<id>+<login>@users.noreply.github.com`, from `g
 For the reviewed head and the `pull_request` event, `ci` judges the latest run of each workflow by `workflow_id`. The later `created_at` wins, with the larger run `id` breaking a tie. A current-tip merge line is a line `HEAD is now at <x> Merge <head> into <tip>` in a job's log, `<tip>` being the tip of `origin/<default branch>` fetched in this run.
 
 - merge-check::REQ-013/AC-01: With no such run and no file under `.github/workflows/` at the head, `ci` is `SKIP` with the reason "no CI workflow". With no such run while workflow files exist, it fails.
-- merge-check::REQ-013/AC-02: A run whose `headSha` is not the head fails.
+- merge-check::REQ-013/AC-02: If the selected run's detail response from `gh run view` gives a `headSha` different from the reviewed head, `ci` fails.
 - merge-check::REQ-013/AC-03: A job whose whole name matches an `--ignore-job` pattern, case-sensitively, is left out of every requirement below and listed under `For review:` with its status and conclusion. `For review:` also lists, for each pattern and each run, the job names it matched, or that it matched none.
 - merge-check::REQ-013/AC-04: A run with no ignored job fails when its `status` is not `completed`, with the summary "not finished: wait with watch-ci.sh, then rerun", and when its `conclusion` is not `success`. A run with an ignored job is held instead to every other job being `completed`, the same summary applying when one is not; its own status and conclusion go under `For review:`.
 - merge-check::REQ-013/AC-05: Every job that is not ignored concluded `success` or `skipped`.
-- merge-check::REQ-013/AC-06: The logs of the run's jobs that are not ignored and not skipped, each read on its own, hold at least one line `HEAD is now at <x> Merge <a> into <b>`, and every such line is a current-tip merge line. A run in which no such job has one fails, so a run whose jobs are all ignored never passes. A merge into an older tip fails, with the summary that the CI tested against an older default branch.
-- merge-check::REQ-013/AC-07: The filtered Actions run list must account for the reported `total_count` in distinct runs across all pages. An unreadable or inconsistent page, or a count at or above the filtered search ceiling of 1,000, gives `ERROR` and exit 2.
+- merge-check::REQ-013/AC-06: Across the logs of the run's jobs that are neither ignored nor skipped, at least one line must match `HEAD is now at <x> Merge <a> into <b>`. Each job's log is read separately. Every matching line must be a current-tip merge line. With no matching line the run fails, including when every job is ignored. A merge into an older tip fails, with the summary that the CI tested against an older default branch.
+- merge-check::REQ-013/AC-07: The filtered Actions run list must account for `total_count` distinct runs. Each page must report the same nonnegative integer `total_count` and supply the next 100 entries of `workflow_runs`, or all remaining entries if fewer. Collection ends as soon as the count is reached, including on the first page. Each entry must have the requested `event` and `head_sha`, positive `id` and `workflow_id` values in JavaScript's safe integer range, and a `created_at` string that parses as a timestamp. An unreadable page, any inconsistency (including a repeated run `id`), or a count at or above the filtered search ceiling of 1,000 gives `ci` an `ERROR` (merge-check::REQ-002/AC-04).
 
 ### merge-check::REQ-014 The document checks of the head
 
@@ -180,7 +180,7 @@ Applies to both modes.
 
 ### merge-check::CON-003 No personal data in the skill (direct acceptance)
 
-Applies to the script, its tests and the documents that describe it. No account name, email address or home path is written into them; the values the privacy and identity checks compare against are derived when the script runs (merge-check::REQ-008, merge-check::REQ-012).
+Applies to the script, its tests and the documents that describe it. These files contain no person's account name, email address or home path. Examples may use fictitious values. The privacy and identity checks derive the values they compare at run time (merge-check::REQ-008, merge-check::REQ-012).
 
 ## Failure modes and boundaries
 
