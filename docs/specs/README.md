@@ -11,6 +11,7 @@ Persistent specs of confirmed requirements for these skills; one-off working rec
 | [Project documents](project-documents.md) | What a project's specs and ADRs hold, how large a spec may grow and when it is split, how an ADR changes, when a prototype is required, what tests a change needs, and how the closing document check is handed to a sub-agent |
 | [Delivery flow](delivery-flow.md) | Which runs happen for a change, what goes to sub-agents once the review is handled, and what is written down |
 | [CI watch](ci-watch.md) | How a wait for the CI is tied to the checkout it is meant for, and when its exit code counts as the verdict for a commit |
+| [Cleanup after a merge](post-merge-cleanup.md) | What the agent deletes and brings up to date after a pull request merges, without asking, and when it leaves a step undone |
 | [Risk tiers](risk-tiers.md) | Which of three tiers a change takes and who sets it, what the light and the core tier do differently, and when a pull request merges without approval |
 
 ## Invariants
