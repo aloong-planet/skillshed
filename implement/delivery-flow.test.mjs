@@ -223,24 +223,28 @@ test('retargeting a link in the selector entry path keeps independent commands',
 
 test('a case alias in the selector directory preserves gate ownership', t => {
   const r = repo({
-    'local-test-inputs.json': JSON.stringify([['gate', ['tools/change-scope.mjs']], ['app', ['app.js']]]),
+    'local-test-inputs.json': JSON.stringify([['gate', ['tools/CHANGE-SCOPE.MJS', 'tools/other.mjs']], ['app', ['app.js']]]),
     'tools/local-route.mjs': readFileSync(SCRIPT, 'utf8'),
     'tools/inert-path.mjs': readFileSync(join(HERE, 'inert-path.mjs'), 'utf8'),
-    'tools/change-scope.mjs': 'export default 1'
+    'tools/CHANGE-SCOPE.MJS': 'export default 1', 'tools/other.mjs': 'export default 0'
   })
   const script = join(r.dir, 'TOOLS/local-route.mjs')
   if (!existsSync(script)) return t.skip('requires a case-insensitive directory')
-  commit(r, { 'tools/change-scope.mjs': 'export default 2' })
+  const base = commit(r, { 'tools/other.mjs': null })
+  const query = from => route(r, ['--local-inputs', '--base', from, '--command', 'app'], { script })
+  const unrelated = query(r.base)
+  assert.equal(unrelated.code, 0, unrelated.out + unrelated.err)
+  commit(r, { 'tools/CHANGE-SCOPE.MJS': 'export default 2' })
   function assertSelected() {
-    const out = route(r, ['--local-inputs', '--base', r.base, '--command', 'app'], { script })
+    const out = query(base)
     assert.equal(out.code, 1, out.out + out.err)
-    assert.match(out.out, /selection changed at "tools\/change-scope.mjs"/)
+    assert.match(out.out, /selection changed at "tools\/CHANGE-SCOPE.MJS"/)
   }
   assertSelected()
   renameSync(join(r.dir, 'tools'), join(r.dir, 'TOOLS'))
   assert.equal(r.g('status', '--porcelain'), '')
   assertSelected()
-  r.g('rm', 'tools/change-scope.mjs')
+  r.g('rm', 'tools/CHANGE-SCOPE.MJS')
   r.g('commit', '-qm', 'remove gate')
   assertSelected()
 })

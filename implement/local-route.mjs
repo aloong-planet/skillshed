@@ -106,6 +106,8 @@ export function readInputs(text, pathSyntax = nativePath) {
 function selectorPaths(root, entry, present, deleted) {
   const paths = new Set()
   const componentsOnDisk = new Set()
+  const missing = new Set()
+  const folded = path => path.normalize('NFC').toUpperCase()
   function trace(absolute) {
     let current = nativePath.parse(absolute).root
     const parts = absolute.slice(current.length).split(sep)
@@ -113,7 +115,10 @@ function selectorPaths(root, entry, present, deleted) {
     while (parts.length) {
       current = join(current, parts.shift())
       const stat = lstatSync(current, { throwIfNoEntry: false, bigint: true })
-      if (!stat) continue
+      if (!stat) {
+        missing.add(folded(relative(root, current).split(sep).join('/')))
+        continue
+      }
       componentsOnDisk.add(`${stat.dev}:${stat.ino}`)
       if (!stat.isSymbolicLink()) {
         current = realpathSync.native(current)
@@ -142,7 +147,7 @@ function selectorPaths(root, entry, present, deleted) {
     while (!lstatSync(parent, { throwIfNoEntry: false })?.isDirectory()) parent = nativePath.dirname(parent)
     const canonical = join(realpathSync.native(parent), relative(parent, join(root, path)))
     const name = relative(root, canonical).split(sep).join('/')
-    if ([...paths].some(file => file === name || file.startsWith(`${name}/`))) paths.add(path)
+    if (missing.has(folded(name)) || [...paths].some(file => file === name || file.startsWith(`${name}/`))) paths.add(path)
   }
   return paths
 }
