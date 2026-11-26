@@ -106,10 +106,10 @@ export function localRunReason(declarations, changed, command, scriptPath) {
   const inputs = declarations.get(command)
   if (!inputs) return 'the command has no declaration'
   const skillDir = posix.dirname(scriptPath)
-  const machinery = new Set([MANIFEST, scriptPath, posix.join(skillDir, 'change-scope.mjs'), posix.join(skillDir, 'vendor/typescript/typescript.cjs')])
+  const machinery = [MANIFEST, scriptPath, posix.join(skillDir, 'change-scope.mjs'), posix.join(skillDir, 'vendor/typescript/typescript.cjs')]
   const owned = new Set([...declarations.values()].flat())
   for (const path of changed) {
-    if (machinery.has(path)) return `selection changed at ${JSON.stringify(path)}`
+    if (machinery.some(file => file === path || file.startsWith(`${path}/`))) return `selection changed at ${JSON.stringify(path)}`
     if (!owned.has(path)) return `no command owns ${JSON.stringify(path)}`
     if (inputs.includes(path)) return `input changed at ${JSON.stringify(path)}`
   }
@@ -119,7 +119,8 @@ export function localRunReason(declarations, changed, command, scriptPath) {
 function main(argv) {
   const { base, router, command } = parseArgs(argv)
   const root = realpathSync(git(['rev-parse', '--show-toplevel']).trim())
-  const dirty = git(['status', '--porcelain', '--untracked-files=all', '--ignore-submodules=none'], root)
+  const status = ['status', '--porcelain', '--untracked-files=all', '--ignore-submodules=none']
+  const dirty = git(status, root) || git(['submodule', '--quiet', 'foreach', '--recursive', `git ${status.join(' ')}`], root)
   if (dirty !== '') throw new Error(`the checkout has uncommitted changes, so HEAD is not what is delivered:\n${dirty.trimEnd()}`)
   let baseSha
   try {

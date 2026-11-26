@@ -46,8 +46,8 @@ function commit(r, files) {
   return r.g('rev-parse', 'HEAD')
 }
 
-function route(r, args, { sub = '', vars = {} } = {}) {
-  const out = spawnSync(process.execPath, [SCRIPT, ...args], { cwd: join(r.dir, sub), encoding: 'utf8', env: { ...env, ...vars } })
+function route(r, args, { sub = '', vars = {}, script = SCRIPT } = {}) {
+  const out = spawnSync(process.execPath, [script, ...args], { cwd: join(r.dir, sub), encoding: 'utf8', env: { ...env, ...vars } })
   return { code: out.status, out: out.stdout, err: out.stderr }
 }
 
@@ -96,21 +96,51 @@ test('only a tracked regular declaration and a usable fork point permit a skip',
   assert.equal(query(r.g('rev-parse', 'HEAD')).code, 2)
 })
 
-test('a dirty submodule keeps the command even when the project hides its changes', () => {
+function addSubmodule(parent, name, files) {
+  const child = join(parent, name)
+  git(parent, 'init', '-q', name)
+  write(child, files)
+  git(child, 'add', '-A')
+  git(child, 'commit', '-qm', 'initial files')
+  git(parent, 'submodule', 'add', `./${name}`, name)
+  git(parent, 'commit', '-qm', 'track submodule')
+  return child
+}
+
+test('a dirty submodule keeps the command even when the project hides its changes', async t => {
   const r = repo({ 'local-test-inputs.json': JSON.stringify([['child test', ['child']]]) })
-  r.g('init', '-q', 'child')
-  write(r.dir, { 'child/input': 'original' })
-  r.g('-C', 'child', 'add', 'input')
-  r.g('-C', 'child', 'commit', '-qm', 'initial input')
-  r.g('submodule', 'add', './child', 'child')
-  r.g('commit', '-qm', 'track child')
+  const child = addSubmodule(r.dir, 'child', { input: 'original' })
+  const leaf = addSubmodule(child, 'leaf', { input: 'original' })
+  r.g('add', 'child')
+  r.g('commit', '-qm', 'track nested submodule')
   r.g('config', 'submodule.child.ignore', 'dirty')
+  git(child, 'config', 'status.showUntrackedFiles', 'no')
+  git(child, 'config', 'submodule.leaf.ignore', 'dirty')
   const args = ['--local-inputs', '--base', 'HEAD', '--command', 'child test']
   assert.equal(route(r, args).code, 0)
-  write(r.dir, { 'child/input': 'modified' })
-  assert.equal(r.g('status', '--porcelain'), '')
-  const out = route(r, args)
-  assert.equal(out.code, 2, out.out + out.err)
+  for (const [dir, file, original] of [[child, 'input', 'original'], [child, 'new.js', null], [leaf, 'input', 'original']]) {
+    await t.test(`${dir === child ? 'child' : 'leaf'}/${file}`, () => {
+      write(dir, { [file]: 'modified' })
+      try {
+        assert.equal(r.g('status', '--porcelain'), '')
+        const out = route(r, args)
+        assert.equal(out.code, 2, out.out + out.err)
+      } finally { write(dir, { [file]: original }) }
+    })
+  }
+})
+
+test('upgrading a selector installed as a submodule keeps independent commands', () => {
+  const r = repo({ 'local-test-inputs.json': JSON.stringify([['tool test', ['tools']], ['app test', ['app.js']]]), 'app.js': 'app' })
+  const tools = addSubmodule(r.dir, 'tools', { 'local-route.mjs': readFileSync(SCRIPT, 'utf8') })
+  const base = r.g('rev-parse', 'HEAD')
+  write(tools, { 'change-scope.mjs': 'export const version = 2' })
+  git(tools, 'add', 'change-scope.mjs')
+  git(tools, 'commit', '-qm', 'update selection tool')
+  r.g('add', 'tools')
+  r.g('commit', '-qm', 'upgrade tools')
+  const out = route(r, ['--local-inputs', '--base', base, '--command', 'app test'], { script: join(tools, 'local-route.mjs') })
+  assert.equal(out.code, 1, out.out + out.err)
 })
 
 /** A fresh file path for PROBE_LOG, outside every repository */
