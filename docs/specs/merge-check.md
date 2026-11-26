@@ -43,7 +43,7 @@ In `before`, read from `gh pr view <N> -R <repo>`.
 - merge-check::REQ-003/AC-03: `pr-base`: `baseRefName` is the default branch.
 - merge-check::REQ-003/AC-04: `pr-mergeable`: `mergeable` is `MERGEABLE` and `mergeStateStatus` is `CLEAN`, or `UNSTABLE` where merge-check::REQ-003/AC-06 lets it pass; any other value fails. While either reads `UNKNOWN`, the pull request is read again, five reads in all, three seconds apart; still `UNKNOWN` after the fifth read gives `ERROR`, never `FAIL`.
 - merge-check::REQ-003/AC-05: Every check that reads the head's commits, tree or diff depends on `pr-head` and `head-ref`, and `pr-mergeable` depends on `pr-open`.
-- merge-check::REQ-003/AC-06: Where an `--ignore-job` pattern matched a job of the runs `ci` considers (merge-check::REQ-013), `UNSTABLE` passes when the `statusCheckRollup` of the same read holds at least one entry that is not passing and each such entry is a check run whose `name` an `--ignore-job` pattern matches as merge-check::REQ-013/AC-03 matches a job name. A passing entry is a check run with `status` `COMPLETED` and `conclusion` `SUCCESS` or `SKIPPED`, or a status context with `state` `SUCCESS`. Otherwise `UNSTABLE` fails, and each entry that is not passing and not such a check run, a status context included, is named in the evidence. A pass lists `mergeStateStatus UNSTABLE` and each accepted entry under `For review:`.
+- merge-check::REQ-003/AC-06: Where an `--ignore-job` pattern matched a job of the runs `ci` considers (merge-check::REQ-013), `UNSTABLE` passes when the `statusCheckRollup` of the same read holds at least one entry that is not passing and each such entry is a check run whose `name` an `--ignore-job` pattern matches as merge-check::REQ-013/AC-03 matches a job name. A passing entry is a check run with `status` `COMPLETED` and `conclusion` `SUCCESS` or `SKIPPED`, or a status context with `state` `SUCCESS`. Any other `UNSTABLE` fails; its evidence names each entry that is not passing, a status context included, other than the check runs this condition accepts, or says that the rollup holds none. A pass lists `mergeStateStatus UNSTABLE` and each accepted entry under `For review:`.
 
 ### merge-check::REQ-004 The head and the default branch
 
@@ -118,7 +118,7 @@ The expected noreply address is `<id>+<login>@users.noreply.github.com`, from `g
 
 ### merge-check::REQ-013 The CI on the head
 
-The runs considered are those `gh run list -R <repo> --commit <head>` lists with event `pull_request`, the most recent one of each workflow. A current-tip merge line is a line `HEAD is now at <x> Merge <head> into <tip>` in a job's log, `<tip>` being the tip of `origin/<default branch>` fetched in this run.
+The runs considered are those `gh run list -R <repo> --commit <head>` lists with event `pull_request`, the most recent one of each workflow, a workflow being its `workflowDatabaseId`: two workflow files may carry the same name. A current-tip merge line is a line `HEAD is now at <x> Merge <head> into <tip>` in a job's log, `<tip>` being the tip of `origin/<default branch>` fetched in this run.
 
 - merge-check::REQ-013/AC-01: With no such run and no file under `.github/workflows/` at the head, `ci` is `SKIP` with the reason "no CI workflow". With no such run while workflow files exist, it fails.
 - merge-check::REQ-013/AC-02: A run whose `headSha` is not the head fails.

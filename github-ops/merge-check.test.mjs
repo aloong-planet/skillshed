@@ -5,11 +5,11 @@
 // answers from a fixture and logs every call. The gh answers follow the shape of real ones: `closingIssuesReferences`
 // entries with id, number, repository and url; a job log line with its timestamp prefix; a 404 that prints the error
 // JSON and exits 1.
-// Gap: a ref of the run's own name that exists before the fetch (merge-check::CON-002/AC-01) is not driven, because
-// the name holds the process id, which the test cannot know before the run starts.
 // Gap: merge-check::REQ-017 is what the merging agent does, written in github-ops/merge-check.md; no test reads that
-// document. merge-check::CON-003 has no test and no check: the privacy check of a merge finds only the values of the
-// environment that runs it, so another person's account name, address or home path in these files passes it.
+// document, and none may, a document being outside what the tests read. It can be tested only once the agent's steps
+// are code. merge-check::CON-003 has no test and no check: the privacy check of a merge finds only the values of the
+// environment that runs it, so another person's account name, address or home path in these files passes it. It can be
+// tested once there is a list of such values that does not come from the environment that runs the check.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
@@ -144,7 +144,7 @@ function facts(over = {}) {
     environment: () => ({ home: '/srv/mc-home', user: 'mc_tester', emails: [{ scope: 'global', value: 'person@example.invalid' }, { scope: 'local', value: NOREPLY }] }),
     user: () => ({ id: 1234, login: 'octo-test' }),
     issue: (n) => ({ 12: { exists: true, state: 'open', title: 'Draw the widget' }, 7: { exists: true, state: 'closed', title: 'Add the widget' } })[n] ?? { exists: false },
-    ciRuns: () => [{ databaseId: 11, event: 'pull_request', workflowName: 'CI', createdAt: '2026-01-02T03:00:00Z', status: 'completed', conclusion: 'success', headSha: HEAD }],
+    ciRuns: () => [{ databaseId: 11, event: 'pull_request', workflowName: 'CI', workflowDatabaseId: 101, createdAt: '2026-01-02T03:00:00Z', status: 'completed', conclusion: 'success', headSha: HEAD }],
     runView: () => ({ headSha: HEAD, status: 'completed', conclusion: 'success', jobs: [{ databaseId: 21, name: 'checks', status: 'completed', conclusion: 'success' }] }),
     jobLog: () => jobLog(HEAD, TIP),
     workflowsAtHead: () => true,
@@ -208,7 +208,7 @@ const FAILING = {
   'commit-identity': ['before', facts({ commits: () => [{ sha: COMMIT, authorEmail: 'someone@example.invalid', committerEmail: NOREPLY, message: 'x' }] })],
   ci: { coveredBy: 'ci fails on a run that failed' },
   'spec-check': ['before', facts({ diff: () => ({ files: [{ status: 'M', path: 'docs/specs/area.md', binary: false }], added: [] }), runScript: (n) => ({ code: 1, out: `${n} output` }) })],
-  'adr-check': ['before', facts({ adrAtHead: () => true, diff: () => ({ files: [{ status: 'A', path: 'docs/adr/0001-x.md', binary: false }], added: [] }), runScript: (n) => ({ code: n === 'check-adr.mjs' ? 1 : 0, out: '' }) })],
+  'adr-check': { coveredBy: 'the document checks run on the paths they own and map 0, 1 and anything else' },
   'action-pins': ['before', facts({ diff: () => ({ files: [{ status: 'M', path: '.github/workflows/ci.yml', binary: false }], added: [] }), runScript: (n) => ({ code: n === 'check-action-pins.mjs' ? 1 : 0, out: '' }) })],
   'issues-closed': { coveredBy: 'issues-closed reads an open issue again…' },
   'closing-issues': ['before', facts({ pr: errs })],
@@ -315,8 +315,8 @@ test('pr-mergeable passes UNSTABLE when every entry that is not passing is a che
 
 for (const [what, o] of [['no --ignore-job', () => opts()], ['an --ignore-job that matched no job of the runs', () => opts({ ignoreJob: parsed('--ignore-job', 'deploy').ignoreJob })]]) {
   test(`pr-mergeable fails UNSTABLE with ${what}`, async () => {
-    const r = await check('before', unstable([...GREEN_ROLLUP, checkRun('deploy', 'COMPLETED', 'FAILURE')]), o())
-    assert.match(r.out, /^FAIL pr-mergeable: mergeable MERGEABLE, mergeStateStatus UNSTABLE$/m, r.out)
+    const r = await check('before', unstable([...GREEN_ROLLUP, checkRun('deploy', 'COMPLETED', 'FAILURE'), statusContext('deploy/preview', 'ERROR')]), o())
+    assert.match(r.out, /^FAIL pr-mergeable: mergeable MERGEABLE, mergeStateStatus UNSTABLE\n {4}statusCheckRollup: check run deploy COMPLETED\/FAILURE\n {4}statusCheckRollup: status context deploy\/preview ERROR$/m, r.out)
   })
 }
 
@@ -506,6 +506,23 @@ test('bare-refs looks up only bare references and lists the ones that exist for 
   assert.match(r.out, /^ {4}bare-refs: #12 open: Issue 12$/m)
 })
 
+// merge-check::REQ-005/AC-01: the cells of the check × text table no other case drives, each with a hit in that text only
+const IN_TEXT = {
+  title: (x) => withPr({ title: x }),
+  body: (x) => withPr({ body: `Closes #12\n${x}` }),
+  commit: (x) => ({ commits: () => [{ sha: COMMIT, authorEmail: NOREPLY, committerEmail: NOREPLY, message: `Draw it\n\n${x}` }] }),
+  squash: (x) => ({ squashBody: () => `Closes #12\n${x}` }),
+}
+const SOURCE = { title: 'title', body: 'body:2', commit: 'commit ddddddd', squash: 'squash-body:2' }
+const HIT = { attribution: ['Generated with a tool', []], 'forbidden-words': ['a secret plan', ['--forbid', 'secret']], 'bare-refs': ['See #404.', []] }
+for (const [id, kind] of [['attribution', 'title'], ['attribution', 'squash'], ['forbidden-words', 'body'], ['forbidden-words', 'squash'], ['bare-refs', 'title'], ['bare-refs', 'commit'], ['bare-refs', 'squash']]) {
+  test(`${id} fails on a hit in the ${kind}`, async () => {
+    const [text, args] = HIT[id]
+    const r = await check('before', facts(IN_TEXT[kind](text)), opts({ forbid: parsed(...args).forbid }))
+    assert.match(r.out, new RegExp(`^FAIL ${id}: .*\\n {4}${SOURCE[kind]}: `, 'm'), r.out)
+  })
+}
+
 // merge-check::REQ-012
 test('commit-identity fails on a committer that is not the noreply address and prints the address expected', async () => {
   const r = await check('before', facts({ commits: () => [{ sha: COMMIT, authorEmail: NOREPLY, committerEmail: 'person@example.invalid', message: 'x' }] }))
@@ -513,7 +530,7 @@ test('commit-identity fails on a committer that is not the noreply address and p
 })
 
 // merge-check::REQ-013
-const run = (over = {}) => ({ databaseId: 11, event: 'pull_request', workflowName: 'CI', createdAt: '2026-01-02T03:00:00Z', status: 'completed', conclusion: 'success', headSha: HEAD, ...over })
+const run = (over = {}) => ({ databaseId: 11, event: 'pull_request', workflowName: 'CI', workflowDatabaseId: 101, createdAt: '2026-01-02T03:00:00Z', status: 'completed', conclusion: 'success', headSha: HEAD, ...over })
 const job = (name, status = 'completed', conclusion = 'success', databaseId = 21) => ({ databaseId, name, status, conclusion })
 const view = (jobs, over = {}) => () => ({ headSha: HEAD, status: 'completed', conclusion: 'success', jobs, ...over })
 const ci = async (over, o = opts()) => { const r = await check('before', facts(over), o); return { ...r, line: r.out.split('\n').find((l) => / ci: /.test(l)) } }
@@ -568,12 +585,20 @@ test('ci fails when every job is ignored, and matches a job name whole and with 
 })
 
 test('ci judges the latest run of each workflow', async () => {
-  const runs = [run({ databaseId: 10, createdAt: '2026-01-02T02:00:00Z' }), run({ databaseId: 11, createdAt: '2026-01-02T03:00:00Z' }), run({ databaseId: 30, workflowName: 'Docs', createdAt: '2026-01-02T01:00:00Z' })]
+  const runs = [run({ databaseId: 10, createdAt: '2026-01-02T02:00:00Z' }), run({ databaseId: 11, createdAt: '2026-01-02T03:00:00Z' }), run({ databaseId: 30, workflowName: 'Docs', workflowDatabaseId: 102, createdAt: '2026-01-02T01:00:00Z' })]
   const viewed = []
   const runView = (id) => { viewed.push(id); return view([job('checks')], id === 10 ? { conclusion: 'failure' } : {})() }
   const r = await ci({ ciRuns: () => runs, runView })
   assert.match(r.line, /^PASS ci: 2 run\(s\)/, r.out)
   assert.deepEqual(viewed.sort(), [11, 30])
+})
+
+// merge-check::REQ-013: a workflow is its workflowDatabaseId; two workflow files may share a name
+test('ci judges each of two workflows that share a name', async () => {
+  const runs = [run({ databaseId: 10, workflowDatabaseId: 103, createdAt: '2026-01-02T02:59:55Z' }), run({ databaseId: 11, createdAt: '2026-01-02T03:00:00Z' })]
+  const r = await ci({ ciRuns: () => runs, runView: (id) => view([job('checks')], id === 10 ? { conclusion: 'failure' } : {})() })
+  assert.match(r.line, /^FAIL ci: /, r.out)
+  assert.match(r.out, /^ {4}run 10 \(CI\): conclusion failure$/m)
 })
 
 // merge-check::REQ-014
@@ -623,6 +648,14 @@ test('lists changed files, rules files at any depth, binary files and the docume
 })
 
 // merge-check::REQ-016
+// merge-check::REQ-016/AC-06: an entry of another repository is read in its own repository
+test('issues-closed reads a closing issue of another repository there', async () => {
+  const pr = { ...merged().pr(), closingIssuesReferences: [ref(12), ref(5, 'other-org', 'demo')] }
+  const issueState = (owner, name, n) => (owner === 'other-org' && name === 'demo' && n === 5 ? 'open' : 'closed')
+  const r = await check('after', merged({ pr: () => pr, issueState }))
+  assert.match(r.out, /^FAIL issues-closed: 1 closing issue\(s\) still open after 30 s\n {4}other-org\/demo#5 is open$/m, r.out)
+})
+
 test('issues-closed reads an open issue again and passes once it closes within 30 s', async () => {
   const states = ['open', 'open', 'closed']
   const o = opts()
@@ -655,6 +688,7 @@ const rules = JSON.parse(readFileSync(process.env.MC_STUB_FIXTURE, 'utf8'))
 const hit = rules.find((r) => new RegExp(r.match).test(args.join(' ')))
 if (!hit) { process.stderr.write('stub gh: no answer for: ' + args.join(' ') + '\\n'); process.exit(97) }
 if (hit.exec) require('node:child_process').execFileSync(hit.exec[0], hit.exec.slice(1), { stdio: 'ignore' })
+if (hit.makeRef) require('node:child_process').execFileSync('git', ['-C', hit.makeRef.dir, 'update-ref', hit.makeRef.prefix + process.ppid, hit.makeRef.oid])
 if (hit.signalParent) process.kill(process.ppid, hit.signalParent)
 process.stdout.write(hit.stdout ?? '')
 process.stderr.write(hit.stderr ?? '')
@@ -710,14 +744,14 @@ function answers(p, first = []) {
     { match: '^api repos/example-org/demo/issues/12$', stdout: JSON.stringify({ number: 12, state: 'open', title: 'Write the area' }) },
     { match: '^api repos/example-org/demo/issues/7$', stdout: JSON.stringify({ number: 7, state: 'closed', title: 'Write the area spec', pull_request: {} }) },
     { match: '^api repos/example-org/demo/issues/\\d+$', code: 1, stdout: '{"message":"Not Found","documentation_url":"https://docs.github.com/rest/issues/issues#get-an-issue","status":"404"}', stderr: 'gh: Not Found (HTTP 404)\n' },
-    { match: `^run list -R example-org/demo --commit ${p.head} `, stdout: JSON.stringify([{ conclusion: 'success', createdAt: '2026-01-02T03:00:00Z', databaseId: 11, event: 'pull_request', headSha: p.head, status: 'completed', workflowName: 'CI' }]) },
+    { match: `^run list -R example-org/demo --commit ${p.head} `, stdout: JSON.stringify([{ conclusion: 'success', createdAt: '2026-01-02T03:00:00Z', databaseId: 11, event: 'pull_request', headSha: p.head, status: 'completed', workflowDatabaseId: 101, workflowName: 'CI' }]) },
     { match: '^run view 11 -R example-org/demo --json headSha,status,conclusion,jobs$', stdout: JSON.stringify({ headSha: p.head, status: 'completed', conclusion: 'success', jobs: [{ databaseId: 21, name: 'checks', status: 'completed', conclusion: 'success', steps: [], url: 'https://github.com/example-org/demo/actions/runs/11/job/21' }] }) },
     { match: '^api repos/example-org/demo/actions/jobs/21/logs --allow-escape-sequences$', stdout: jobLog(p.head, p.tip) + '\n' },
   ]
 }
 
 /** Runs the script in the checkout with the stub gh first on PATH and the given environment */
-function cli(p, args, { gh = answers(p), env = {}, squash = 'Writes the area spec.\n\nCloses #12\n', cwd = p.checkout } = {}) {
+function cli(p, args, { gh = answers(p), env = {}, squash = 'Writes the area spec.\n\nCloses #12\n', cwd = p.checkout, leftRefs = /^$/ } = {}) {
   const bin = join(p.root, 'bin')
   mkdirSync(bin, { recursive: true })
   writeFileSync(join(bin, 'gh'), STUB)
@@ -729,7 +763,8 @@ function cli(p, args, { gh = answers(p), env = {}, squash = 'Writes the area spe
   const fullArgs = args[0] === 'before' ? [...args, '--squash-body', join(p.root, 'squash.txt')] : args
   const fetched = `refs/remotes/origin/${p.main}`
   const fetchHead = join(p.checkout, '.git', 'FETCH_HEAD')
-  const refs = () => [git(p.origin, 'for-each-ref'), git(p.checkout, 'for-each-ref').split('\n').filter((l) => !l.endsWith(`\t${fetched}`)).join('\n'), existsSync(fetchHead) ? readFileSync(fetchHead, 'utf8') : null]
+  // `leftRefs` names refs the stub makes during the run, which the run must leave as they are
+  const refs = () => [git(p.origin, 'for-each-ref'), git(p.checkout, 'for-each-ref').split('\n').filter((l) => !l.endsWith(`\t${fetched}`) && !leftRefs.test(l.split('\t')[1] ?? '')).join('\n'), existsSync(fetchHead) ? readFileSync(fetchHead, 'utf8') : null]
   const before = refs()
   const r = spawnSync(process.execPath, [SCRIPT, ...fullArgs], {
     cwd,
@@ -806,6 +841,18 @@ test('stops before any check when the checkout is another repository', () => {
   assert.equal(r.out, '')
 })
 
+// merge-check::CON-002/AC-01: the stub, a child of the run, makes the run's own ref before the run looks for it
+test('stops before any check when the ref of the run\'s own name exists, and leaves it as it was', () => {
+  const p = project()
+  const gh = answers(p).map((a) => (a.match.startsWith('^repo view ') ? { ...a, makeRef: { dir: p.checkout, prefix: 'refs/merge-check/pr7-', oid: p.tip } } : a))
+  const r = cli(p, beforeArgs(p), { gh, leftRefs: /^refs\/merge-check\/pr7-\d+$/ })
+  assert.equal(r.code, 2, r.out + r.err)
+  assert.match(r.err, /refs\/merge-check\/pr7-\d+ exists already; remove it once no other run uses it/)
+  assert.equal(r.out, '')
+  const left = git(p.checkout, 'for-each-ref', '--format=%(refname) %(objectname)', 'refs/merge-check/')
+  assert.match(left, new RegExp(`^refs/merge-check/pr7-\\d+ ${p.tip}$`))
+})
+
 // merge-check::CON-002/AC-02
 test('stops before any check when the worktree path exists, and leaves it as it was', () => {
   const p = project()
@@ -831,18 +878,18 @@ test('a worktree another run makes at the path while this one runs is left to th
 })
 
 // merge-check::REQ-002/AC-04, CON-002/AC-03: the run takes the signal while issues-closed waits to read an open issue again
-test('a run that SIGTERM ends exits 2 and removes the ref it made', () => {
+for (const signal of ['SIGTERM', 'SIGINT']) test(`a run that ${signal} ends exits 2 and removes the ref it made`, () => {
   const p = project()
   git(p.checkout, 'merge', '-q', '--squash', 'area')
   const oid = commitAs(p.root, p.checkout, {}, 'Write the area spec (#7)\n\nCloses #12', NOREPLY, 'noreply@github.com')
   git(p.checkout, 'push', '-q', 'origin', 'main')
   const gh = answers(p, [
     { match: '^pr view 7 ', stdout: prJson(p, { state: 'MERGED', mergeCommit: { oid } }) },
-    { match: '^api repos/example-org/demo/issues/12$', stdout: JSON.stringify({ number: 12, state: 'open', title: 'Write the area' }), signalParent: 'SIGTERM' },
+    { match: '^api repos/example-org/demo/issues/12$', stdout: JSON.stringify({ number: 12, state: 'open', title: 'Write the area' }), signalParent: signal },
   ])
   const r = cli(p, ['after', '--repo', 'example-org/demo', '--pr', '7', '--head', p.head], { gh })
   assert.equal(r.code, 2, r.out + r.err)
-  assert.match(r.err, /^merge-check: stopped by SIGTERM$/m)
+  assert.match(r.err, new RegExp(`^merge-check: stopped by ${signal}$`, 'm'))
   assert.ok(r.calls.some((c) => c.startsWith('api repos/example-org/demo/issues/12')), 'the signal came after the fetch')
   assertCleanedUp(p)
 })
@@ -851,7 +898,8 @@ test('a run that SIGTERM ends exits 2 and removes the ref it made', () => {
 test('a SIGTERM during the first gh call leaves the run its exit code and removes what it made', () => {
   const p = project()
   const r = cli(p, beforeArgs(p), { gh: answers(p).map((a) => (a.match.startsWith('^repo view ') ? { ...a, signalParent: 'SIGTERM' } : a)) })
-  assert.ok(r.code === 0 || r.code === 2, `exit ${r.code}, signal ${r.signal}\n${r.out}${r.err}`)
+  assert.equal(r.signal, null, r.out + r.err)
+  assert.equal(r.code, 0, r.out + r.err)
   assertCleanedUp(p)
 })
 
@@ -908,6 +956,42 @@ test('after passes a squash merge whose tree is the head and whose author is the
   assert.match(r.out, /^PASS merged-tree: /m)
   assert.match(r.out, /^PASS merge-author: author 1234\+octo-test@users\.noreply\.github\.com\n {4}committer noreply@github\.com \(not judged\)$/m)
   assert.match(r.out, /^PASS issues-closed: /m)
+  assertCleanedUp(p)
+})
+
+// merge-check::REQ-016/AC-04: a showSignature the user configured does not reach what the run reads with git log
+test('after reads the author of a signed merge commit while the checkout shows signatures', () => {
+  const p = project()
+  const key = join(p.root, 'signing-key')
+  assert.equal(spawnSync('ssh-keygen', ['-q', '-t', 'ed25519', '-N', '', '-f', key]).status, 0, 'ssh-keygen')
+  git(p.checkout, 'merge', '-q', '--squash', 'area')
+  const signed = spawnSync('git', ['-c', 'gpg.format=ssh', '-c', `user.signingkey=${key}`, 'commit', '-q', '-S', '-m', 'Write the area spec (#7)\n\nCloses #12'], { cwd: p.checkout, env: { ...gitEnv, GIT_AUTHOR_EMAIL: NOREPLY, GIT_COMMITTER_EMAIL: 'noreply@github.com' }, encoding: 'utf8' })
+  assert.equal(signed.status, 0, signed.stderr)
+  const oid = git(p.checkout, 'rev-parse', 'HEAD')
+  git(p.checkout, 'push', '-q', 'origin', 'main')
+  git(p.checkout, 'config', 'log.showSignature', 'true')
+  const gh = answers(p, [
+    { match: '^pr view 7 ', stdout: prJson(p, { state: 'MERGED', mergeCommit: { oid } }) },
+    { match: '^api repos/example-org/demo/issues/12$', stdout: JSON.stringify({ number: 12, state: 'closed', title: 'Write the area' }) },
+  ])
+  const r = cli(p, ['after', '--repo', 'example-org/demo', '--pr', '7', '--head', p.head], { gh })
+  assert.equal(r.code, 0, r.out + r.err)
+  assert.match(r.out, /^PASS merge-author: author 1234\+octo-test@users\.noreply\.github\.com\n/m)
+  assertCleanedUp(p)
+})
+
+// merge-check::REQ-013: gh lists the runs with the workflow's id, which two workflows that share a name do not share
+test('before judges each of two workflows that share a name', () => {
+  const p = project()
+  const listed = [{ conclusion: 'failure', createdAt: '2026-01-02T02:59:55Z', databaseId: 10, event: 'pull_request', headSha: p.head, status: 'completed', workflowDatabaseId: 103, workflowName: 'CI' }, { conclusion: 'success', createdAt: '2026-01-02T03:00:00Z', databaseId: 11, event: 'pull_request', headSha: p.head, status: 'completed', workflowDatabaseId: 101, workflowName: 'CI' }]
+  const gh = answers(p, [
+    { match: `^run list -R example-org/demo --commit ${p.head} --json \\S*workflowDatabaseId`, stdout: JSON.stringify(listed) },
+    { match: '^run view 10 ', stdout: JSON.stringify({ headSha: p.head, status: 'completed', conclusion: 'failure', jobs: [{ databaseId: 31, name: 'checks', status: 'completed', conclusion: 'failure', steps: [], url: 'https://github.com/example-org/demo/actions/runs/10/job/31' }] }) },
+    { match: '^api repos/example-org/demo/actions/jobs/31/logs ', stdout: jobLog(p.head, p.tip) + '\n' },
+  ])
+  const r = cli(p, beforeArgs(p), { gh })
+  assert.equal(r.code, 1, r.out + r.err)
+  assert.match(r.out, /^ {4}run 10 \(CI\): conclusion failure$/m)
   assertCleanedUp(p)
 })
 
