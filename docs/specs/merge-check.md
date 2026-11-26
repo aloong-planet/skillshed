@@ -120,12 +120,12 @@ The expected noreply address is `<id>+<login>@users.noreply.github.com`, from `g
 
 For the reviewed head and the `pull_request` event, `ci` judges the latest run of each workflow by `workflow_id`. The later `created_at` wins, with the larger run `id` breaking a tie. A current-tip merge line is a line `HEAD is now at <x> Merge <head> into <tip>` in a job's log, `<tip>` being the tip of `origin/<default branch>` fetched in this run.
 
-- merge-check::REQ-013/AC-01: With no such run and no file under `.github/workflows/` at the head, `ci` is `SKIP` with the reason "no CI workflow". With no such run while workflow files exist, it fails.
+- merge-check::REQ-013/AC-01: With no such run and no file under `.github/workflows/` at the head, `ci` is `SKIP` with the reason "no CI workflow". With no such run and any file under that directory at the head, `ci` fails.
 - merge-check::REQ-013/AC-02: If the selected run's detail response from `gh run view` gives a `headSha` different from the reviewed head, `ci` fails.
 - merge-check::REQ-013/AC-03: A job whose whole name matches an `--ignore-job` pattern, case-sensitively, is left out of every requirement below and listed under `For review:` with its status and conclusion. `For review:` also lists, for each pattern and each run, the job names it matched, or that it matched none.
 - merge-check::REQ-013/AC-04: A run with no ignored job fails when its `status` is not `completed`, with the summary "not finished: wait with watch-ci.sh, then rerun", and when its `conclusion` is not `success`. A run with an ignored job is held instead to every other job being `completed`, the same summary applying when one is not; its own status and conclusion go under `For review:`.
 - merge-check::REQ-013/AC-05: Every job that is not ignored concluded `success` or `skipped`.
-- merge-check::REQ-013/AC-06: Across the logs of the run's jobs that are neither ignored nor skipped, at least one line must match `HEAD is now at <x> Merge <a> into <b>`. Each job's log is read separately. Every matching line must be a current-tip merge line. With no matching line the run fails, including when every job is ignored. A merge into an older tip fails, with the summary that the CI tested against an older default branch.
+- merge-check::REQ-013/AC-06: Across the logs of the run's jobs that are neither ignored nor skipped, at least one line must match `HEAD is now at <x> Merge <a> into <b>`. Each job's log is read separately. Every matching line must be a current-tip merge line. With no matching line the run fails, including when every job is ignored. A merge into an older tip fails. The failure summary says the CI tested against an older default branch unless the unfinished-run summary in merge-check::REQ-013/AC-04 takes precedence.
 - merge-check::REQ-013/AC-07: The filtered Actions run list must account for `total_count` distinct runs. Each page must report the same nonnegative integer `total_count` and supply the next 100 entries of `workflow_runs`, or all remaining entries if fewer. Collection ends as soon as the count is reached, including on the first page. Each entry must have the requested `event` and `head_sha`, positive `id` and `workflow_id` values in JavaScript's safe integer range, and a `created_at` string that parses as a timestamp. An unreadable page, any inconsistency (including a repeated run `id`), or a count at or above the filtered search ceiling of 1,000 gives `ci` an `ERROR` (merge-check::REQ-002/AC-04).
 
 ### merge-check::REQ-014 The document checks of the head
@@ -180,7 +180,7 @@ Applies to both modes.
 
 ### merge-check::CON-003 No personal data in the skill (direct acceptance)
 
-Applies to the script, its tests and the documents that describe it. These files contain no person's account name, email address or home path. Examples may use fictitious values. The privacy and identity checks derive the values they compare at run time (merge-check::REQ-008, merge-check::REQ-012).
+Applies to the script, its tests and the documents that describe it. These files contain no person's account name, email address or home path. Examples may use fictitious values. See merge-check::REQ-008 and merge-check::REQ-012 for the values the checks use.
 
 ## Failure modes and boundaries
 
