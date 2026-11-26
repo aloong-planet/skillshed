@@ -49,7 +49,7 @@ export function parseArgs(argv) {
   if (mode === 'after' && repeated['--ignore-job'].length) throw new UsageError('--ignore-job is only for before')
   if (!/^[\w.-]+\/[\w.-]+$/.test(single['--repo'])) throw new UsageError('--repo must be <owner>/<repo>')
   if (!/^[1-9][0-9]*$/.test(single['--pr'])) throw new UsageError('--pr must be a pull request number')
-  if (!/^[0-9a-f]{40}$/.test(single['--head'])) throw new UsageError('--head must be 40 hexadecimal digits, the full SHA of the reviewed commit')
+  if (!/^[0-9a-f]{40}$/i.test(single['--head'])) throw new UsageError('--head must be 40 hexadecimal digits, the full SHA of the reviewed commit')
   const compile = (name, source, flags) => {
     try {
       return { source, re: new RegExp(name === '--ignore-job' ? `^(?:${source})$` : source, flags) }
@@ -61,7 +61,8 @@ export function parseArgs(argv) {
     mode,
     repo: single['--repo'],
     pr: Number(single['--pr']),
-    head: single['--head'],
+    // git and gh write a SHA in lower case
+    head: single['--head'].toLowerCase(),
     squashBody: single['--squash-body'],
     checkout: single['--checkout'],
     forbid: repeated['--forbid'].map((s) => compile('--forbid', s, 'i')),
@@ -558,8 +559,9 @@ function realFacts(args, pre, squashBodyText) {
     for (let d = dirname(worktree); !existsSync(d); d = dirname(d)) missing.push(d)
     mkdirSync(dirname(worktree), { recursive: true })
     made.dirs = missing
-    made.worktree = true
+    // Marked only once the add succeeded: a failed add may have met a worktree another run made at the path
     git('worktree', 'add', '--detach', '--quiet', worktree, ref)
+    made.worktree = true
     return worktree
   })
   const user = memo(() => json('gh', ['api', 'user'], top))

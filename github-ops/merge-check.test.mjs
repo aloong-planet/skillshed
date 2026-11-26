@@ -7,6 +7,9 @@
 // JSON and exits 1.
 // Gap: a ref of the run's own name that exists before the fetch (merge-check::CON-002/AC-01) is not driven, because
 // the name holds the process id, which the test cannot know before the run starts.
+// Gap: merge-check::REQ-017 is what the merging agent does, written in github-ops/merge-check.md; no test reads that
+// document. merge-check::CON-003 holds no rule of the script; the privacy check of this skill's own merge runs over
+// the script, its tests and its documents, and that run, not a test, is its guard.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
@@ -38,8 +41,9 @@ test('parses the before form with repeated --forbid and --ignore-job', () => {
 })
 
 test('parses the after form without --squash-body, and --list alone', () => {
-  const a = parseArgs(['after', '--repo', 'example-org/demo', '--pr', '7', '--head', HEAD])
+  const a = parseArgs(['after', '--repo', 'example-org/demo', '--pr', '7', '--head', 'A'.repeat(40)])
   assert.equal(a.mode, 'after')
+  assert.equal(a.head, HEAD, 'an upper-case --head is taken in lower case')
   assert.equal(a.checkout, undefined)
   assert.deepEqual(parseArgs(['--list']), { list: true })
 })
@@ -179,7 +183,8 @@ test('a pull request that holds every rule passes every check of both modes', as
   assert.equal(exitCode(a.results), 0, a.out)
 })
 
-// merge-check::REQ-001/AC-04: one failing scenario for every id of CHECKS, and no scenario for an id it does not have
+// merge-check::REQ-001/AC-04: one failing scenario for every id of CHECKS, and no scenario for an id it does not have;
+// an id whose failing scenario another case drives names that case
 const errs = () => { throw new Error('gh: HTTP 502') }
 const FAILING = {
   'pr-open': ['before', facts(withPr({ state: 'CLOSED' }))],
@@ -187,22 +192,22 @@ const FAILING = {
   'pr-head': ['before', facts(withPr({ headRefOid: OTHER }))],
   'pr-base': ['before', facts(withPr({ baseRefName: 'develop' }))],
   'pr-mergeable': ['before', facts(withPr({ mergeable: 'CONFLICTING', mergeStateStatus: 'DIRTY' }))],
-  'head-ref': ['before', facts({ fetchedHead: () => OTHER })],
+  'head-ref': { coveredBy: 'a failed or errored dependency blocks the checks that need it…' },
   'up-to-date': ['before', facts({ tipIsAncestor: () => false })],
   'merged-tree': ['after', merged({ mergeTree: () => TIP })],
   'merge-author': ['after', merged({ mergeIdentity: () => ({ author: 'someone@example.invalid', committer: 'noreply@github.com' }) })],
-  'closing-keywords': ['before', facts(withPr({ title: 'Fixes #12' }))],
+  'closing-keywords': { coveredBy: 'prints each check line, its evidence indented…' },
   'closing-links': ['before', facts(withPr({ closingIssuesReferences: [] }))],
-  privacy: ['before', facts({ squashBody: () => 'Paths under /srv/mc-home/x.\nCloses #12\n' })],
+  privacy: { coveredBy: 'privacy fails on $HOME in any case, and on the local part of an address' },
   attribution: ['before', facts(withPr({ body: 'Closes #12\n\nGenerated with a tool' }))],
   'forbidden-words': ['before', facts(withPr({ title: 'The Secret widget' })), { forbid: parsed('--forbid', 'secret').forbid }],
   'bare-refs': ['before', facts(withPr({ body: 'Closes #12\nSee #404.' }))],
   'commit-identity': ['before', facts({ commits: () => [{ sha: COMMIT, authorEmail: 'someone@example.invalid', committerEmail: NOREPLY, message: 'x' }] })],
-  ci: ['before', facts({ runView: () => ({ headSha: HEAD, status: 'completed', conclusion: 'failure', jobs: [{ databaseId: 21, name: 'checks', status: 'completed', conclusion: 'failure' }] }) })],
+  ci: { coveredBy: 'ci fails on a run that failed' },
   'spec-check': ['before', facts({ diff: () => ({ files: [{ status: 'M', path: 'docs/specs/area.md', binary: false }], added: [] }), runScript: (n) => ({ code: 1, out: `${n} output` }) })],
   'adr-check': ['before', facts({ adrAtHead: () => true, diff: () => ({ files: [{ status: 'A', path: 'docs/adr/0001-x.md', binary: false }], added: [] }), runScript: (n) => ({ code: n === 'check-adr.mjs' ? 1 : 0, out: '' }) })],
   'action-pins': ['before', facts({ diff: () => ({ files: [{ status: 'M', path: '.github/workflows/ci.yml', binary: false }], added: [] }), runScript: (n) => ({ code: n === 'check-action-pins.mjs' ? 1 : 0, out: '' }) })],
-  'issues-closed': ['after', merged({ issueState: () => 'open' })],
+  'issues-closed': { coveredBy: 'issues-closed reads an open issue again…' },
   'closing-issues': ['before', facts({ pr: errs })],
   'changed-files': ['before', facts({ diff: errs })],
   'documents-only': ['before', facts({ runScript: (n) => ({ code: n === 'change-scope.mjs' ? 2 : 0, out: 'git failed' }) })],
@@ -213,7 +218,9 @@ test('the failing scenarios name every check and report, and nothing else', () =
   assert.deepEqual(Object.keys(FAILING).sort(), CHECKS.map((c) => c.id).sort())
 })
 
-for (const [id, [mode, f, over]] of Object.entries(FAILING)) {
+for (const [id, scenario] of Object.entries(FAILING)) {
+  if (!Array.isArray(scenario)) continue
+  const [mode, f, over] = scenario
   const c = CHECKS.find((x) => x.id === id)
   const expected = c.kind === 'report' || id === 'cleanup' ? 'ERROR' : 'FAIL'
   test(`${id} gives ${expected} in its failing scenario`, async () => {
@@ -274,6 +281,15 @@ test('reads mergeability again while it is UNKNOWN, five reads 3 s apart in all'
   assert.equal(blocked.status('pr-mergeable'), 'FAIL')
 })
 
+for (const first of [{ mergeable: 'MERGEABLE', mergeStateStatus: 'UNKNOWN' }, { mergeable: 'UNKNOWN', mergeStateStatus: 'CLEAN' }]) {
+  test(`reads mergeability again on mergeable ${first.mergeable} and mergeStateStatus ${first.mergeStateStatus}`, async () => {
+    const o = opts()
+    const r = await check('before', facts({ ...withPr(first), mergeability: () => ({ mergeable: 'MERGEABLE', mergeStateStatus: 'CLEAN' }) }), o)
+    assert.equal(r.status('pr-mergeable'), 'PASS', r.out)
+    assert.deepEqual(o.slept, [3000])
+  })
+}
+
 // merge-check::REQ-006/AC-01
 for (const [where, over] of [
   ['a commit message', { commits: () => [{ sha: COMMIT, authorEmail: NOREPLY, committerEmail: NOREPLY, message: 'Draw it\n\nfix #3' }] }],
@@ -321,6 +337,34 @@ test('closing-links accepts a squash body that closes fewer issues than the body
 test('closing-links fails on a landed Closes line GitHub did not link', async () => {
   const r = await check('after', merged({ landedMessage: () => 'Add it (#7)\n\nCloses #12\nCloses #15' }))
   assert.match(r.out, /^ {4}message:4: Closes #15 is not in closingIssuesReferences$/m)
+})
+
+// merge-check::REQ-005/AC-01, REQ-016/AC-05: the landed message after the merge, and commit messages before it
+for (const [id, text, over] of [
+  ['privacy', 'Moved from /srv/mc-home/x', {}],
+  ['attribution', 'Co-Authored-By: a tool', {}],
+  ['forbidden-words', 'A secret step', { forbid: parsed('--forbid', 'secret').forbid }],
+  ['bare-refs', 'See #404', {}],
+]) {
+  test(`${id} reads the landed message after the merge`, async () => {
+    const r = await check('after', merged({ landedMessage: () => `Add the widget (#7)\n\n${text}\nCloses #12\n` }), opts(over))
+    assert.match(r.out, new RegExp(`^FAIL ${id}: .*\\n {4}message:3: `, 'm'), r.out)
+  })
+}
+for (const [id, text, over] of [['privacy', 'Moved from /srv/mc-home/x', {}], ['forbidden-words', 'A secret step', { forbid: parsed('--forbid', 'secret').forbid }]]) {
+  test(`${id} reads the commit messages before the merge`, async () => {
+    const r = await check('before', facts({ commits: () => [{ sha: COMMIT, authorEmail: NOREPLY, committerEmail: NOREPLY, message: `Add it\n\n${text}` }] }), opts(over))
+    assert.match(r.out, new RegExp(`^FAIL ${id}: .*\\n {4}commit ddddddd: `, 'm'), r.out)
+  })
+}
+
+test('the checks of the messages leave added lines and paths alone, and closing-links the title and commit messages', async () => {
+  const text = 'Fixes #404, Closes #13, Co-Authored-By: a tool'
+  const diff = () => ({ files: [{ status: 'A', path: 'notes/Closes #13 Generated with x.md', binary: false }], added: [{ path: 'notes/a.md', line: 1, text }] })
+  const r = await check('before', facts({ diff }))
+  for (const id of ['closing-keywords', 'closing-links', 'attribution', 'bare-refs']) assert.equal(r.status(id), 'PASS', `${id}\n${r.out}`)
+  const titled = await check('before', facts({ ...withPr({ title: 'Closes #13' }), commits: () => [{ sha: COMMIT, authorEmail: NOREPLY, committerEmail: NOREPLY, message: 'Add it\n\nCloses #13' }] }))
+  assert.equal(titled.status('closing-links'), 'PASS', titled.out)
 })
 
 // merge-check::REQ-008
@@ -375,8 +419,10 @@ test('attribution fails in a commit message and leaves added lines alone', async
 // merge-check::REQ-010
 test('forbidden-words reads added lines and paths, and skips without --forbid', async () => {
   const forbid = parsed('--forbid', 'intern(al)?').forbid
-  const r = await check('before', facts(leak('an INTERNAL note')), opts({ forbid }))
-  assert.match(r.out, /^ {4}diff notes\.txt:\+2: --forbid intern\(al\)\?: an INTERNAL note$/m)
+  const diff = () => ({ files: [{ status: 'A', path: 'docs/Intern-plan.md', binary: false }], added: [{ path: 'docs/Intern-plan.md', line: 2, text: 'an INTERNAL note' }] })
+  const r = await check('before', facts({ diff }), opts({ forbid }))
+  assert.match(r.out, /^ {4}diff docs\/Intern-plan\.md:\+2: --forbid intern\(al\)\?: an INTERNAL note$/m)
+  assert.match(r.out, /^ {4}path docs\/Intern-plan\.md: --forbid intern\(al\)\?: docs\/Intern-plan\.md$/m)
   const none = await check('before', facts())
   assert.match(none.out, /^SKIP forbidden-words: no --forbid given$/m)
 })
@@ -425,9 +471,11 @@ for (const [what, over, summary, line] of [
 
 test('ci leaves an ignored job and the run status out, and holds the other jobs to completed', async () => {
   const jobs = [job('build (ubuntu)', 'completed', 'success', 21), job('build (macOS)', 'in_progress', '', 22), job('CI gate', 'in_progress', '', 23), job('site', 'completed', 'skipped', 24)]
-  const logs = { 21: jobLog(HEAD, TIP), 24: 'skipped: no log is read' }
+  const logs = { 21: jobLog(HEAD, TIP) }
   const o = opts({ ignoreJob: parsed('--ignore-job', 'build \\(macOS\\)', '--ignore-job', 'CI gate', '--ignore-job', 'deploy').ignoreJob })
-  const r = await ci({ runView: view(jobs, { status: 'in_progress', conclusion: '' }), jobLog: (id) => logs[id] ?? jobLog(OTHER, OTHER) }, o)
+  // The log of the skipped job 24 cannot be read, and those of the ignored jobs merged another head
+  const jobLogOf = (id) => { if (id === 24) throw new Error('gh: the log of a skipped job'); return logs[id] ?? jobLog(OTHER, OTHER) }
+  const r = await ci({ runView: view(jobs, { status: 'in_progress', conclusion: '' }), jobLog: jobLogOf }, o)
   assert.match(r.line, /^PASS ci: /, r.out)
   assert.match(r.out, /^ {4}ci: run 11 \(CI\): ignored job build \(macOS\): in_progress\/-$/m)
   assert.match(r.out, /^ {4}ci: run 11 \(CI\): run status in_progress, conclusion -$/m)
@@ -518,7 +566,7 @@ test('after the merge, the head checks and the merge commit are held to the head
 // --- The command line, against scratch repositories and a stub gh ---
 
 const SCRIPT = join(dirname(fileURLToPath(import.meta.url)), 'merge-check.mjs')
-const { scratch, env: gitEnv } = scratchRepos('merge-check-test-')
+const { scratch, env: gitEnv, git } = scratchRepos('merge-check-test-')
 
 const STUB = `#!/usr/bin/env node
 const { appendFileSync, readFileSync } = require('node:fs')
@@ -527,6 +575,8 @@ appendFileSync(process.env.MC_STUB_LOG, JSON.stringify(args) + '\\n')
 const rules = JSON.parse(readFileSync(process.env.MC_STUB_FIXTURE, 'utf8'))
 const hit = rules.find((r) => new RegExp(r.match).test(args.join(' ')))
 if (!hit) { process.stderr.write('stub gh: no answer for: ' + args.join(' ') + '\\n'); process.exit(97) }
+if (hit.exec) require('node:child_process').execFileSync(hit.exec[0], hit.exec.slice(1), { stdio: 'ignore' })
+if (hit.signalParent) process.kill(process.ppid, hit.signalParent)
 process.stdout.write(hit.stdout ?? '')
 process.stderr.write(hit.stderr ?? '')
 process.exit(hit.code ?? 0)
@@ -544,41 +594,36 @@ function commitAs(root, cwd, files, message, email = NOREPLY, committer = email)
   }
   return git(cwd, 'rev-parse', 'HEAD')
 }
-const git = (cwd, ...args) => {
-  const r = spawnSync('git', args, { cwd, env: gitEnv, encoding: 'utf8' })
-  assert.equal(r.status, 0, `git ${args.join(' ')}: ${r.stderr}`)
-  return r.stdout.trim()
-}
 
 /**
  * An origin with main and refs/pull/7/head, and a checkout of it named `checkout`; `base` and `branch` are the files
  * of main and of the pull request's one commit. Returns the paths and the shas.
  */
-function project({ base = { 'capabilities.toml': CAPABILITIES, '.github/workflows/ci.yml': WORKFLOW, 'README.md': '# Demo\n' }, branch = { 'docs/specs/area.md': '# Area\n\nThe area holds one widget.\n' } } = {}) {
+function project({ base = { 'capabilities.toml': CAPABILITIES, '.github/workflows/ci.yml': WORKFLOW, 'README.md': '# Demo\n' }, branch = { 'docs/specs/area.md': '# Area\n\nThe area holds one widget.\n' }, main = 'main' } = {}) {
   const root = scratch()
   const origin = join(root, 'origin.git')
   const checkout = join(root, 'checkout')
-  git(root, 'init', '-q', '--bare', '-b', 'main', origin)
+  git(root, 'init', '-q', '--bare', '-b', main, origin)
   git(root, 'clone', '-q', origin, checkout)
-  git(checkout, 'checkout', '-q', '-b', 'main')
+  git(checkout, 'checkout', '-q', '-b', main)
   const tip = commitAs(root, checkout, base, 'Start the demo')
-  git(checkout, 'push', '-q', 'origin', 'main')
+  git(checkout, 'push', '-q', 'origin', main)
   git(checkout, 'checkout', '-q', '-b', 'area')
   const head = commitAs(root, checkout, branch, 'Write the area spec')
   git(checkout, 'push', '-q', 'origin', 'HEAD:refs/pull/7/head')
-  git(checkout, 'checkout', '-q', 'main')
+  git(checkout, 'checkout', '-q', main)
   const home = join(root, 'home')
   mkdirSync(home)
-  return { root, origin, checkout, home, tip, head }
+  return { root, origin, checkout, home, tip, head, main }
 }
 
-const prJson = (p, over = {}) => JSON.stringify({ number: 7, title: 'Write the area spec', body: 'Writes the area spec.\n\nCloses #12\n', state: 'OPEN', headRefOid: p.head, baseRefName: 'main', mergeable: 'MERGEABLE', mergeStateStatus: 'CLEAN', closingIssuesReferences: [ref(12)], mergeCommit: null, ...over })
+const prJson = (p, over = {}) => JSON.stringify({ number: 7, title: 'Write the area spec', body: 'Writes the area spec.\n\nCloses #12\n', state: 'OPEN', headRefOid: p.head, baseRefName: p.main, mergeable: 'MERGEABLE', mergeStateStatus: 'CLEAN', closingIssuesReferences: [ref(12)], mergeCommit: null, ...over })
 
 /** The stub's answers for a pull request `p` that passes every check; `first` answers before them */
 function answers(p, first = []) {
   return [
     ...first,
-    { match: '^repo view --json nameWithOwner,defaultBranchRef$', stdout: JSON.stringify({ nameWithOwner: 'example-org/demo', defaultBranchRef: { name: 'main' } }) },
+    { match: '^repo view --json nameWithOwner,defaultBranchRef$', stdout: JSON.stringify({ nameWithOwner: 'example-org/demo', defaultBranchRef: { name: p.main } }) },
     { match: '^pr view 7 -R example-org/demo --json ', stdout: prJson(p) },
     { match: '^api user$', stdout: JSON.stringify({ login: 'octo-test', id: 1234, type: 'User' }) },
     { match: '^api repos/example-org/demo/issues/12$', stdout: JSON.stringify({ number: 12, state: 'open', title: 'Write the area' }) },
@@ -591,7 +636,7 @@ function answers(p, first = []) {
 }
 
 /** Runs the script in the checkout with the stub gh first on PATH and the given environment */
-function cli(p, args, { gh = answers(p), env = {}, squash = 'Writes the area spec.\n\nCloses #12\n' } = {}) {
+function cli(p, args, { gh = answers(p), env = {}, squash = 'Writes the area spec.\n\nCloses #12\n', cwd = p.checkout } = {}) {
   const bin = join(p.root, 'bin')
   mkdirSync(bin, { recursive: true })
   writeFileSync(join(bin, 'gh'), STUB)
@@ -601,12 +646,19 @@ function cli(p, args, { gh = answers(p), env = {}, squash = 'Writes the area spe
   writeFileSync(log, '')
   writeFileSync(join(p.root, 'squash.txt'), squash)
   const fullArgs = args[0] === 'before' ? [...args, '--squash-body', join(p.root, 'squash.txt')] : args
+  const fetched = `refs/remotes/origin/${p.main}`
+  const refs = () => [git(p.origin, 'for-each-ref'), git(p.checkout, 'for-each-ref').split('\n').filter((l) => !l.endsWith(`\t${fetched}`)).join('\n')]
+  const before = refs()
   const r = spawnSync(process.execPath, [SCRIPT, ...fullArgs], {
-    cwd: p.checkout,
+    cwd,
     encoding: 'utf8',
     env: { ...gitEnv, HOME: p.home, USER: 'mc_tester', PATH: `${bin}:${dirname(process.execPath)}:${process.env.PATH}`, MC_STUB_FIXTURE: join(p.root, 'gh.json'), MC_STUB_LOG: log, ...env },
   })
   const calls = readFileSync(log, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l).join(' '))
+  // merge-check::CON-001: every gh call only reads, and no ref of origin changes; CON-002/AC-01: nor any ref of the
+  // checkout but the fetched default branch, the run's own ref removed again
+  for (const call of calls) assert.ok(READ_ONLY.some((re) => re.test(call)), `not a read-only gh call: ${call}`)
+  assert.deepEqual(refs(), before, 'the refs of origin and the checkout, the fetched default branch aside')
   return { code: r.status, out: r.stdout, err: r.stderr, calls }
 }
 const beforeArgs = (p, head = p.head) => ['before', '--repo', 'example-org/demo', '--pr', '7', '--head', head]
@@ -634,7 +686,6 @@ test('before passes a pull request that holds every rule, runs the real document
   assert.match(r.out, /^ {4}changed-files: A docs\/specs\/area\.md$/m)
   assertCleanedUp(p)
   assert.ok(r.calls.length > 0)
-  for (const call of r.calls) assert.ok(READ_ONLY.some((re) => re.test(call)), `not a read-only gh call: ${call}`)
 })
 
 // merge-check::REQ-001/AC-02
@@ -655,6 +706,36 @@ test('stops before any check when the worktree path exists, and leaves it as it 
   assert.match(r.err, /pr7-merge-check exists already/)
   assert.equal(r.out, '')
   assert.equal(readFileSync(join(worktreeOf(p), 'left.txt'), 'utf8'), 'an earlier run\n')
+})
+
+// merge-check::CON-002/AC-02, AC-03, failure mode 10: another run makes the worktree after this one checked the path
+test('a worktree another run makes at the path while this one runs is left to that run', () => {
+  const p = project()
+  const other = worktreeOf(p)
+  const make = ['git', '-C', p.checkout, 'worktree', 'add', '--detach', '--quiet', other, p.head]
+  const r = cli(p, beforeArgs(p), { gh: answers(p).map((a) => (a.match.startsWith('^run list ') ? { ...a, exec: make } : a)) })
+  assert.equal(r.code, 2, r.out + r.err)
+  assert.match(r.out, /^ERROR spec-check: .*already exists/m)
+  assert.ok(existsSync(join(other, 'docs', 'specs', 'area.md')), r.out)
+  assert.equal(git(p.checkout, 'worktree', 'list', '--porcelain').split('\n').filter((l) => l.startsWith('worktree ')).length, 2)
+  assert.equal(git(p.checkout, 'for-each-ref', 'refs/merge-check/'), '')
+})
+
+// merge-check::REQ-002/AC-04, CON-002/AC-03: the run takes the signal while issues-closed waits to read an open issue again
+test('a run that SIGTERM ends exits 2 and removes the ref it made', () => {
+  const p = project()
+  git(p.checkout, 'merge', '-q', '--squash', 'area')
+  const oid = commitAs(p.root, p.checkout, {}, 'Write the area spec (#7)\n\nCloses #12', NOREPLY, 'noreply@github.com')
+  git(p.checkout, 'push', '-q', 'origin', 'main')
+  const gh = answers(p, [
+    { match: '^pr view 7 ', stdout: prJson(p, { state: 'MERGED', mergeCommit: { oid } }) },
+    { match: '^api repos/example-org/demo/issues/12$', stdout: JSON.stringify({ number: 12, state: 'open', title: 'Write the area' }), signalParent: 'SIGTERM' },
+  ])
+  const r = cli(p, ['after', '--repo', 'example-org/demo', '--pr', '7', '--head', p.head], { gh })
+  assert.equal(r.code, 2, r.out + r.err)
+  assert.match(r.err, /^merge-check: stopped by SIGTERM$/m)
+  assert.ok(r.calls.some((c) => c.startsWith('api repos/example-org/demo/issues/12')), 'the signal came after the fetch')
+  assertCleanedUp(p)
 })
 
 // merge-check::REQ-004/AC-01, REQ-003/AC-05
@@ -731,6 +812,35 @@ test('a head that does not contain the tip of the default branch fails up-to-dat
   const r = cli(p, beforeArgs(p))
   assert.equal(r.code, 1, r.out + r.err)
   assert.match(r.out, /^FAIL up-to-date: origin\/main [0-9a-f]{7} is not in the head: merge or rebase onto it$/m)
+})
+
+// merge-check::REQ-001/AC-02, AC-03
+test('takes the top level of the repository of the current directory, and the default branch gh names', () => {
+  const p = project({ main: 'trunk' })
+  mkdirSync(join(p.checkout, 'sub'))
+  // With no CI run, ci looks for the workflow files of the head, which only the top level finds
+  const r = cli(p, beforeArgs(p), { cwd: join(p.checkout, 'sub'), gh: answers(p, [{ match: '^run list ', stdout: '[]' }]) })
+  assert.equal(r.code, 1, r.out + r.err)
+  assert.match(r.out, /^FAIL ci: no pull_request run on the head, although the head has workflow files/m)
+  assert.match(r.out, /^PASS pr-base: base is trunk$/m)
+  assert.match(r.out, /^PASS up-to-date: origin\/trunk [0-9a-f]{7} is in the head$/m)
+  assertCleanedUp(p)
+  const nowhere = cli(p, beforeArgs(p), { cwd: p.home })
+  assert.equal(nowhere.code, 2, nowhere.out + nowhere.err)
+  assert.match(nowhere.err, /is in no git repository/)
+  assert.equal(nowhere.out, '')
+})
+
+// merge-check::REQ-011: gh's 404 is a reference to nothing, any other failure no verdict
+test('bare-refs fails on a reference gh answers 404 for, and errs when gh fails otherwise', () => {
+  const p = project()
+  const body = (n) => [{ match: '^pr view 7 ', stdout: prJson(p, { body: `Writes the area spec.\nSee #${n}.\n\nCloses #12\n` }) }]
+  const missing = cli(p, beforeArgs(p), { gh: answers(p, body(99)) })
+  assert.equal(missing.code, 1, missing.out + missing.err)
+  assert.match(missing.out, /^FAIL bare-refs: .*\n {4}body:2: #99 does not exist in example-org\/demo: See #99\.$/m)
+  const failing = cli(p, beforeArgs(p), { gh: answers(p, [...body(98), { match: '^api repos/example-org/demo/issues/98$', code: 1, stderr: 'gh: HTTP 502: Bad Gateway\n' }]) })
+  assert.equal(failing.code, 2, failing.out + failing.err)
+  assert.match(failing.out, /^ERROR bare-refs: gh api repos\/example-org\/demo\/issues\/98 exited 1: gh: HTTP 502: Bad Gateway$/m)
 })
 
 // merge-check::REQ-001/AC-01, AC-04
