@@ -540,6 +540,18 @@ export function addedLines(diff) {
   return added
 }
 
+/**
+ * merge-check::REQ-011: what `gh api repos/<repo>/issues/<N>` answered, `call` naming it: exit 0 is the issue or pull
+ * request, the error JSON with status 404 is none, and anything else an Error
+ */
+export function issueAnswer({ status, stdout, stderr }, call) {
+  if (status === 0) { const i = JSON.parse(stdout); return { exists: true, state: i.state, title: i.title } }
+  let code
+  try { code = JSON.parse(stdout).status } catch { /* not the JSON of an API error */ }
+  if (String(code) === '404') return { exists: false }
+  throw new Error(`${call} exited ${status}: ${lastLine(stderr)}`)
+}
+
 function realFacts(args, pre, squashBodyText) {
   const { checkout: top, defaultBranch, ref, worktree } = pre
   const origin = `refs/remotes/origin/${defaultBranch}`
@@ -548,7 +560,7 @@ function realFacts(args, pre, squashBodyText) {
   const pr = memo(() => json('gh', ['pr', 'view', String(args.pr), '-R', args.repo, '--json', PR_FIELDS], top))
   const fetch = memo(() => {
     made.ref = true
-    git('fetch', '--no-tags', '--quiet', 'origin', `+refs/heads/${defaultBranch}:${origin}`, `refs/pull/${args.pr}/head:${ref}`)
+    git('fetch', '--no-tags', '--no-write-fetch-head', '--quiet', 'origin', `+refs/heads/${defaultBranch}:${origin}`, `refs/pull/${args.pr}/head:${ref}`)
   })
   const rev = (r) => { fetch(); return git('rev-parse', '--verify', '--quiet', r).trim() }
   const forkPoint = memo(() => { fetch(); return git('merge-base', ref, origin).trim() })
@@ -598,14 +610,7 @@ function realFacts(args, pre, squashBodyText) {
       return { home: process.env.HOME, user: process.env.USER, emails }
     }),
     user,
-    issue: (n) => {
-      const r = spawn('gh', ['api', `repos/${args.repo}/issues/${n}`], top)
-      if (r.status === 0) { const i = JSON.parse(r.stdout); return { exists: true, state: i.state, title: i.title } }
-      let status
-      try { status = JSON.parse(r.stdout).status } catch { /* not the JSON of an API error */ }
-      if (String(status) === '404') return { exists: false }
-      throw new Error(`gh api repos/${args.repo}/issues/${n} exited ${r.status}: ${lastLine(r.stderr)}`)
-    },
+    issue: (n) => issueAnswer(spawn('gh', ['api', `repos/${args.repo}/issues/${n}`], top), `gh api repos/${args.repo}/issues/${n}`),
     ciRuns: memo(() => json('gh', ['run', 'list', '-R', args.repo, '--commit', args.head, '--json', 'databaseId,event,status,conclusion,workflowName,createdAt,headSha', '-L', '100'], top)),
     runView: (id) => json('gh', ['run', 'view', String(id), '-R', args.repo, '--json', 'headSha,status,conclusion,jobs'], top),
     jobLog: (id) => out('gh', ['api', `repos/${args.repo}/actions/jobs/${id}/logs`, '--allow-escape-sequences'], top),
@@ -647,6 +652,15 @@ function realFacts(args, pre, squashBodyText) {
 }
 
 export async function main(argv) {
+  // From the start, so that no signal ends the process without an exit code (merge-check::REQ-002/AC-04)
+  let facts
+  const onSignal = (signal) => {
+    const left = facts ? facts.cleanup().left : []
+    process.stderr.write(`merge-check: stopped by ${signal}${left.length ? `; could not remove: ${left.join('; ')}` : ''}\n`)
+    process.exit(2)
+  }
+  process.on('SIGINT', onSignal)
+  process.on('SIGTERM', onSignal)
   let args
   let squashBodyText
   try {
@@ -668,14 +682,7 @@ export async function main(argv) {
     process.stderr.write(`merge-check: ${e.message}\nNo check ran.\n`)
     return 2
   }
-  const facts = realFacts(args, pre, squashBodyText)
-  const onSignal = (signal) => {
-    const { left } = facts.cleanup()
-    process.stderr.write(`merge-check: stopped by ${signal}${left.length ? `; could not remove: ${left.join('; ')}` : ''}\n`)
-    process.exit(2)
-  }
-  process.on('SIGINT', onSignal)
-  process.on('SIGTERM', onSignal)
+  facts = realFacts(args, pre, squashBodyText)
   let results
   try {
     results = await runChecks(args.mode, facts, {

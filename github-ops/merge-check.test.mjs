@@ -8,8 +8,8 @@
 // Gap: a ref of the run's own name that exists before the fetch (merge-check::CON-002/AC-01) is not driven, because
 // the name holds the process id, which the test cannot know before the run starts.
 // Gap: merge-check::REQ-017 is what the merging agent does, written in github-ops/merge-check.md; no test reads that
-// document. merge-check::CON-003 holds no rule of the script; the privacy check of this skill's own merge runs over
-// the script, its tests and its documents, and that run, not a test, is its guard.
+// document. merge-check::CON-003 has no test and no check: the privacy check of a merge finds only the values of the
+// environment that runs it, so another person's account name, address or home path in these files passes it.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
@@ -17,7 +17,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'n
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { scratchRepos, write } from '../scripts/test-support/scratch-repos.mjs'
-import { CHECKS, UsageError, exitCode, listLines, parseArgs, render, runChecks } from './merge-check.mjs'
+import { CHECKS, UsageError, exitCode, issueAnswer, listLines, parseArgs, render, runChecks } from './merge-check.mjs'
 
 const HEAD = 'a'.repeat(40)
 
@@ -55,6 +55,8 @@ for (const [what, argv, message] of [
   ['an unknown argument', [...BEFORE, '--merge'], /unknown argument --merge/],
   ['a short --head', ['after', '--repo', 'example-org/demo', '--pr', '7', '--head', 'abc1234'], /--head must be 40 hexadecimal digits/],
   ['a --pr that is not a number', ['after', '--repo', 'example-org/demo', '--pr', 'x7', '--head', HEAD], /--pr must be a pull request number/],
+  ['a --pr of 0', ['after', '--repo', 'example-org/demo', '--pr', '0', '--head', HEAD], /--pr must be a pull request number/],
+  ['a --repo that is not owner/repo', ['after', '--repo', 'demo', '--pr', '7', '--head', HEAD], /--repo must be <owner>\/<repo>/],
   ['an invalid --forbid', [...BEFORE, '--forbid', '('], /--forbid "\(" is not a valid regular expression/],
   ['an invalid --ignore-job', [...BEFORE, '--ignore-job', '['], /--ignore-job "\[" is not a valid regular expression/],
   ['--squash-body in after', ['after', '--repo', 'example-org/demo', '--pr', '7', '--head', HEAD, '--squash-body', 'f'], /--squash-body is only for before/],
@@ -310,11 +312,6 @@ test('closing-keywords accepts Closes lines of the body and squash body, surroun
   assert.equal(r.status('closing-keywords'), 'PASS', r.out)
 })
 
-test('closing-keywords reads the landed message after the merge', async () => {
-  const r = await check('after', merged({ landedMessage: () => 'Add it (#7)\n\nfixes #12\nCloses #12' }))
-  assert.match(r.out, /^FAIL closing-keywords: .*\n {4}message:3: fixes #12$/m)
-})
-
 // merge-check::REQ-007
 for (const [what, over, line] of [
   ['an issue GitHub will close that no Closes line names', withPr({ body: 'Adds it.', closingIssuesReferences: [ref(12)] }), /closingIssuesReferences: #12 is named by no Closes line of the body/],
@@ -341,6 +338,7 @@ test('closing-links fails on a landed Closes line GitHub did not link', async ()
 
 // merge-check::REQ-005/AC-01, REQ-016/AC-05: the landed message after the merge, and commit messages before it
 for (const [id, text, over] of [
+  ['closing-keywords', 'fixes #12', {}],
   ['privacy', 'Moved from /srv/mc-home/x', {}],
   ['attribution', 'Co-Authored-By: a tool', {}],
   ['forbidden-words', 'A secret step', { forbid: parsed('--forbid', 'secret').forbid }],
@@ -360,7 +358,8 @@ for (const [id, text, over] of [['privacy', 'Moved from /srv/mc-home/x', {}], ['
 
 test('the checks of the messages leave added lines and paths alone, and closing-links the title and commit messages', async () => {
   const text = 'Fixes #404, Closes #13, Co-Authored-By: a tool'
-  const diff = () => ({ files: [{ status: 'A', path: 'notes/Closes #13 Generated with x.md', binary: false }], added: [{ path: 'notes/a.md', line: 1, text }] })
+  const files = [{ status: 'A', path: 'notes/Generated with x.md', binary: false }, { status: 'A', path: 'Closes #13', binary: false }]
+  const diff = () => ({ files, added: [{ path: 'notes/a.md', line: 1, text }, { path: 'notes/a.md', line: 2, text: 'Closes #13' }] })
   const r = await check('before', facts({ diff }))
   for (const id of ['closing-keywords', 'closing-links', 'attribution', 'bare-refs']) assert.equal(r.status(id), 'PASS', `${id}\n${r.out}`)
   const titled = await check('before', facts({ ...withPr({ title: 'Closes #13' }), commits: () => [{ sha: COMMIT, authorEmail: NOREPLY, committerEmail: NOREPLY, message: 'Add it\n\nCloses #13' }] }))
@@ -425,6 +424,14 @@ test('forbidden-words reads added lines and paths, and skips without --forbid', 
   assert.match(r.out, /^ {4}path docs\/Intern-plan\.md: --forbid intern\(al\)\?: docs\/Intern-plan\.md$/m)
   const none = await check('before', facts())
   assert.match(none.out, /^SKIP forbidden-words: no --forbid given$/m)
+})
+
+// merge-check::REQ-011: the shape of gh's answers (a 404 prints the error JSON on stdout and exits 1)
+test('an issue lookup reads exit 0 as the issue, a 404 as none, and any other failure as an error', () => {
+  assert.deepEqual(issueAnswer({ status: 0, stdout: JSON.stringify({ number: 7, state: 'closed', title: 'Add it', pull_request: {} }), stderr: '' }, 'call'), { exists: true, state: 'closed', title: 'Add it' })
+  assert.deepEqual(issueAnswer({ status: 1, stdout: '{"message":"Not Found","documentation_url":"https://docs.github.com/rest/issues/issues#get-an-issue","status":"404"}', stderr: 'gh: Not Found (HTTP 404)\n' }, 'call'), { exists: false })
+  assert.throws(() => issueAnswer({ status: 1, stdout: '{"message":"Server Error","status":"502"}', stderr: 'gh: HTTP 502\n' }, 'gh api x'), /^Error: gh api x exited 1: gh: HTTP 502$/)
+  assert.throws(() => issueAnswer({ status: 1, stdout: '', stderr: 'error connecting to api.github.com\n' }, 'gh api x'), /exited 1: error connecting to api\.github\.com$/)
 })
 
 // merge-check::REQ-011
@@ -541,6 +548,8 @@ test('lists changed files, rules files at any depth, binary files and the docume
     assert.ok(r.out.includes(`\n    ${line}\n`), `${line}\n${r.out}`)
   }
   assert.equal(exitCode(r.results), 0, 'the review block leaves the exit code alone')
+  const code = await check('before', facts({ diff: () => ({ files, added: [] }), runScript: (n) => ({ code: 1, out: '' }) }))
+  assert.match(code.out, /^ {4}documents-only: not documents only: executable change \(change-scope\.mjs exit 1\)$/m)
 })
 
 // merge-check::REQ-016
@@ -614,6 +623,8 @@ function project({ base = { 'capabilities.toml': CAPABILITIES, '.github/workflow
   git(checkout, 'checkout', '-q', main)
   const home = join(root, 'home')
   mkdirSync(home)
+  // What a fetch of the user's own left behind
+  writeFileSync(join(checkout, '.git', 'FETCH_HEAD'), `${tip}\t\tbranch 'topic' of elsewhere\n`)
   return { root, origin, checkout, home, tip, head, main }
 }
 
@@ -647,7 +658,8 @@ function cli(p, args, { gh = answers(p), env = {}, squash = 'Writes the area spe
   writeFileSync(join(p.root, 'squash.txt'), squash)
   const fullArgs = args[0] === 'before' ? [...args, '--squash-body', join(p.root, 'squash.txt')] : args
   const fetched = `refs/remotes/origin/${p.main}`
-  const refs = () => [git(p.origin, 'for-each-ref'), git(p.checkout, 'for-each-ref').split('\n').filter((l) => !l.endsWith(`\t${fetched}`)).join('\n')]
+  const fetchHead = join(p.checkout, '.git', 'FETCH_HEAD')
+  const refs = () => [git(p.origin, 'for-each-ref'), git(p.checkout, 'for-each-ref').split('\n').filter((l) => !l.endsWith(`\t${fetched}`)).join('\n'), existsSync(fetchHead) ? readFileSync(fetchHead, 'utf8') : null]
   const before = refs()
   const r = spawnSync(process.execPath, [SCRIPT, ...fullArgs], {
     cwd,
@@ -656,10 +668,10 @@ function cli(p, args, { gh = answers(p), env = {}, squash = 'Writes the area spe
   })
   const calls = readFileSync(log, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l).join(' '))
   // merge-check::CON-001: every gh call only reads, and no ref of origin changes; CON-002/AC-01: nor any ref of the
-  // checkout but the fetched default branch, the run's own ref removed again
+  // checkout but the fetched default branch, the run's own ref removed again, nor its FETCH_HEAD
   for (const call of calls) assert.ok(READ_ONLY.some((re) => re.test(call)), `not a read-only gh call: ${call}`)
-  assert.deepEqual(refs(), before, 'the refs of origin and the checkout, the fetched default branch aside')
-  return { code: r.status, out: r.stdout, err: r.stderr, calls }
+  assert.deepEqual(refs(), before, 'the refs of origin and the checkout, the fetched default branch aside, and FETCH_HEAD')
+  return { code: r.status, signal: r.signal, out: r.stdout, err: r.stderr, calls }
 }
 const beforeArgs = (p, head = p.head) => ['before', '--repo', 'example-org/demo', '--pr', '7', '--head', head]
 const worktreeOf = (p) => join(p.home, 'worktrees', 'checkout', 'pr7-merge-check')
@@ -736,6 +748,22 @@ test('a run that SIGTERM ends exits 2 and removes the ref it made', () => {
   assert.match(r.err, /^merge-check: stopped by SIGTERM$/m)
   assert.ok(r.calls.some((c) => c.startsWith('api repos/example-org/demo/issues/12')), 'the signal came after the fetch')
   assertCleanedUp(p)
+})
+
+// merge-check::REQ-002/AC-04: a signal before any check runs does not end the process by the signal
+test('a SIGTERM during the first gh call leaves the run its exit code and removes what it made', () => {
+  const p = project()
+  const r = cli(p, beforeArgs(p), { gh: answers(p).map((a) => (a.match.startsWith('^repo view ') ? { ...a, signalParent: 'SIGTERM' } : a)) })
+  assert.ok(r.code === 0 || r.code === 2, `exit ${r.code}, signal ${r.signal}\n${r.out}${r.err}`)
+  assertCleanedUp(p)
+})
+
+// merge-check::REQ-002/AC-04: an error no check catches
+test('the script failing outside every check exits 2', () => {
+  const p = project()
+  const r = cli(p, beforeArgs(p), { gh: answers(p, [{ match: '^repo view ', stdout: 'null' }]) })
+  assert.equal(r.code, 2, r.out + r.err)
+  assert.match(r.err, /^merge-check: TypeError: /m)
 })
 
 // merge-check::REQ-004/AC-01, REQ-003/AC-05
@@ -831,16 +859,13 @@ test('takes the top level of the repository of the current directory, and the de
   assert.equal(nowhere.out, '')
 })
 
-// merge-check::REQ-011: gh's 404 is a reference to nothing, any other failure no verdict
-test('bare-refs fails on a reference gh answers 404 for, and errs when gh fails otherwise', () => {
+// merge-check::REQ-011: the issue lookup's answer reaches bare-refs
+test('bare-refs fails on a reference gh answers 404 for', () => {
   const p = project()
   const body = (n) => [{ match: '^pr view 7 ', stdout: prJson(p, { body: `Writes the area spec.\nSee #${n}.\n\nCloses #12\n` }) }]
   const missing = cli(p, beforeArgs(p), { gh: answers(p, body(99)) })
   assert.equal(missing.code, 1, missing.out + missing.err)
   assert.match(missing.out, /^FAIL bare-refs: .*\n {4}body:2: #99 does not exist in example-org\/demo: See #99\.$/m)
-  const failing = cli(p, beforeArgs(p), { gh: answers(p, [...body(98), { match: '^api repos/example-org/demo/issues/98$', code: 1, stderr: 'gh: HTTP 502: Bad Gateway\n' }]) })
-  assert.equal(failing.code, 2, failing.out + failing.err)
-  assert.match(failing.out, /^ERROR bare-refs: gh api repos\/example-org\/demo\/issues\/98 exited 1: gh: HTTP 502: Bad Gateway$/m)
 })
 
 // merge-check::REQ-001/AC-01, AC-04
