@@ -222,18 +222,20 @@ test('retargeting a link in the selector entry path keeps independent commands',
 })
 
 test('a case alias in the selector directory preserves gate ownership', t => {
+  const other = 'tools/vendor/typescript/typescrıpt.cjs'
   const r = repo({
-    'local-test-inputs.json': JSON.stringify([['gate', ['tools/CHANGE-SCOPE.MJS', 'tools/other.mjs']], ['app', ['app.js']]]),
+    'local-test-inputs.json': JSON.stringify([['gate', ['tools/CHANGE-SCOPE.MJS', other]], ['app', ['app.js']]]),
     'tools/local-route.mjs': readFileSync(SCRIPT, 'utf8'),
     'tools/inert-path.mjs': readFileSync(join(HERE, 'inert-path.mjs'), 'utf8'),
-    'tools/CHANGE-SCOPE.MJS': 'export default 1', 'tools/other.mjs': 'export default 0'
+    'tools/CHANGE-SCOPE.MJS': 'export default 1', [other]: 'export default 0'
   })
   const script = join(r.dir, 'TOOLS/local-route.mjs')
   if (!existsSync(script)) return t.skip('requires a case-insensitive directory')
-  const base = commit(r, { 'tools/other.mjs': null })
+  const compilerWasReachable = existsSync(join(r.dir, 'tools/vendor/typescript/typescript.cjs'))
+  const base = commit(r, { [other]: null })
   const query = from => route(r, ['--local-inputs', '--base', from, '--command', 'app'], { script })
   const unrelated = query(r.base)
-  assert.equal(unrelated.code, 0, unrelated.out + unrelated.err)
+  assert.equal(unrelated.code, compilerWasReachable ? 1 : 0, unrelated.out + unrelated.err)
   commit(r, { 'tools/CHANGE-SCOPE.MJS': 'export default 2' })
   function assertSelected() {
     const out = query(base)

@@ -25,7 +25,7 @@
 // Tests: local-route.test.mjs next to this file for its rules, delivery-flow.test.mjs for its command line; each
 // header says how to run it.
 import { spawnSync } from 'node:child_process'
-import { lstatSync, mkdtempSync, readFileSync, readlinkSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import nativePath, { join, posix, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -103,11 +103,23 @@ export function readInputs(text, pathSyntax = nativePath) {
   return declarations
 }
 
+function deletedAlias(parent, removed, expected) {
+  if (removed === expected) return true
+  if (removed.normalize('NFD').toUpperCase() !== expected.normalize('NFD').toUpperCase()) return false
+  const probe = mkdtempSync(join(tmpdir(), 'local-route-name-'))
+  try {
+    if (lstatSync(probe).dev !== lstatSync(parent).dev) throw new Error('cannot compare deleted filename aliases on the checkout filesystem')
+    mkdirSync(join(probe, removed), { recursive: true })
+    return lstatSync(join(probe, expected), { throwIfNoEntry: false }) !== undefined
+  } finally {
+    rmSync(probe, { recursive: true, force: true })
+  }
+}
+
 function selectorPaths(root, entry, present, deleted) {
   const paths = new Set()
   const componentsOnDisk = new Set()
   const missing = new Set()
-  const folded = path => path.normalize('NFC').toUpperCase()
   function trace(absolute) {
     let current = nativePath.parse(absolute).root
     const parts = absolute.slice(current.length).split(sep)
@@ -116,7 +128,8 @@ function selectorPaths(root, entry, present, deleted) {
       current = join(current, parts.shift())
       const stat = lstatSync(current, { throwIfNoEntry: false, bigint: true })
       if (!stat) {
-        missing.add(folded(relative(root, current).split(sep).join('/')))
+        const name = relative(root, current).split(sep).join('/')
+        if (!posix.isAbsolute(name) && name !== '..' && !name.startsWith('../') && !nativePath.isAbsolute(name)) missing.add(name)
         continue
       }
       componentsOnDisk.add(`${stat.dev}:${stat.ino}`)
@@ -147,7 +160,7 @@ function selectorPaths(root, entry, present, deleted) {
     while (!lstatSync(parent, { throwIfNoEntry: false })?.isDirectory()) parent = nativePath.dirname(parent)
     const canonical = join(realpathSync.native(parent), relative(parent, join(root, path)))
     const name = relative(root, canonical).split(sep).join('/')
-    if (missing.has(folded(name)) || [...paths].some(file => file === name || file.startsWith(`${name}/`))) paths.add(path)
+    if ([...paths].some(file => file === name || file.startsWith(`${name}/`)) || [...missing].some(file => deletedAlias(parent, name, file))) paths.add(path)
   }
   return paths
 }
