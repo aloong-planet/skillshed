@@ -10,8 +10,7 @@
 // It only reads: it never merges, never deletes a branch and never writes to GitHub. The local state it makes, a ref
 // refs/merge-check/pr<N>-<pid> and in before a worktree under $HOME/worktrees/, it removes on every way it ends.
 //
-// Exit codes: 0 every check PASS or SKIP; 1 a check FAIL or BLOCKED; 2 a check ERROR, or the run stopped before any
-// check (a usage error, a checkout of another repository, a ref or worktree path left by an earlier run).
+// Exit codes: see merge-check::REQ-002/AC-04 in docs/specs/merge-check.md.
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, realpathSync, rmdirSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
@@ -97,7 +96,7 @@ export const CHECKS = [
   { id: 'forbidden-words', kind: 'check', modes: ['before', 'after'], needs: { before: HEAD_NEEDS, after: ['pr-merged'] }, rule: 'no --forbid match in the texts' },
   { id: 'bare-refs', kind: 'check', modes: ['before', 'after'], needs: { before: HEAD_NEEDS, after: ['pr-merged'] }, rule: 'every bare #N in the texts is an issue or pull request of --repo' },
   { id: 'commit-identity', kind: 'check', modes: ['before'], needs: both(HEAD_NEEDS), rule: 'every commit of the branch is authored and committed with the expected noreply address' },
-  { id: 'ci', kind: 'check', modes: ['before'], needs: both(HEAD_NEEDS), rule: "require the complete list of pull_request runs on the head (ERROR if incomplete). With no runs, skip if the head has no workflow files and fail otherwise. For the latest run of each workflow, require a successful completed run unless a job is ignored; require every non-ignored job to have completed successfully or been skipped, with at least one current-tip merge line across their logs and no other merge target" },
+  { id: 'ci', kind: 'check', modes: ['before'], needs: both(HEAD_NEEDS), rule: "require the complete list of pull_request runs on the head (ERROR if incomplete). With no runs, skip if the head has no file anywhere under .github/workflows/ and fail otherwise. For the latest run of each workflow, require a successful completed run unless a job is ignored; require every non-ignored job to have completed successfully or been skipped, with at least one merge line across their logs and every merge line merging the reviewed head into the current default-branch tip" },
   { id: 'spec-check', kind: 'check', modes: ['before'], needs: both(HEAD_NEEDS), rule: 'check-spec.mjs exits 0 when the diff changes docs/specs/' },
   { id: 'adr-check', kind: 'check', modes: ['before'], needs: both(HEAD_NEEDS), rule: 'check-adr.mjs exits 0 when docs/adr/ exists at the head and the diff changes docs/specs/ or docs/adr/' },
   { id: 'action-pins', kind: 'check', modes: ['before'], needs: both(HEAD_NEEDS), rule: 'check-action-pins.mjs exits 0 when the diff changes .github/workflows/ and the head has a *.yml or *.yaml directly in it' },

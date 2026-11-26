@@ -85,6 +85,8 @@ for (const [statuses, code] of [
 test('a report changes the exit code only when it errs', () => {
   assert.equal(exitCode([{ id: 'c', kind: 'check', status: 'PASS' }, { id: 'r', kind: 'report', status: 'REPORT' }]), 0)
   assert.equal(exitCode([{ id: 'c', kind: 'check', status: 'PASS' }, { id: 'r', kind: 'report', status: 'ERROR' }]), 2)
+  const counted = render([{ id: 'c', kind: 'check', status: 'PASS', evidence: [], review: [] }, { id: 'r', kind: 'report', status: 'ERROR', evidence: [], review: [] }])
+  assert.match(counted, /^Result: 1 PASS, 0 FAIL, 0 SKIP, 1 ERROR, 0 BLOCKED$/m)
 })
 
 // merge-check::REQ-001/AC-04, merge-check::REQ-003/AC-05
@@ -237,6 +239,9 @@ test('--list prints every check and report with its modes and dependencies', () 
   const lines = listLines()
   assert.equal(lines.length, CHECKS.length)
   assert.ok(lines.some((l) => l === 'pr-mergeable (check; before; needs before: pr-open): mergeable is MERGEABLE and mergeStateStatus CLEAN, or UNSTABLE where --ignore-job matched a job of the ci runs and at least one statusCheckRollup entry is not passing and all such entries are check runs matched by --ignore-job; read up to 5 times 3 s apart while UNKNOWN'), lines.join('\n'))
+  const ci = lines.find((line) => line.startsWith('ci (check;'))
+  assert.match(ci, /no file anywhere under \.github\/workflows\//)
+  assert.match(ci, /every merge line merging the reviewed head into the current default-branch tip/)
   assert.ok(lines.some((l) => l.startsWith('closing-keywords (check; before, after; needs before: pr-head, head-ref; after: pr-merged): ')))
 })
 
@@ -892,7 +897,7 @@ test('before skips action-pins on a head whose .github/workflows/ holds no workf
 
 // merge-check::REQ-014/AC-03: git quotes a path that is not ASCII unless told not to
 test('before runs action-pins on a workflow file whose name is not ASCII', () => {
-  const p = project({ base: { 'capabilities.toml': CAPABILITIES, 'README.md': '# Demo\n' }, branch: { '.github/workflows/构建.yml': WORKFLOW } })
+  const p = project({ base: { 'capabilities.toml': CAPABILITIES, 'README.md': '# Demo\n' }, branch: { '.github/workflows/构建.yml': WORKFLOW, '.github/workflows/templates.yml/nested.yml': 'uses: demo/placeholder@main' } })
   const r = cli(p, beforeArgs(p))
   assert.equal(r.code, 0, r.out + r.err)
   assert.match(r.out, /^PASS action-pins: check-action-pins\.mjs exited 0$/m)
@@ -1134,6 +1139,10 @@ test('takes the top level of the repository of the current directory, and the de
   assert.equal(nowhere.code, 2, nowhere.out + nowhere.err)
   assert.match(nowhere.err, /is in no git repository/)
   assert.equal(nowhere.out, '')
+  const noHome = cli(p, beforeArgs(p), { env: { HOME: '' } })
+  assert.equal(noHome.code, 2, noHome.err)
+  assert.equal(noHome.out, '')
+  assert.match(noHome.err, /no place for the worktree/)
 })
 
 // merge-check::REQ-011: the issue lookup's answer reaches bare-refs

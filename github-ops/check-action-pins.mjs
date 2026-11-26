@@ -30,7 +30,7 @@ const dir = '.github/workflows'
 
 let files
 try {
-  files = readdirSync(dir).filter((f) => /\.ya?ml$/.test(f)).sort()
+  files = readdirSync(dir, { withFileTypes: true }).filter((entry) => !entry.isDirectory() && /\.ya?ml$/.test(entry.name)).map((entry) => entry.name).sort()
 } catch (e) {
   console.error(`Cannot read the workflows directory "${dir}": ${e.code ?? e.message}`)
   process.exit(2)
