@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-// Whether a test command the CI workflow does not carry runs before a delivery, for the run rules in
-// implement/full-verification-gate.md: the project's CI routing is run once on the change from the fork point to
-// HEAD, and the command runs unless the routing declares it under a scope that the change does not select.
+// Decide whether a full local test command runs for a clean delivery commit (implement/full-verification-gate.md).
+// Without CI path routing, use tracked command/input pairs from the repository root:
+//   node local-route.mjs --local-inputs --base <fork point> --command <command>
+// Skip a declared command only when its inputs and the selection machinery are unchanged and all unowned changes are inert.
 //
-// Usage, from anywhere inside the repository, on a checkout with nothing uncommitted:
+// With CI routing, run from anywhere inside the clean checkout:
 //   node local-route.mjs --base <fork point> --router <path> --command <command>
 // <path> is the routing script, from the repository root, and must be a file tracked there; <command> is passed to
 // the routing as given, and the routing compares it with its declarations.
@@ -24,33 +25,36 @@
 // Tests: local-route.test.mjs next to this file for its rules, delivery-flow.test.mjs for its command line; each
 // header says how to run it.
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { lstatSync, mkdtempSync, readFileSync, readlinkSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, relative, resolve } from 'node:path'
+import nativePath, { join, posix, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { isInert } from './inert-path.mjs'
 
 const ROUTING_TIMEOUT_MS = 120_000
 
 class Usage extends Error {}
 
 function git(args, cwd) {
-  const r = spawnSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 1 << 30 })
+  const r = spawnSync('git', args, { cwd, maxBuffer: 1 << 30 })
   if (r.error) throw r.error
-  if (r.status !== 0) throw new Error(`git ${args.join(' ')} exited ${r.status}: ${r.stderr.trim()}`)
-  return r.stdout
+  if (r.status !== 0) throw new Error(`git ${args.join(' ')} exited ${r.status}: ${r.stderr.toString().trim()}`)
+  return new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(r.stdout)
 }
 
-/** The arguments as { base, router, command }; throws a usage error unless each flag is given once with a value. */
+/** Parse an explicit routing mode and its required arguments. */
 export function parseArgs(argv) {
-  const flags = { '--base': null, '--router': null, '--command': null }
-  for (let i = 0; i < argv.length; i += 2) {
+  const local = argv[0] === '--local-inputs'
+  const flags = local ? { '--base': null, '--command': null } : { '--base': null, '--router': null, '--command': null }
+  const usage = local ? 'expected "--local-inputs --base <fork point> --command <command>"' : 'expected "--base <fork point> --router <path> --command <command>", each once'
+  for (let i = local ? 1 : 0; i < argv.length; i += 2) {
     const [flag, value] = [argv[i], argv[i + 1]]
     if (!Object.hasOwn(flags, flag) || flags[flag] !== null || value === undefined || value === '') {
-      throw new Usage('expected "--base <fork point> --router <path> --command <command>", each once')
+      throw new Usage(usage)
     }
     flags[flag] = value
   }
-  if (Object.values(flags).includes(null)) throw new Usage('expected "--base <fork point> --router <path> --command <command>", each once')
+  if (Object.values(flags).includes(null)) throw new Usage(usage)
   return { base: flags['--base'], router: flags['--router'], command: flags['--command'] }
 }
 
@@ -80,10 +84,97 @@ export function decision({ scopes, declared }) {
   return declared === null || scopes.get(declared) ? 1 : 0
 }
 
+const MANIFEST = 'local-test-inputs.json'
+
+export function readInputs(text, pathSyntax = nativePath) {
+  const rows = JSON.parse(text)
+  if (!Array.isArray(rows)) throw new Error(`${MANIFEST} must contain an array of command/input pairs`)
+  const declarations = new Map()
+  for (const row of rows) {
+    if (!Array.isArray(row) || row.length !== 2) throw new Error(`invalid pair in ${MANIFEST}`)
+    const [command, inputs] = row
+    if (typeof command !== 'string' || !command.trim() || declarations.has(command)) throw new Error(`invalid or duplicate command in ${MANIFEST}`)
+    if (!Array.isArray(inputs) || !inputs.length || new Set(inputs).size !== inputs.length || inputs.some(path =>
+      typeof path !== 'string' || path.includes('\0') || pathSyntax.parse(path).root !== '' ||
+      (pathSyntax.sep !== '/' && path.includes(pathSyntax.sep)) || path.split('/').some(part => ['', '.', '..'].includes(part))
+    )) throw new Error(`invalid or duplicate input for ${JSON.stringify(command)} in ${MANIFEST}`)
+    declarations.set(command, inputs)
+  }
+  return declarations
+}
+
+function selectorPaths(root, entry, present, deleted) {
+  const paths = new Set()
+  const componentsOnDisk = new Set()
+  const missing = new Set()
+  const folded = path => path.normalize('NFD').toUpperCase()
+  function trace(absolute) {
+    let current = nativePath.parse(absolute).root
+    const parts = absolute.slice(current.length).split(sep)
+    let links = 0
+    while (parts.length) {
+      current = join(current, parts.shift())
+      const stat = lstatSync(current, { throwIfNoEntry: false, bigint: true })
+      if (!stat) {
+        const name = relative(root, current).split(sep).join('/')
+        missing.add(folded(name))
+        continue
+      }
+      componentsOnDisk.add(`${stat.dev}:${stat.ino}`)
+      if (!stat.isSymbolicLink()) {
+        current = realpathSync.native(current)
+        continue
+      }
+      paths.add(relative(root, current).split(sep).join('/'))
+      if (++links > 64) throw new Error(`too many symbolic links in ${absolute}`)
+      const target = readlinkSync(current)
+      const targetRoot = nativePath.parse(target).root
+      current = targetRoot || nativePath.dirname(current)
+      parts.unshift(...target.slice(targetRoot.length).split(sep))
+    }
+    paths.add(relative(root, current).split(sep).join('/'))
+    return current
+  }
+  const dir = nativePath.dirname(trace(entry))
+  trace(join(dir, 'inert-path.mjs'))
+  const gateDir = nativePath.dirname(trace(join(dir, 'change-scope.mjs')))
+  for (const file of ['inert-path.mjs', 'vendor/typescript/typescript.cjs']) trace(join(gateDir, file))
+  for (const path of present) {
+    const stat = lstatSync(join(root, path), { throwIfNoEntry: false, bigint: true })
+    if (stat && componentsOnDisk.has(`${stat.dev}:${stat.ino}`)) paths.add(path)
+  }
+  for (const path of deleted) {
+    let parent = nativePath.dirname(join(root, path))
+    while (!lstatSync(parent, { throwIfNoEntry: false })?.isDirectory()) parent = nativePath.dirname(parent)
+    const canonical = join(realpathSync.native(parent), relative(parent, join(root, path)))
+    const name = relative(root, canonical).split(sep).join('/')
+    if ([...paths].some(file => file === name || file.startsWith(`${name}/`))) paths.add(path)
+    else if (missing.has(folded(name))) throw new Error(`cannot rule out a deleted selection file at ${JSON.stringify(path)}`)
+  }
+  return paths
+}
+
+const selectorDependencies = ['change-scope.mjs', 'inert-path.mjs', 'vendor/typescript/typescript.cjs']
+
+export function localRunReason(declarations, changed, command, scriptPath, resolvedPaths = [], changedContainers = new Set()) {
+  const inputs = declarations.get(command)
+  if (!inputs) return 'the command has no declaration'
+  const skillDir = posix.dirname(scriptPath)
+  const machinery = [MANIFEST, scriptPath, ...selectorDependencies.map(file => posix.join(skillDir, file)), ...resolvedPaths]
+  const owned = new Set([...declarations.values()].flat())
+  for (const path of changed) {
+    if (machinery.some(file => file === path || file.startsWith(`${path}/`))) return `selection changed at ${JSON.stringify(path)}`
+    if (!owned.has(path) && !isInert(path)) return `no command owns ${JSON.stringify(path)}`
+    if (inputs.includes(path) || (changedContainers.has(path) && inputs.some(input => input.startsWith(`${path}/`)))) return `input changed at ${JSON.stringify(path)}`
+  }
+  return null
+}
+
 function main(argv) {
   const { base, router, command } = parseArgs(argv)
   const root = realpathSync(git(['rev-parse', '--show-toplevel']).trim())
-  const dirty = git(['status', '--porcelain', '--untracked-files=all'], root)
+  const status = ['status', '--porcelain', '--untracked-files=all', '--ignore-submodules=none']
+  const dirty = git(status, root) || git(['submodule', '--quiet', 'foreach', '--recursive', `git ${status.join(' ')}`], root)
   if (dirty !== '') throw new Error(`the checkout has uncommitted changes, so HEAD is not what is delivered:\n${dirty.trimEnd()}`)
   let baseSha
   try {
@@ -92,6 +183,43 @@ function main(argv) {
     throw new Error(`the fork point ${JSON.stringify(base)} is not a commit`)
   }
   const head = git(['rev-parse', '--verify', 'HEAD^{commit}'], root).trim()
+  if (router === undefined) {
+    git(['merge-base', '--is-ancestor', baseSha, head], root)
+    if (!/^100(?:644|755) blob /.test(git(['ls-tree', head, '--', MANIFEST], root))) throw new Error(`${MANIFEST} is not a regular tracked file`)
+    const declarations = readInputs(git(['show', `${head}:${MANIFEST}`], root))
+    const entries = git(['ls-tree', '-rdz', head], root).split('\0')
+    const directories = new Set(entries.filter(entry => entry.startsWith('040000 tree ')).map(entry => entry.slice(entry.indexOf('\t') + 1)))
+    for (const inputs of declarations.values()) {
+      for (const input of inputs) {
+        const absolute = join(root, input)
+        if (!directories.has(input)) {
+          try {
+            if (!lstatSync(absolute, { throwIfNoEntry: false })?.isDirectory()) continue
+          } catch (error) {
+            if (error.code === 'ENOTDIR') continue
+            throw error
+          }
+          const entry = git(['--literal-pathspecs', 'ls-tree', 'HEAD', '--', nativePath.basename(absolute)], nativePath.dirname(absolute))
+          if (entry.startsWith('160000 commit ')) continue
+        }
+        throw new Error(`${MANIFEST} names a directory as an input: ${JSON.stringify(input)}`)
+      }
+    }
+    const diff = git(['diff', '--raw', '--no-renames', '--ignore-submodules=none', '-z', baseSha, head, '--'], root).split('\0').slice(0, -1)
+    const changed = [], present = [], deleted = [], containers = new Set()
+    for (let i = 0; i < diff.length; i += 2) {
+      const [before, after] = diff[i].slice(1).split(' ')
+      const path = diff[i + 1]
+      changed.push(path)
+      if (after === '000000') deleted.push(path)
+      else present.push(path)
+      if ([before, after].some(mode => mode === '120000' || mode === '160000')) containers.add(path)
+    }
+    const scriptPath = relative(root, realpathSync(fileURLToPath(import.meta.url))).split(sep).join('/')
+    const reason = localRunReason(declarations, changed, command, scriptPath, selectorPaths(root, process.argv[1], present, deleted), containers)
+    console.log(`local-route: ${MANIFEST}, ${JSON.stringify(command)}: ${reason ?? 'no input changed'}; ${reason === null ? 'it does not run' : 'it runs'}`)
+    return reason === null ? 0 : 1
+  }
   let script
   try {
     script = realpathSync(resolve(root, router))
