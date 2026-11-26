@@ -25,7 +25,7 @@
 // Tests: local-route.test.mjs next to this file for its rules, delivery-flow.test.mjs for its command line; each
 // header says how to run it.
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { lstatSync, mkdtempSync, readFileSync, readlinkSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import nativePath, { join, posix, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -103,16 +103,42 @@ export function readInputs(text, pathSyntax = nativePath) {
   return declarations
 }
 
-export function localRunReason(declarations, changed, command, scriptPath) {
+function selectorPaths(root, entry) {
+  const paths = new Set()
+  function trace(absolute) {
+    let current = nativePath.parse(absolute).root
+    const parts = absolute.slice(current.length).split(sep)
+    let links = 0
+    while (parts.length) {
+      current = join(current, parts.shift())
+      if (!lstatSync(current, { throwIfNoEntry: false })?.isSymbolicLink()) continue
+      paths.add(relative(root, current).split(sep).join('/'))
+      if (++links > 64) throw new Error(`too many symbolic links in ${absolute}`)
+      const target = readlinkSync(current)
+      const targetRoot = nativePath.parse(target).root
+      current = targetRoot || nativePath.dirname(current)
+      parts.unshift(...target.slice(targetRoot.length).split(sep))
+    }
+    paths.add(relative(root, current).split(sep).join('/'))
+    return current
+  }
+  const dir = nativePath.dirname(trace(entry))
+  for (const file of selectorDependencies) trace(join(dir, file))
+  return paths
+}
+
+const selectorDependencies = ['change-scope.mjs', 'inert-path.mjs', 'vendor/typescript/typescript.cjs']
+
+export function localRunReason(declarations, changed, command, scriptPath, resolvedPaths = []) {
   const inputs = declarations.get(command)
   if (!inputs) return 'the command has no declaration'
   const skillDir = posix.dirname(scriptPath)
-  const machinery = [MANIFEST, scriptPath, posix.join(skillDir, 'change-scope.mjs'), posix.join(skillDir, 'inert-path.mjs'), posix.join(skillDir, 'vendor/typescript/typescript.cjs')]
+  const machinery = [MANIFEST, scriptPath, ...selectorDependencies.map(file => posix.join(skillDir, file)), ...resolvedPaths]
   const owned = new Set([...declarations.values()].flat())
   for (const path of changed) {
     if (machinery.some(file => file === path || file.startsWith(`${path}/`))) return `selection changed at ${JSON.stringify(path)}`
     if (!owned.has(path) && !isInert(path)) return `no command owns ${JSON.stringify(path)}`
-    if (inputs.includes(path)) return `input changed at ${JSON.stringify(path)}`
+    if (inputs.some(input => input === path || input.startsWith(`${path}/`))) return `input changed at ${JSON.stringify(path)}`
   }
   return null
 }
@@ -134,9 +160,16 @@ function main(argv) {
     git(['merge-base', '--is-ancestor', baseSha, head], root)
     if (!/^100(?:644|755) blob /.test(git(['ls-tree', head, '--', MANIFEST], root))) throw new Error(`${MANIFEST} is not a regular tracked file`)
     const declarations = readInputs(git(['show', `${head}:${MANIFEST}`], root))
+    const entries = git(['ls-tree', '-rdz', head], root).split('\0')
+    const directories = new Set(entries.filter(entry => entry.startsWith('040000 tree ')).map(entry => entry.slice(entry.indexOf('\t') + 1)))
+    for (const inputs of declarations.values()) {
+      for (const input of inputs) {
+        if (directories.has(input)) throw new Error(`${MANIFEST} names a directory as an input: ${JSON.stringify(input)}`)
+      }
+    }
     const changed = git(['diff', '--name-only', '--no-renames', '--ignore-submodules=none', '-z', baseSha, head, '--'], root).split('\0').slice(0, -1)
     const scriptPath = relative(root, realpathSync(fileURLToPath(import.meta.url))).split(sep).join('/')
-    const reason = localRunReason(declarations, changed, command, scriptPath)
+    const reason = localRunReason(declarations, changed, command, scriptPath, selectorPaths(root, process.argv[1]))
     console.log(`local-route: ${MANIFEST}, ${JSON.stringify(command)}: ${reason ?? 'no input changed'}; ${reason === null ? 'it does not run' : 'it runs'}`)
     return reason === null ? 0 : 1
   }

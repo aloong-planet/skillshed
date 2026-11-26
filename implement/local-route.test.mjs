@@ -33,12 +33,15 @@ test('Skillshed selects only consumers of each repository input across its seven
   const packaging = 'node --test electron-scaffold/assets/mac-packaging.test.cjs'
   const commands = [scope, route, pins, adr, spec, ci, packaging]
   for (const [path, runs] of [
+    ...commands.flatMap(command => command.slice('node --test '.length).split(' ').map(path => [path, [command]])),
+    ['domain-modeling/check-adr.mjs', [adr]],
+    ['to-spec/check-spec.mjs', [spec]],
+    ['github-ops/assets/ci-routing/ci-gate.mjs', [ci]],
     ['github-ops/check-action-pins.mjs', [pins]],
     ['scripts/test-support/scratch-repos.mjs', [route, adr, spec]],
     ['github-ops/assets/ci-routing/ci-scope.mjs', [route, ci]],
     ['github-ops/assets/ci-routing/routing.json', [ci]],
-    ['electron-scaffold/assets/mac-packaging.cjs', [packaging]],
-    ['electron-scaffold/assets/mac-packaging.test.cjs', [packaging]]
+    ['electron-scaffold/assets/mac-packaging.cjs', [packaging]]
   ]) {
     const selected = commands.filter(command => localRunReason(declarations, [path], command, 'implement/local-route.mjs') !== null)
     assert.deepEqual(selected, runs, path)

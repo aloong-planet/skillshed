@@ -96,6 +96,17 @@ test('only a tracked regular declaration and a usable fork point permit a skip',
   assert.equal(query(r.g('rev-parse', 'HEAD')).code, 2)
 })
 
+test('a tracked directory invalidates the declaration for every command', () => {
+  const r = repo({
+    'local-test-inputs.json': JSON.stringify([['directory', ['src']], ['unit', ['src/file.js']], ['app', ['app.js']]]),
+    'src/file.js': 'export default 1', 'app.js': 'app'
+  })
+  commit(r, { 'src/file.js': 'export default 2' })
+  const out = route(r, ['--local-inputs', '--base', r.base, '--command', 'app'])
+  assert.equal(out.code, 2, out.out + out.err)
+  assert.match(out.err, /directory.*"src"/)
+})
+
 function addSubmodule(parent, name, files) {
   const child = join(parent, name)
   git(parent, 'init', '-q', name)
@@ -130,6 +141,20 @@ test('a dirty submodule keeps the command even when the project hides its change
   }
 })
 
+test('upgrading a submodule selects consumers of files inside it', () => {
+  const declarations = [['pointer', ['child']], ['api', ['child/api.js']], ['app', ['app.js']]]
+  const r = repo({ 'local-test-inputs.json': JSON.stringify(declarations), 'app.js': 'app' })
+  const child = addSubmodule(r.dir, 'child', { 'api.js': 'export default 1' })
+  const base = r.g('rev-parse', 'HEAD')
+  write(child, { 'api.js': 'export default 2' })
+  git(child, 'commit', '-qam', 'change API')
+  r.g('commit', '-qam', 'upgrade submodule')
+  for (const [command, code] of [['pointer', 1], ['api', 1], ['app', 0]]) {
+    const out = route(r, ['--local-inputs', '--base', base, '--command', command])
+    assert.equal(out.code, code, out.out + out.err)
+  }
+})
+
 test('upgrading a selector installed as a submodule keeps independent commands', () => {
   const r = repo({ 'local-test-inputs.json': JSON.stringify([['tool test', ['tools']], ['app test', ['app.js']]]), 'app.js': 'app' })
   const tools = addSubmodule(r.dir, 'tools', {
@@ -145,6 +170,28 @@ test('upgrading a selector installed as a submodule keeps independent commands',
   const out = route(r, ['--local-inputs', '--base', base, '--command', 'app test'], { script: join(tools, 'local-route.mjs') })
   assert.equal(out.code, 1, out.out + out.err)
   assert.match(out.out, /selection changed at "tools"/)
+})
+
+test('retargeting a link in the selector entry path keeps independent commands', () => {
+  const r = repo({ 'local-test-inputs.json': JSON.stringify([['tools', ['active']], ['app', ['app.js']]]), 'app.js': 'app' })
+  for (const version of ['v1', 'v2']) {
+    write(r.dir, {
+      [`${version}/local-route.mjs`]: readFileSync(SCRIPT, 'utf8'),
+      [`${version}/inert-path.mjs`]: readFileSync(join(HERE, 'inert-path.mjs'), 'utf8')
+    })
+  }
+  symlinkSync('active', join(r.dir, 'current'), 'dir')
+  symlinkSync('v1', join(r.dir, 'active'), 'dir')
+  r.g('add', '-A')
+  r.g('commit', '-qm', 'install selector')
+  const base = r.g('rev-parse', 'HEAD')
+  r.g('rm', 'active')
+  symlinkSync('v2', join(r.dir, 'active'), 'dir')
+  r.g('add', 'active')
+  r.g('commit', '-qm', 'switch selector')
+  const out = route(r, ['--local-inputs', '--base', base, '--command', 'app'], { script: join(r.dir, 'current/local-route.mjs') })
+  assert.equal(out.code, 1, out.out + out.err)
+  assert.match(out.out, /selection changed at "active"/)
 })
 
 /** A fresh file path for PROBE_LOG, outside every repository */
