@@ -17,7 +17,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'n
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { scratchRepos, write } from '../scripts/test-support/scratch-repos.mjs'
-import { CHECKS, UsageError, exitCode, issueAnswer, listLines, parseArgs, render, runChecks } from './merge-check.mjs'
+import { CHECKS, UsageError, exitCode, issueAnswer, listLines, parseArgs, readWorkflowRuns, render, runChecks } from './merge-check.mjs'
 
 const HEAD = 'a'.repeat(40)
 
@@ -736,6 +736,31 @@ function project({ base = { 'capabilities.toml': CAPABILITIES, '.github/workflow
 
 const prJson = (p, over = {}) => JSON.stringify({ number: 7, title: 'Write the area spec', body: 'Writes the area spec.\n\nCloses #12\n', state: 'OPEN', headRefOid: p.head, baseRefName: p.main, mergeable: 'MERGEABLE', mergeStateStatus: 'CLEAN', closingIssuesReferences: [ref(12)], mergeCommit: null, ...over })
 
+const restRun = (head, id, workflow = 101) => ({ id, workflow_id: workflow, name: 'CI', event: 'pull_request', head_sha: head, created_at: '2026-01-02T02:59:55Z' })
+const runPage = (head, page) => `^api repos/example-org/demo/actions/runs\\?head_sha=${head}&event=pull_request&per_page=100&page=${page}$`
+const pageBody = (total, runs) => JSON.stringify({ total_count: total, workflow_runs: runs })
+
+const oneFullPage = (head) => Array.from({ length: 100 }, (_, i) => restRun(head, 1000 + i))
+
+// merge-check::REQ-013/AC-07
+for (const [problem, pages, reason] of [
+  ['missing total', [{ workflow_runs: [] }], /invalid total_count/],
+  ['missing run list', [{ total_count: 0 }], /invalid total_count or workflow_runs/],
+  ['search ceiling', [{ total_count: 1000, workflow_runs: oneFullPage(HEAD) }], /search limit of 1000/],
+  ['short final page', [{ total_count: 1, workflow_runs: [] }], /expected 1 runs, received 0/],
+  ['changing total', [{ total_count: 101, workflow_runs: oneFullPage(HEAD) }, { total_count: 100, workflow_runs: [] }], /page 2: total_count changed/],
+  ['repeated run across pages', [{ total_count: 101, workflow_runs: oneFullPage(HEAD) }, { total_count: 101, workflow_runs: [restRun(HEAD, 1000)] }], /page 2: repeated run 1000/],
+  ...[
+    ['different event', { event: 'push' }, /outside the requested event or head/],
+    ['different head', { head_sha: OTHER }, /outside the requested event or head/],
+    ['missing run id', { id: null }, /invalid run or workflow id/],
+    ['missing workflow id', { workflow_id: null }, /invalid run or workflow id/],
+    ['missing creation time', { created_at: null }, /invalid created_at/],
+  ].map(([problem, fields, reason]) => [problem, [{ total_count: 1, workflow_runs: [{ ...restRun(HEAD, 11), ...fields }] }], reason]),
+]) test(`the filtered run list rejects a ${problem}`, () => {
+  assert.throws(() => readWorkflowRuns(HEAD, (page) => pages[page - 1]), reason)
+})
+
 /** The stub's answers for a pull request `p` that passes every check; `first` answers before them */
 function answers(p, first = []) {
   return [
@@ -746,7 +771,7 @@ function answers(p, first = []) {
     { match: '^api repos/example-org/demo/issues/12$', stdout: JSON.stringify({ number: 12, state: 'open', title: 'Write the area' }) },
     { match: '^api repos/example-org/demo/issues/7$', stdout: JSON.stringify({ number: 7, state: 'closed', title: 'Write the area spec', pull_request: {} }) },
     { match: '^api repos/example-org/demo/issues/\\d+$', code: 1, stdout: '{"message":"Not Found","documentation_url":"https://docs.github.com/rest/issues/issues#get-an-issue","status":"404"}', stderr: 'gh: Not Found (HTTP 404)\n' },
-    { match: `^run list -R example-org/demo --commit ${p.head} `, stdout: JSON.stringify([{ conclusion: 'success', createdAt: '2026-01-02T03:00:00Z', databaseId: 11, event: 'pull_request', headSha: p.head, status: 'completed', workflowDatabaseId: 101, workflowName: 'CI' }]) },
+    { match: runPage(p.head, 1), stdout: pageBody(1, [restRun(p.head, 11)]) },
     { match: '^run view 11 -R example-org/demo --json headSha,status,conclusion,jobs$', stdout: JSON.stringify({ headSha: p.head, status: 'completed', conclusion: 'success', jobs: [{ databaseId: 21, name: 'checks', status: 'completed', conclusion: 'success', steps: [], url: 'https://github.com/example-org/demo/actions/runs/11/job/21' }] }) },
     { match: '^api repos/example-org/demo/actions/jobs/21/logs --allow-escape-sequences$', stdout: jobLog(p.head, p.tip) + '\n' },
   ]
@@ -790,7 +815,7 @@ function assertCleanedUp(p) {
   assert.ok(!existsSync(join(p.home, 'worktrees')), 'the directories made for the worktree are removed')
 }
 // merge-check::CON-001: the gh commands that only read
-const READ_ONLY = [/^repo view --json \S+$/, /^pr view 7 -R example-org\/demo --json \S+$/, /^api user$/, /^api repos\/[\w.-]+\/[\w.-]+\/issues\/\d+$/, /^run list -R \S+ --commit [0-9a-f]{40} --json \S+ -L 100$/, /^run view \d+ -R \S+ --json \S+$/, /^api repos\/\S+\/actions\/jobs\/\d+\/logs --allow-escape-sequences$/]
+const READ_ONLY = [/^repo view --json \S+$/, /^pr view 7 -R example-org\/demo --json \S+$/, /^api user$/, /^api repos\/[\w.-]+\/[\w.-]+\/issues\/\d+$/, /^api repos\/[\w.-]+\/[\w.-]+\/actions\/runs\?head_sha=[0-9a-f]{40}&event=pull_request&per_page=100&page=[1-9]\d*$/, /^run view \d+ -R \S+ --json \S+$/, /^api repos\/\S+\/actions\/jobs\/\d+\/logs --allow-escape-sequences$/]
 
 // merge-check::REQ-001, REQ-014/AC-01, REQ-015, CON-001, CON-002/AC-03
 test('before passes a pull request that holds every rule, runs the real document checks and leaves nothing behind', () => {
@@ -891,7 +916,7 @@ test('a worktree another run makes at the path while this one runs is left to th
   const p = project()
   const other = worktreeOf(p)
   const make = ['git', '-C', p.checkout, 'worktree', 'add', '--detach', '--quiet', other, p.head]
-  const r = cli(p, beforeArgs(p), { gh: answers(p).map((a) => (a.match.startsWith('^run list ') ? { ...a, exec: make } : a)) })
+  const r = cli(p, beforeArgs(p), { gh: answers(p).map((a) => (a.match === runPage(p.head, 1) ? { ...a, exec: make } : a)) })
   assert.equal(r.code, 2, r.out + r.err)
   assert.match(r.out, /^ERROR spec-check: .*already exists/m)
   assert.ok(existsSync(join(other, 'docs', 'specs', 'area.md')), r.out)
@@ -1002,18 +1027,32 @@ test('after reads the author of a signed merge commit while the checkout shows s
   assertCleanedUp(p)
 })
 
-// merge-check::REQ-013: gh lists the runs with the workflow's id, which two workflows that share a name do not share
-test('before judges each of two workflows that share a name', () => {
+test('before judges a failing workflow first seen on the last page, even under a shared name', () => {
   const p = project()
-  const listed = [{ conclusion: 'success', createdAt: '2026-01-02T03:00:00Z', databaseId: 11, event: 'pull_request', headSha: p.head, status: 'completed', workflowDatabaseId: 101, workflowName: 'CI' }, { conclusion: 'failure', createdAt: '2026-01-02T02:59:55Z', databaseId: 10, event: 'pull_request', headSha: p.head, status: 'completed', workflowDatabaseId: 103, workflowName: 'CI' }]
+  const first = oneFullPage(p.head)
+  first[0] = { ...restRun(p.head, 11), created_at: '2026-01-02T03:00:00Z' }
   const gh = answers(p, [
-    { match: `^run list -R example-org/demo --commit ${p.head} --json \\S*workflowDatabaseId`, stdout: JSON.stringify(listed) },
+    { match: runPage(p.head, 1), stdout: pageBody(101, first) },
+    { match: runPage(p.head, 2), stdout: pageBody(101, [restRun(p.head, 10, 103)]) },
     { match: '^run view 10 ', stdout: JSON.stringify({ headSha: p.head, status: 'completed', conclusion: 'failure', jobs: [{ databaseId: 31, name: 'checks', status: 'completed', conclusion: 'failure', steps: [], url: 'https://github.com/example-org/demo/actions/runs/10/job/31' }] }) },
     { match: '^api repos/example-org/demo/actions/jobs/31/logs ', stdout: jobLog(p.head, p.tip) + '\n' },
   ])
   const r = cli(p, beforeArgs(p), { gh })
   assert.equal(r.code, 1, r.out + r.err)
   assert.match(r.out, /^ {4}run 10 \(CI\): conclusion failure$/m)
+  assertCleanedUp(p)
+})
+
+// merge-check::REQ-013/AC-07, merge-check::REQ-002/AC-04
+test('a later workflow run page that cannot be read gives no CI verdict', () => {
+  const p = project()
+  const gh = answers(p, [
+    { match: runPage(p.head, 1), stdout: pageBody(101, oneFullPage(p.head)) },
+    { match: runPage(p.head, 2), code: 1, stderr: 'gh: Service Unavailable (HTTP 503)\n' },
+  ])
+  const r = cli(p, beforeArgs(p), { gh })
+  assert.equal(r.code, 2, r.out + r.err)
+  assert.match(r.out, /^ERROR ci: .*page=2 exited 1: gh: Service Unavailable \(HTTP 503\)$/m)
   assertCleanedUp(p)
 })
 
@@ -1050,7 +1089,7 @@ test('takes the top level of the repository of the current directory, and the de
   const p = project({ main: 'trunk' })
   mkdirSync(join(p.checkout, 'sub'))
   // With no CI run, ci looks for the workflow files of the head, which only the top level finds
-  const r = cli(p, beforeArgs(p), { cwd: join(p.checkout, 'sub'), gh: answers(p, [{ match: '^run list ', stdout: '[]' }]) })
+  const r = cli(p, beforeArgs(p), { cwd: join(p.checkout, 'sub'), gh: answers(p, [{ match: runPage(p.head, 1), stdout: pageBody(0, []) }]) })
   assert.equal(r.code, 1, r.out + r.err)
   assert.match(r.out, /^FAIL ci: no pull_request run on the head, although the head has workflow files/m)
   assert.match(r.out, /^PASS pr-base: base is trunk$/m)

@@ -118,7 +118,7 @@ The expected noreply address is `<id>+<login>@users.noreply.github.com`, from `g
 
 ### merge-check::REQ-013 The CI on the head
 
-The runs considered are those `gh run list -R <repo> --commit <head>` lists with event `pull_request`, the most recent one of each workflow, a workflow being its `workflowDatabaseId`. A current-tip merge line is a line `HEAD is now at <x> Merge <head> into <tip>` in a job's log, `<tip>` being the tip of `origin/<default branch>` fetched in this run.
+For the reviewed head and the `pull_request` event, `ci` judges the latest run of each workflow by `workflow_id`. The later `created_at` wins, with the larger run `id` breaking a tie. A current-tip merge line is a line `HEAD is now at <x> Merge <head> into <tip>` in a job's log, `<tip>` being the tip of `origin/<default branch>` fetched in this run.
 
 - merge-check::REQ-013/AC-01: With no such run and no file under `.github/workflows/` at the head, `ci` is `SKIP` with the reason "no CI workflow". With no such run while workflow files exist, it fails.
 - merge-check::REQ-013/AC-02: A run whose `headSha` is not the head fails.
@@ -126,6 +126,7 @@ The runs considered are those `gh run list -R <repo> --commit <head>` lists with
 - merge-check::REQ-013/AC-04: A run with no ignored job fails when its `status` is not `completed`, with the summary "not finished: wait with watch-ci.sh, then rerun", and when its `conclusion` is not `success`. A run with an ignored job is held instead to every other job being `completed`, the same summary applying when one is not; its own status and conclusion go under `For review:`.
 - merge-check::REQ-013/AC-05: Every job that is not ignored concluded `success` or `skipped`.
 - merge-check::REQ-013/AC-06: The logs of the run's jobs that are not ignored and not skipped, each read on its own, hold at least one line `HEAD is now at <x> Merge <a> into <b>`, and every such line is a current-tip merge line. A run in which no such job has one fails, so a run whose jobs are all ignored never passes. A merge into an older tip fails, with the summary that the CI tested against an older default branch.
+- merge-check::REQ-013/AC-07: The filtered Actions run list must account for the reported `total_count` in distinct runs across all pages. An unreadable or inconsistent page, or a count at or above the filtered search ceiling of 1,000, gives `ERROR` and exit 2.
 
 ### merge-check::REQ-014 The document checks of the head
 
@@ -195,6 +196,7 @@ Applies to the script, its tests and the documents that describe it. No account 
 10. **A previous run was interrupted and left its worktree or ref**, or another run on the same pull request is in progress (merge-check::CON-002/AC-01, merge-check::CON-002/AC-02).
 11. **gh or git fails**, including an unauthenticated gh or a network error (merge-check::REQ-002/AC-02, merge-check::REQ-002/AC-04).
 12. **A pull request removes the last workflow file** (merge-check::REQ-014/AC-03).
+13. **An incomplete run list hides a workflow** (merge-check::REQ-013/AC-07).
 
 ## Out of Scope
 

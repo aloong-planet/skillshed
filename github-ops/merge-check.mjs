@@ -97,7 +97,7 @@ export const CHECKS = [
   { id: 'forbidden-words', kind: 'check', modes: ['before', 'after'], needs: { before: HEAD_NEEDS, after: ['pr-merged'] }, rule: 'no --forbid match in the texts' },
   { id: 'bare-refs', kind: 'check', modes: ['before', 'after'], needs: { before: HEAD_NEEDS, after: ['pr-merged'] }, rule: 'every bare #N in the texts is an issue or pull request of --repo' },
   { id: 'commit-identity', kind: 'check', modes: ['before'], needs: both(HEAD_NEEDS), rule: 'every commit of the branch is authored and committed with the expected noreply address' },
-  { id: 'ci', kind: 'check', modes: ['before'], needs: both(HEAD_NEEDS), rule: "the latest pull_request run of each workflow tested the head merged into the current tip and passed" },
+  { id: 'ci', kind: 'check', modes: ['before'], needs: both(HEAD_NEEDS), rule: "require the complete list of pull_request runs on the head (ERROR if incomplete). With no runs, skip only if the head has no workflow files. Otherwise verify that the latest run of each workflow tested the head merged into the current tip and passed" },
   { id: 'spec-check', kind: 'check', modes: ['before'], needs: both(HEAD_NEEDS), rule: 'check-spec.mjs exits 0 when the diff changes docs/specs/' },
   { id: 'adr-check', kind: 'check', modes: ['before'], needs: both(HEAD_NEEDS), rule: 'check-adr.mjs exits 0 when docs/adr/ exists at the head and the diff changes docs/specs/ or docs/adr/' },
   { id: 'action-pins', kind: 'check', modes: ['before'], needs: both(HEAD_NEEDS), rule: 'check-action-pins.mjs exits 0 when the diff changes .github/workflows/ and the head has a *.yml or *.yaml directly in it' },
@@ -197,6 +197,39 @@ function scriptResult(facts, name, args) {
 }
 
 const changed = (facts, ...prefixes) => facts.diff().files.some((f) => prefixes.some((p) => f.path.startsWith(p)))
+
+/** Read the filtered Actions search one page at a time (merge-check::REQ-013/AC-07). */
+export function readWorkflowRuns(head, readPage) {
+  const runs = []
+  const ids = new Set()
+  let expected
+  for (let page = 1; ; page++) {
+    const { total_count: total, workflow_runs: rows } = readPage(page)
+    const source = `workflow runs page ${page}`
+    if (!Number.isSafeInteger(total) || total < 0 || !Array.isArray(rows)) throw new Error(`${source}: missing or invalid total_count or workflow_runs`)
+    if (total >= 1000) throw new Error(`${source}: total_count ${total} reaches the filtered search limit of 1000`)
+    if (page === 1) expected = total
+    if (total !== expected) throw new Error(`${source}: total_count changed from ${expected} to ${total}`)
+    const needed = Math.min(100, total - runs.length)
+    if (rows.length !== needed) throw new Error(`${source}: expected ${needed} runs, received ${rows.length}`)
+    for (const row of rows) {
+      if (row?.event !== 'pull_request' || row.head_sha !== head) throw new Error(`${source}: run outside the requested event or head`)
+      if (!Number.isSafeInteger(row.id) || row.id <= 0 || !Number.isSafeInteger(row.workflow_id) || row.workflow_id <= 0) throw new Error(`${source}: invalid run or workflow id`)
+      if (ids.has(row.id)) throw new Error(`${source}: repeated run ${row.id}`)
+      const created = Date.parse(row.created_at)
+      if (typeof row.created_at !== 'string' || !Number.isFinite(created)) throw new Error(`${source}: invalid created_at for run ${row.id}`)
+      ids.add(row.id)
+      runs.push({
+        databaseId: row.id,
+        workflowDatabaseId: row.workflow_id,
+        workflowName: row.name,
+        event: row.event,
+        createdAt: new Date(created).toISOString(),
+      })
+    }
+    if (runs.length === total) return runs
+  }
+}
 
 /** The runs `ci` judges: the latest pull_request run of each workflow, by its id (merge-check::REQ-013) */
 function latestRuns(facts) {
@@ -656,7 +689,7 @@ function realFacts(args, pre, squashBodyText) {
     }),
     user,
     issue: (n) => issueAnswer(spawn('gh', ['api', `repos/${args.repo}/issues/${n}`], top), `gh api repos/${args.repo}/issues/${n}`),
-    ciRuns: memo(() => json('gh', ['run', 'list', '-R', args.repo, '--commit', args.head, '--json', 'databaseId,event,status,conclusion,workflowName,workflowDatabaseId,createdAt,headSha', '-L', '100'], top)),
+    ciRuns: memo(() => readWorkflowRuns(args.head, (page) => json('gh', ['api', `repos/${args.repo}/actions/runs?head_sha=${args.head}&event=pull_request&per_page=100&page=${page}`], top))),
     runView: memoBy((id) => json('gh', ['run', 'view', String(id), '-R', args.repo, '--json', 'headSha,status,conclusion,jobs'], top)),
     jobLog: (id) => out('gh', ['api', `repos/${args.repo}/actions/jobs/${id}/logs`, '--allow-escape-sequences'], top),
     // check-action-pins.mjs's own workflow files: the *.yml and *.yaml entries directly in .github/workflows
