@@ -24,7 +24,7 @@ Applies to every merge of a pull request by the agent, whether the user approved
 
 ### post-merge-cleanup::REQ-002 What follows the last merge of a piece of work
 
-A piece of work is the change a pull request belongs to; where the change was cut into tickets, it is the whole goal those tickets belong to. Its last pull request is the closeout ticket's where tickets were cut, and the change's own where none were.
+A piece of work is the change a pull request belongs to; where the change was cut into tickets, it is the whole goal those tickets belong to. Where tickets were cut, its last pull request is the one after whose merge none of the work's tickets is still to be implemented or has a change still to merge; where none were cut, it is the change's own.
 
 - post-merge-cleanup::REQ-002/AC-01: After the last pull request of a piece of work has merged, the agent deletes the other local branches the work made that will not be merged, such as drafts, superseded approaches and experiments, together with their worktrees.
 - post-merge-cleanup::REQ-002/AC-02: Such a branch is deleted only where all three of these hold. The agent can point to having made it in this session for this work, or the work's tickets or working records say it was made for this work. Its worktree, where it has one, has a status that prints nothing, as in post-merge-cleanup::REQ-001/AC-04. For every commit on it that the default branch lacks, the agent can say which merged pull request took its content into the default branch, or which change superseded it.
