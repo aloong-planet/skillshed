@@ -687,4 +687,12 @@ export async function main(argv) {
   return exitCode(results)
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === realpathSync(process.argv[1])) process.exitCode = await main(process.argv.slice(2))
+if (process.argv[1] && fileURLToPath(import.meta.url) === realpathSync(process.argv[1])) {
+  try {
+    process.exitCode = await main(process.argv.slice(2))
+  } catch (e) {
+    // An error no check caught is no verdict on the pull request (merge-check::REQ-002/AC-04), not node's exit 1
+    process.stderr.write(`merge-check: ${e?.stack ?? e}\n`)
+    process.exitCode = 2
+  }
+}
