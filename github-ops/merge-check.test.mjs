@@ -148,6 +148,7 @@ function facts(over = {}) {
     runView: () => ({ headSha: HEAD, status: 'completed', conclusion: 'success', jobs: [{ databaseId: 21, name: 'checks', status: 'completed', conclusion: 'success' }] }),
     jobLog: () => jobLog(HEAD, TIP),
     workflowsAtHead: () => true,
+    workflowFilesAtHead: () => true,
     adrAtHead: () => false,
     runScript: (name) => ({ code: name === 'change-scope.mjs' ? 1 : 0, out: `${name} output` }),
     cleanup: () => ({ left: [] }),
@@ -235,7 +236,7 @@ for (const [id, scenario] of Object.entries(FAILING)) {
 test('--list prints every check and report with its modes and dependencies', () => {
   const lines = listLines()
   assert.equal(lines.length, CHECKS.length)
-  assert.ok(lines.some((l) => l === 'pr-mergeable (check; before; needs before: pr-open): mergeable is MERGEABLE and mergeStateStatus CLEAN, read up to 5 times 3 s apart while UNKNOWN'), lines.join('\n'))
+  assert.ok(lines.some((l) => l === 'pr-mergeable (check; before; needs before: pr-open): mergeable is MERGEABLE and mergeStateStatus CLEAN, or UNSTABLE where --ignore-job matched a job of the ci runs and every statusCheckRollup entry not passing is a check run it matches; read up to 5 times 3 s apart while UNKNOWN'), lines.join('\n'))
   assert.ok(lines.some((l) => l.startsWith('closing-keywords (check; before, after; needs before: pr-head, head-ref; after: pr-merged): ')))
 })
 
@@ -291,6 +292,68 @@ for (const first of [{ mergeable: 'MERGEABLE', mergeStateStatus: 'UNKNOWN' }, { 
     assert.deepEqual(o.slept, [3000])
   })
 }
+
+// merge-check::REQ-003/AC-04, merge-check::REQ-003/AC-06. A rollup in the shape `gh pr view --json statusCheckRollup`
+// gives: check runs as a real CI run lists them (one skipped), and a status context with the fields of GitHub's schema
+const checkRun = (name, status = 'COMPLETED', conclusion = 'SUCCESS') => ({ __typename: 'CheckRun', completedAt: status === 'COMPLETED' ? '2026-01-02T03:10:00Z' : '0001-01-01T00:00:00Z', conclusion, detailsUrl: `https://github.com/example-org/demo/actions/runs/11/job/${name.length}`, name, startedAt: '2026-01-02T03:01:00Z', status, workflowName: 'CI' })
+const statusContext = (context, state) => ({ __typename: 'StatusContext', context, description: `${context} ${state.toLowerCase()}`, state, targetUrl: 'https://deploy.example.invalid/7' })
+const GREEN_ROLLUP = [checkRun('Changed scopes'), checkRun('Repository checks'), checkRun('Site checks', 'COMPLETED', 'SKIPPED'), statusContext('deploy/docs', 'SUCCESS')]
+const IGNORED_ROLLUP = [...GREEN_ROLLUP, checkRun('build (macOS)', 'IN_PROGRESS', ''), checkRun('CI gate', 'COMPLETED', 'FAILURE')]
+// The run's jobs, read when a test runs: `view` and `job` are the helpers of merge-check::REQ-013 below
+const macJobs = () => view([job('build (ubuntu)'), job('build (macOS)', 'in_progress', '', 22), job('CI gate', 'completed', 'failure', 23)], { status: 'in_progress', conclusion: '' })()
+const unstable = (rollup, state = 'UNSTABLE') => facts({ ...withPr({ mergeStateStatus: state, statusCheckRollup: rollup }), runView: macJobs })
+const MAC = () => opts({ ignoreJob: parsed('--ignore-job', 'build \\(macOS\\)', '--ignore-job', 'CI gate').ignoreJob })
+
+test('pr-mergeable passes UNSTABLE when every entry that is not passing is a check run of an ignored job', async () => {
+  const r = await check('before', unstable(IGNORED_ROLLUP), MAC())
+  assert.match(r.out, /^PASS pr-mergeable: mergeable MERGEABLE, mergeStateStatus UNSTABLE$/m, r.out)
+  assert.match(r.out, /^ {4}pr-mergeable: mergeStateStatus UNSTABLE$/m)
+  assert.match(r.out, /^ {4}pr-mergeable: accepted statusCheckRollup: check run build \(macOS\) IN_PROGRESS\/-$/m)
+  assert.match(r.out, /^ {4}pr-mergeable: accepted statusCheckRollup: check run CI gate COMPLETED\/FAILURE$/m)
+  assert.doesNotMatch(r.out, /accepted statusCheckRollup: (check run (Changed scopes|Repository checks|Site checks)|status context)/)
+})
+
+for (const [what, o] of [['no --ignore-job', () => opts()], ['an --ignore-job that matched no job of the runs', () => opts({ ignoreJob: parsed('--ignore-job', 'deploy').ignoreJob })]]) {
+  test(`pr-mergeable fails UNSTABLE with ${what}`, async () => {
+    const r = await check('before', unstable([...GREEN_ROLLUP, checkRun('deploy', 'COMPLETED', 'FAILURE')]), o())
+    assert.match(r.out, /^FAIL pr-mergeable: mergeable MERGEABLE, mergeStateStatus UNSTABLE$/m, r.out)
+  })
+}
+
+for (const entry of [checkRun('lint', 'COMPLETED', 'FAILURE'), checkRun('build (macOS) arm', 'QUEUED', ''), checkRun('Build (macos)', 'COMPLETED', 'CANCELLED')]) {
+  test(`pr-mergeable fails UNSTABLE on a check run no --ignore-job matches: ${entry.name}`, async () => {
+    const r = await check('before', unstable([...IGNORED_ROLLUP, entry]), MAC())
+    assert.match(r.out, /^FAIL pr-mergeable: mergeable MERGEABLE, mergeStateStatus UNSTABLE$/m, r.out)
+    assert.match(r.out, new RegExp(`^ {4}statusCheckRollup: check run ${entry.name.replace(/[()]/g, '\\$&')} ${entry.status}/${entry.conclusion || '-'}$`, 'm'))
+    assert.doesNotMatch(r.out, /^ {4}statusCheckRollup: check run (build \(macOS\) IN_PROGRESS|CI gate COMPLETED)\//m, 'an accepted entry is not evidence')
+  })
+}
+
+test('pr-mergeable fails UNSTABLE on a status context that is not passing, whatever its name, and on an entry of another kind', async () => {
+  const r = await check('before', unstable([...IGNORED_ROLLUP, statusContext('deploy/preview', 'FAILURE'), statusContext('build (macOS)', 'PENDING'), { __typename: 'Other', name: 'CI gate' }]), MAC())
+  assert.match(r.out, /^FAIL pr-mergeable: /m, r.out)
+  assert.match(r.out, /^ {4}statusCheckRollup: status context deploy\/preview FAILURE$/m)
+  assert.match(r.out, /^ {4}statusCheckRollup: status context build \(macOS\) PENDING$/m)
+  assert.match(r.out, /^ {4}statusCheckRollup: Other \{"__typename":"Other","name":"CI gate"\}$/m)
+  assert.doesNotMatch(r.out, /status context deploy\/docs/)
+})
+
+test('pr-mergeable fails an UNSTABLE that no entry of the rollup explains', async () => {
+  const r = await check('before', unstable(GREEN_ROLLUP), MAC())
+  assert.match(r.out, /^FAIL pr-mergeable: mergeable MERGEABLE, mergeStateStatus UNSTABLE\n {4}statusCheckRollup: no entry that is not passing$/m, r.out)
+})
+
+for (const state of ['BLOCKED', 'BEHIND', 'DIRTY']) {
+  test(`pr-mergeable fails ${state} even where only ignored jobs are not passing`, async () => {
+    const r = await check('before', unstable(IGNORED_ROLLUP, state), MAC())
+    assert.match(r.out, new RegExp(`^FAIL pr-mergeable: mergeable MERGEABLE, mergeStateStatus ${state}$`, 'm'), r.out)
+  })
+}
+
+test('pr-mergeable is an ERROR when the runs it matches --ignore-job against cannot be read', async () => {
+  const r = await check('before', facts({ ...withPr({ mergeStateStatus: 'UNSTABLE', statusCheckRollup: IGNORED_ROLLUP }), ciRuns: errs }), MAC())
+  assert.match(r.out, /^ERROR pr-mergeable: gh: HTTP 502$/m, r.out)
+})
 
 // merge-check::REQ-006/AC-01
 for (const [where, over] of [
@@ -528,6 +591,13 @@ test('the document checks run on the paths they own and map 0, 1 and anything el
   assert.match(missing.out, /^ERROR spec-check: check-spec\.mjs gave no verdict \(check-spec\.mjs is missing\)$/m)
 })
 
+test('action-pins skips a head that leaves no workflow file, and runs no script', async () => {
+  const s = scripts({})
+  const r = await check('before', facts({ ...changing('.github/workflows/ci.yml'), workflowFilesAtHead: () => false, runScript: s.runScript }))
+  assert.match(r.out, /^SKIP action-pins: no workflow file at the head$/m, r.out)
+  assert.ok(!s.calls.includes('check-action-pins.mjs'), s.calls.join('; '))
+})
+
 test('the document checks skip the paths they do not own, and adr-check a repository without docs/adr', async () => {
   const s = scripts({})
   const r = await check('before', facts({ ...changing('docs/specs/area.md'), runScript: s.runScript }))
@@ -698,6 +768,33 @@ test('before passes a pull request that holds every rule, runs the real document
   assert.match(r.out, /^ {4}changed-files: A docs\/specs\/area\.md$/m)
   assertCleanedUp(p)
   assert.ok(r.calls.length > 0)
+})
+
+// merge-check::REQ-003/AC-06: the first read of the pull request and the read again after UNKNOWN each ask for the rollup
+// they are judged with; a read that does not ask gets the CLEAN of the stub's general answer, or UNKNOWN again
+for (const [which, first] of [['first read', () => []], ['read after UNKNOWN', (p) => [{ match: '^pr view 7 -R example-org/demo --json number,', stdout: prJson(p, { mergeable: 'UNKNOWN', mergeStateStatus: 'UNKNOWN' }) }, { match: '^pr view 7 -R example-org/demo --json mergeable,mergeStateStatus$', stdout: prJson(p, { mergeable: 'UNKNOWN', mergeStateStatus: 'UNKNOWN' }) }]]]) test(`before reads statusCheckRollup with the mergeability on the ${which} and passes an UNSTABLE of ignored jobs`, () => {
+  const p = project()
+  const pr = prJson(p, { mergeStateStatus: 'UNSTABLE', statusCheckRollup: IGNORED_ROLLUP })
+  const jobs = [{ databaseId: 21, name: 'checks', status: 'completed', conclusion: 'success', steps: [], url: 'https://github.com/example-org/demo/actions/runs/11/job/21' }, { databaseId: 22, name: 'build (macOS)', status: 'in_progress', conclusion: '', steps: [], url: 'https://github.com/example-org/demo/actions/runs/11/job/22' }, { databaseId: 23, name: 'CI gate', status: 'completed', conclusion: 'failure', steps: [], url: 'https://github.com/example-org/demo/actions/runs/11/job/23' }]
+  const gh = answers(p, [
+    ...first(p),
+    { match: '^pr view 7 -R example-org/demo --json \\S*statusCheckRollup', stdout: pr },
+    { match: '^run view 11 ', stdout: JSON.stringify({ headSha: p.head, status: 'in_progress', conclusion: '', jobs }) },
+  ])
+  const r = cli(p, [...beforeArgs(p), '--ignore-job', 'build \\(macOS\\)', '--ignore-job', 'CI gate'], { gh })
+  assert.equal(r.code, 0, r.out + r.err)
+  assert.match(r.out, /^PASS pr-mergeable: mergeable MERGEABLE, mergeStateStatus UNSTABLE$/m)
+  assert.match(r.out, /^ {4}pr-mergeable: accepted statusCheckRollup: check run CI gate COMPLETED\/FAILURE$/m)
+  assertCleanedUp(p)
+})
+
+// merge-check::REQ-014/AC-03: the head's workflow files are the *.yml and *.yaml directly in .github/workflows/
+test('before skips action-pins on a head whose .github/workflows/ holds no workflow file of its own', () => {
+  const p = project({ base: { 'capabilities.toml': CAPABILITIES, 'README.md': '# Demo\n' }, branch: { '.github/workflows/README.md': '# Workflows\n', '.github/workflows/templates/ci.yml': WORKFLOW } })
+  const r = cli(p, beforeArgs(p))
+  assert.equal(r.code, 0, r.out + r.err)
+  assert.match(r.out, /^SKIP action-pins: no workflow file at the head$/m)
+  assertCleanedUp(p)
 })
 
 // merge-check::REQ-001/AC-02

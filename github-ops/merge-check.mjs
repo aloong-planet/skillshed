@@ -85,7 +85,7 @@ export const CHECKS = [
   { id: 'pr-merged', kind: 'check', modes: ['after'], needs: both([]), rule: 'the pull request is MERGED and names its merge commit' },
   { id: 'pr-head', kind: 'check', modes: ['before', 'after'], needs: both([]), rule: 'headRefOid is --head' },
   { id: 'pr-base', kind: 'check', modes: ['before'], needs: both([]), rule: 'baseRefName is the default branch' },
-  { id: 'pr-mergeable', kind: 'check', modes: ['before'], needs: both(['pr-open']), rule: 'mergeable is MERGEABLE and mergeStateStatus CLEAN, read up to 5 times 3 s apart while UNKNOWN' },
+  { id: 'pr-mergeable', kind: 'check', modes: ['before'], needs: both(['pr-open']), rule: 'mergeable is MERGEABLE and mergeStateStatus CLEAN, or UNSTABLE where --ignore-job matched a job of the ci runs and every statusCheckRollup entry not passing is a check run it matches; read up to 5 times 3 s apart while UNKNOWN' },
   { id: 'head-ref', kind: 'check', modes: ['before', 'after'], needs: both([]), rule: 'pull/<N>/head fetched from origin is --head' },
   { id: 'up-to-date', kind: 'check', modes: ['before'], needs: both(HEAD_NEEDS), rule: 'the fetched tip of origin/<default branch> is an ancestor of the head or the head' },
   { id: 'merged-tree', kind: 'check', modes: ['after'], needs: both(['pr-merged', ...HEAD_NEEDS]), rule: "the merge commit's tree is the head's tree" },
@@ -100,7 +100,7 @@ export const CHECKS = [
   { id: 'ci', kind: 'check', modes: ['before'], needs: both(HEAD_NEEDS), rule: "the latest pull_request run of each workflow tested the head merged into the current tip and passed" },
   { id: 'spec-check', kind: 'check', modes: ['before'], needs: both(HEAD_NEEDS), rule: 'check-spec.mjs exits 0 when the diff changes docs/specs/' },
   { id: 'adr-check', kind: 'check', modes: ['before'], needs: both(HEAD_NEEDS), rule: 'check-adr.mjs exits 0 when docs/adr/ exists at the head and the diff changes docs/specs/ or docs/adr/' },
-  { id: 'action-pins', kind: 'check', modes: ['before'], needs: both(HEAD_NEEDS), rule: 'check-action-pins.mjs exits 0 when the diff changes .github/workflows/' },
+  { id: 'action-pins', kind: 'check', modes: ['before'], needs: both(HEAD_NEEDS), rule: 'check-action-pins.mjs exits 0 when the diff changes .github/workflows/ and the head has a *.yml or *.yaml directly in it' },
   { id: 'issues-closed', kind: 'check', modes: ['after'], needs: both(['pr-merged']), rule: 'every closingIssuesReferences entry reads closed, re-read for up to 30 s' },
   { id: 'closing-issues', kind: 'report', modes: ['before'], needs: both([]), rule: 'lists closingIssuesReferences' },
   { id: 'changed-files', kind: 'report', modes: ['before'], needs: both(HEAD_NEEDS), rule: 'lists every changed file with its change type, every AGENTS.md and CLAUDE.md, every binary file' },
@@ -198,13 +198,18 @@ function scriptResult(facts, name, args) {
 
 const changed = (facts, ...prefixes) => facts.diff().files.some((f) => prefixes.some((p) => f.path.startsWith(p)))
 
-async function ciRule(facts, opts) {
-  const runs = facts.ciRuns().filter((r) => r.event === 'pull_request')
+/** The runs `ci` judges: the latest pull_request run of each workflow (merge-check::REQ-013) */
+function latestRuns(facts) {
   const latest = new Map()
-  for (const r of runs) {
+  for (const r of facts.ciRuns().filter((r) => r.event === 'pull_request')) {
     const seen = latest.get(r.workflowName)
     if (!seen || r.createdAt > seen.createdAt || (r.createdAt === seen.createdAt && r.databaseId > seen.databaseId)) latest.set(r.workflowName, r)
   }
+  return latest
+}
+
+async function ciRule(facts, opts) {
+  const latest = latestRuns(facts)
   if (latest.size === 0) {
     if (!facts.workflowsAtHead()) return result('SKIP', 'no CI workflow')
     return result('FAIL', 'no pull_request run on the head, although the head has workflow files under .github/workflows/')
@@ -257,6 +262,25 @@ async function ciRule(facts, opts) {
   return result('PASS', `${latest.size} run(s) tested the head merged into ${short(tip)} and passed`, [], review)
 }
 
+/** Whether an --ignore-job pattern matched a job of the runs `ci` judges (merge-check::REQ-003/AC-06) */
+function ignoredJobMatched(facts, opts) {
+  if (!opts.ignoreJob.length) return false
+  return [...latestRuns(facts).values()].some((r) => (facts.runView(r.databaseId).jobs ?? []).some((j) => opts.ignoreJob.some((p) => p.re.test(j.name))))
+}
+
+const passing = (e) => (e.__typename === 'CheckRun' ? e.status === 'COMPLETED' && ['SUCCESS', 'SKIPPED'].includes(e.conclusion) : e.__typename === 'StatusContext' && e.state === 'SUCCESS')
+const entryName = (e) => (e.__typename === 'CheckRun' ? `check run ${e.name} ${e.status}/${e.conclusion || '-'}` : e.__typename === 'StatusContext' ? `status context ${e.context} ${e.state}` : `${e.__typename ?? 'entry'} ${JSON.stringify(e)}`)
+
+/** UNSTABLE passes only when the entries not passing are check runs of ignored jobs (merge-check::REQ-003/AC-06) */
+function unstableResult(state, rollup, opts) {
+  const notPassing = rollup.filter((e) => !passing(e))
+  if (!notPassing.length) return result('FAIL', state, ['statusCheckRollup: no entry that is not passing'])
+  const accepted = (e) => e.__typename === 'CheckRun' && opts.ignoreJob.some((p) => p.re.test(e.name))
+  const others = notPassing.filter((e) => !accepted(e))
+  if (others.length) return result('FAIL', state, others.map((e) => `statusCheckRollup: ${entryName(e)}`))
+  return result('PASS', state, [], ['mergeStateStatus UNSTABLE', ...notPassing.map((e) => `accepted statusCheckRollup: ${entryName(e)}`)])
+}
+
 const RULES = {
   'pr-open': (f) => (f.pr().state === 'OPEN' ? result('PASS', 'state is OPEN') : result('FAIL', `state is ${f.pr().state}`)),
   'pr-merged': (f) => {
@@ -282,7 +306,10 @@ const RULES = {
     }
     const state = `mergeable ${m.mergeable}, mergeStateStatus ${m.mergeStateStatus}`
     if (m.mergeable === 'UNKNOWN' || m.mergeStateStatus === 'UNKNOWN') return result('ERROR', `${state} after ${reads} reads 3 s apart`)
-    return m.mergeable === 'MERGEABLE' && m.mergeStateStatus === 'CLEAN' ? result('PASS', state) : result('FAIL', state)
+    if (m.mergeable !== 'MERGEABLE') return result('FAIL', state)
+    if (m.mergeStateStatus === 'CLEAN') return result('PASS', state)
+    if (m.mergeStateStatus !== 'UNSTABLE' || !ignoredJobMatched(f, o)) return result('FAIL', state)
+    return unstableResult(state, m.statusCheckRollup ?? [], o)
   },
   'head-ref': (f, o) => {
     const got = f.fetchedHead()
@@ -377,7 +404,10 @@ const RULES = {
     if (!f.adrAtHead()) return result('SKIP', 'no docs/adr')
     return changed(f, 'docs/specs/', 'docs/adr/') ? scriptResult(f, 'check-adr.mjs', ['--base', f.forkPoint()]) : result('SKIP', 'the diff changes nothing under docs/specs/ or docs/adr/')
   },
-  'action-pins': (f) => (changed(f, '.github/workflows/') ? scriptResult(f, 'check-action-pins.mjs', []) : result('SKIP', 'the diff changes nothing under .github/workflows/')),
+  'action-pins': (f) => {
+    if (!changed(f, '.github/workflows/')) return result('SKIP', 'the diff changes nothing under .github/workflows/')
+    return f.workflowFilesAtHead() ? scriptResult(f, 'check-action-pins.mjs', []) : result('SKIP', 'no workflow file at the head')
+  },
   'issues-closed': async (f, o) => {
     let open = f.pr().closingIssuesReferences ?? []
     if (!open.length) return result('PASS', 'the pull request closes no issue')
@@ -462,7 +492,7 @@ const SCRIPTS = {
   'check-action-pins.mjs': 'check-action-pins.mjs',
   'change-scope.mjs': '../implement/change-scope.mjs',
 }
-const PR_FIELDS = 'number,title,body,state,headRefOid,baseRefName,mergeable,mergeStateStatus,closingIssuesReferences,mergeCommit'
+const PR_FIELDS = 'number,title,body,state,headRefOid,baseRefName,mergeable,mergeStateStatus,statusCheckRollup,closingIssuesReferences,mergeCommit'
 
 /** A stop before any check: exit 2 with the reason */
 class Stop extends Error {}
@@ -488,6 +518,15 @@ function memo(fn) {
     if (!done) { try { value = fn() } catch (e) { error = e } done = true }
     if (error) throw error
     return value
+  }
+}
+
+/** `memo` for a function of one key: each key is read once a run */
+function memoBy(fn) {
+  const seen = new Map()
+  return (key) => {
+    if (!seen.has(key)) seen.set(key, memo(() => fn(key)))
+    return seen.get(key)()
   }
 }
 
@@ -580,7 +619,7 @@ function realFacts(args, pre, squashBodyText) {
   return {
     defaultBranch,
     pr,
-    mergeability: () => json('gh', ['pr', 'view', String(args.pr), '-R', args.repo, '--json', 'mergeable,mergeStateStatus'], top),
+    mergeability: () => json('gh', ['pr', 'view', String(args.pr), '-R', args.repo, '--json', 'mergeable,mergeStateStatus,statusCheckRollup'], top),
     fetchedHead: () => rev(`${ref}^{commit}`),
     tip: memo(() => rev(`${origin}^{commit}`)),
     tipIsAncestor: () => {
@@ -612,8 +651,10 @@ function realFacts(args, pre, squashBodyText) {
     user,
     issue: (n) => issueAnswer(spawn('gh', ['api', `repos/${args.repo}/issues/${n}`], top), `gh api repos/${args.repo}/issues/${n}`),
     ciRuns: memo(() => json('gh', ['run', 'list', '-R', args.repo, '--commit', args.head, '--json', 'databaseId,event,status,conclusion,workflowName,createdAt,headSha', '-L', '100'], top)),
-    runView: (id) => json('gh', ['run', 'view', String(id), '-R', args.repo, '--json', 'headSha,status,conclusion,jobs'], top),
+    runView: memoBy((id) => json('gh', ['run', 'view', String(id), '-R', args.repo, '--json', 'headSha,status,conclusion,jobs'], top)),
     jobLog: (id) => out('gh', ['api', `repos/${args.repo}/actions/jobs/${id}/logs`, '--allow-escape-sequences'], top),
+    // check-action-pins.mjs's own workflow files: the *.yml and *.yaml entries directly in .github/workflows
+    workflowFilesAtHead: memo(() => { fetch(); return git('ls-tree', '--name-only', ref, '--', '.github/workflows/').split('\n').some((p) => /\.ya?ml$/.test(basename(p))) }),
     workflowsAtHead: memo(() => { fetch(); return git('ls-tree', '-r', '--name-only', ref, '--', '.github/workflows/').trim() !== '' }),
     adrAtHead: memo(() => { fetch(); return git('ls-tree', '-d', '--name-only', ref, '--', 'docs/adr').trim() !== '' }),
     runScript: (name, scriptArgs) => {

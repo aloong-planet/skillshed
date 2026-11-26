@@ -29,7 +29,7 @@ merge-check.mjs --list
 
 ### merge-check::REQ-002 Output and exit codes
 
-- merge-check::REQ-002/AC-01: Each check prints one line `<STATUS> <id>: <summary>`, and the lines that prove the result are indented under it. Each evidence line names its source: `title`, `body:<line>`, `squash-body:<line>`, `commit <short sha>`, `diff <path>:+<line>`, `path <path>`, `message:<line>`, `closingIssuesReferences`, `run <id> (<workflow>)` for a CI run, `<owner>/<repo>#<N>` for an issue, `committer` for the merge commit's committer, or the command whose output it quotes.
+- merge-check::REQ-002/AC-01: Each check prints one line `<STATUS> <id>: <summary>`, and the lines that prove the result are indented under it. Each evidence line names its source: `title`, `body:<line>`, `squash-body:<line>`, `commit <short sha>`, `diff <path>:+<line>`, `path <path>`, `message:<line>`, `closingIssuesReferences`, `statusCheckRollup` for an entry of the pull request's checks, `run <id> (<workflow>)` for a CI run, `<owner>/<repo>#<N>` for an issue, `committer` for the merge commit's committer, or the command whose output it quotes.
 - merge-check::REQ-002/AC-02: The statuses are `PASS`; `FAIL`, the check ran and its rule does not hold; `SKIP`, the check does not apply, with the reason on the same line; `ERROR`, the check could not be completed, with the reason; and `BLOCKED`, the check did not run because a check it depends on gave `FAIL` or `ERROR`, written `BLOCKED <id>: not run, <check id> failed` or `… errored`. A check that does not run while every check it depends on passed or was skipped is an `ERROR`, not `BLOCKED`.
 - merge-check::REQ-002/AC-03: After the checks a `For review:` block lists what the run reports without judging (merge-check::REQ-015), each item after the id of the check or report that gives it, and a last line gives the number of checks in each status. A report prints a status line only when it is `ERROR`; a report that did not run is listed under `For review:` as `<id>: not run, <check id> failed` or `… errored`.
 - merge-check::REQ-002/AC-04: Every check of the mode prints its line in every run. The exit code is 0 when every check is `PASS` or `SKIP`; 2 when any check or report is `ERROR`, the run stopped under merge-check::REQ-001, the script failed outside every check, or SIGINT or SIGTERM ended it, whatever the other checks gave; and 1 otherwise. A run that ends with 2 is no verdict on the pull request. The run takes SIGINT or SIGTERM at its next wait (merge-check::REQ-003/AC-04, merge-check::REQ-016/AC-06); a run with no wait left finishes its checks and gives their exit code.
@@ -41,8 +41,9 @@ In `before`, read from `gh pr view <N> -R <repo>`.
 - merge-check::REQ-003/AC-01: `pr-open`: `state` is `OPEN`.
 - merge-check::REQ-003/AC-02: `pr-head`: `headRefOid` is `--head`.
 - merge-check::REQ-003/AC-03: `pr-base`: `baseRefName` is the default branch.
-- merge-check::REQ-003/AC-04: `pr-mergeable`: `mergeable` is `MERGEABLE` and `mergeStateStatus` is `CLEAN`. While either reads `UNKNOWN`, the pull request is read again, five reads in all, three seconds apart; still `UNKNOWN` after the fifth read gives `ERROR`, never `FAIL`.
+- merge-check::REQ-003/AC-04: `pr-mergeable`: `mergeable` is `MERGEABLE` and `mergeStateStatus` is `CLEAN`, or `UNSTABLE` where merge-check::REQ-003/AC-06 lets it pass; any other value fails. While either reads `UNKNOWN`, the pull request is read again, five reads in all, three seconds apart; still `UNKNOWN` after the fifth read gives `ERROR`, never `FAIL`.
 - merge-check::REQ-003/AC-05: Every check that reads the head's commits, tree or diff depends on `pr-head` and `head-ref`, and `pr-mergeable` depends on `pr-open`.
+- merge-check::REQ-003/AC-06: Where an `--ignore-job` pattern matched a job of the runs `ci` considers (merge-check::REQ-013), `UNSTABLE` passes when the `statusCheckRollup` of the same read holds at least one entry that is not passing and each such entry is a check run whose `name` an `--ignore-job` pattern matches as merge-check::REQ-013/AC-03 matches a job name. A passing entry is a check run with `status` `COMPLETED` and `conclusion` `SUCCESS` or `SKIPPED`, or a status context with `state` `SUCCESS`. Otherwise `UNSTABLE` fails, and each entry that is not passing and not such a check run, a status context included, is named in the evidence. A pass lists `mergeStateStatus UNSTABLE` and each accepted entry under `For review:`.
 
 ### merge-check::REQ-004 The head and the default branch
 
@@ -132,12 +133,12 @@ They run in a detached worktree of the head (merge-check::CON-002), with node, f
 
 - merge-check::REQ-014/AC-01: `spec-check` runs `check-spec.mjs --base <fork point>` of `/to-spec` when the diff changes any path under `docs/specs/`, and is `SKIP` otherwise.
 - merge-check::REQ-014/AC-02: `adr-check` runs `check-adr.mjs --base <fork point>` of `/domain-modeling` when `docs/adr/` exists at the head and the diff changes any path under `docs/specs/` or `docs/adr/`. With no `docs/adr/` at the head it is `SKIP` with the reason "no docs/adr"; otherwise, with neither changed, `SKIP`.
-- merge-check::REQ-014/AC-03: `action-pins` runs `check-action-pins.mjs` of `/github-ops` when the diff changes any path under `.github/workflows/`, and is `SKIP` otherwise.
+- merge-check::REQ-014/AC-03: `action-pins` runs `check-action-pins.mjs` of `/github-ops` when the diff changes any path under `.github/workflows/` and the head has a file named `*.yml` or `*.yaml` directly in `.github/workflows/`. Where the diff changes that directory and the head has no such file, it is `SKIP` with the reason "no workflow file at the head"; with nothing under it changed, `SKIP`.
 - merge-check::REQ-014/AC-04: For each of the three, exit 0 is `PASS`, 1 is `FAIL` and any other result, the script missing included, is `ERROR`.
 
 ### merge-check::REQ-015 Reported for the agent to judge (direct acceptance)
 
-In `before`, the `For review:` block lists: under the report `closing-issues`, the entries of `closingIssuesReferences`; under the report `changed-files`, every changed file with its change type, every changed file named `AGENTS.md` or `CLAUDE.md`, at any depth, and every changed binary file; under the report `documents-only`, whether the change is documents only, as `change-scope.mjs --base <fork point>` of `/implement` judges it in the worktree (exit 0 "no executable change", 1 "executable change", any other result `ERROR`); and the items merge-check::REQ-008/AC-03, merge-check::REQ-011 and merge-check::REQ-013 send there. Listing an item does not change the exit code; an `ERROR` of a report does (merge-check::REQ-002/AC-04).
+In `before`, the `For review:` block lists: under the report `closing-issues`, the entries of `closingIssuesReferences`; under the report `changed-files`, every changed file with its change type, every changed file named `AGENTS.md` or `CLAUDE.md`, at any depth, and every changed binary file; under the report `documents-only`, whether the change is documents only, as `change-scope.mjs --base <fork point>` of `/implement` judges it in the worktree (exit 0 "no executable change", 1 "executable change", any other result `ERROR`); and the items merge-check::REQ-003/AC-06, merge-check::REQ-008/AC-03, merge-check::REQ-011 and merge-check::REQ-013 send there. Listing an item does not change the exit code; an `ERROR` of a report does (merge-check::REQ-002/AC-04).
 
 ### merge-check::REQ-016 After the merge
 
@@ -186,13 +187,14 @@ Applies to the script, its tests and the documents that describe it. No account 
 2. **A commit is pushed to the pull request after the agent reviewed it**: `pr-head` or `head-ref` fails and the checks that read the head are `BLOCKED` (merge-check::REQ-003/AC-05).
 3. **GitHub has not yet computed mergeability** (merge-check::REQ-003/AC-04).
 4. **The default branch moved after the CI ran**, or the branch does not contain its tip: `ci` or `up-to-date` fails before the merge, not after it (merge-check::REQ-013/AC-06, merge-check::REQ-004/AC-02).
-5. **A workflow has jobs the project does not take as evidence**, such as jobs on a runner the owner does not wait for (merge-check::REQ-013/AC-03, merge-check::REQ-013/AC-04).
+5. **A workflow has jobs the project does not take as evidence**, such as jobs on a runner the owner does not wait for (merge-check::REQ-013/AC-03, merge-check::REQ-013/AC-04, merge-check::REQ-003/AC-06).
 6. **The repository has no CI** (merge-check::REQ-013/AC-01).
 7. **A change touches specs in a repository without ADRs** (merge-check::REQ-014/AC-02).
 8. **A derived privacy value is too short to search for**, or the environment does not give one (merge-check::REQ-008/AC-02).
 9. **An issue is closed by GitHub a few seconds after the merge** (merge-check::REQ-016/AC-06).
 10. **A previous run was interrupted and left its worktree or ref**, or another run on the same pull request is in progress (merge-check::CON-002/AC-01, merge-check::CON-002/AC-02).
 11. **gh or git fails**, including an unauthenticated gh or a network error: the check that needed it is `ERROR` and the run exits 2 (merge-check::REQ-002/AC-04).
+12. **A pull request removes the last workflow file** (merge-check::REQ-014/AC-03).
 
 ## Out of Scope
 
