@@ -118,7 +118,7 @@ The expected noreply address is `<id>+<login>@users.noreply.github.com`, from `g
 
 ### merge-check::REQ-013 The CI on the head
 
-The runs considered are those `gh run list -R <repo> --commit <head>` lists with event `pull_request`, the most recent one of each workflow, a workflow being its `workflowDatabaseId`: two workflow files may carry the same name. A current-tip merge line is a line `HEAD is now at <x> Merge <head> into <tip>` in a job's log, `<tip>` being the tip of `origin/<default branch>` fetched in this run.
+The runs considered are those `gh run list -R <repo> --commit <head>` lists with event `pull_request`, the most recent one of each workflow, a workflow being its `workflowDatabaseId`. A current-tip merge line is a line `HEAD is now at <x> Merge <head> into <tip>` in a job's log, `<tip>` being the tip of `origin/<default branch>` fetched in this run.
 
 - merge-check::REQ-013/AC-01: With no such run and no file under `.github/workflows/` at the head, `ci` is `SKIP` with the reason "no CI workflow". With no such run while workflow files exist, it fails.
 - merge-check::REQ-013/AC-02: A run whose `headSha` is not the head fails.
@@ -183,17 +183,17 @@ Applies to the script, its tests and the documents that describe it. No account 
 
 ## Failure modes and boundaries
 
-1. **The checkout belongs to another repository**, as when the command runs in the wrong directory: the run stops before any check (merge-check::REQ-001/AC-02).
-2. **A commit is pushed to the pull request after the agent reviewed it**: `pr-head` or `head-ref` fails and the checks that read the head are `BLOCKED` (merge-check::REQ-003/AC-05).
+1. **The checkout belongs to another repository**, as when the command runs in the wrong directory (merge-check::REQ-001/AC-02).
+2. **A commit is pushed to the pull request after the agent reviewed it** (merge-check::REQ-003/AC-02, merge-check::REQ-003/AC-05, merge-check::REQ-004/AC-01).
 3. **GitHub has not yet computed mergeability** (merge-check::REQ-003/AC-04).
-4. **The default branch moved after the CI ran**, or the branch does not contain its tip: `ci` or `up-to-date` fails before the merge, not after it (merge-check::REQ-013/AC-06, merge-check::REQ-004/AC-02).
+4. **The default branch moved after the CI ran**, or the branch does not contain its tip (merge-check::REQ-013/AC-06, merge-check::REQ-004/AC-02).
 5. **A workflow has jobs the project does not take as evidence**, such as jobs on a runner the owner does not wait for (merge-check::REQ-013/AC-03, merge-check::REQ-013/AC-04, merge-check::REQ-003/AC-06).
 6. **The repository has no CI** (merge-check::REQ-013/AC-01).
 7. **A change touches specs in a repository without ADRs** (merge-check::REQ-014/AC-02).
 8. **A derived privacy value is too short to search for**, or the environment does not give one (merge-check::REQ-008/AC-02).
 9. **An issue is closed by GitHub a few seconds after the merge** (merge-check::REQ-016/AC-06).
 10. **A previous run was interrupted and left its worktree or ref**, or another run on the same pull request is in progress (merge-check::CON-002/AC-01, merge-check::CON-002/AC-02).
-11. **gh or git fails**, including an unauthenticated gh or a network error: the check that needed it is `ERROR` and the run exits 2 (merge-check::REQ-002/AC-04).
+11. **gh or git fails**, including an unauthenticated gh or a network error (merge-check::REQ-002/AC-02, merge-check::REQ-002/AC-04).
 12. **A pull request removes the last workflow file** (merge-check::REQ-014/AC-03).
 
 ## Out of Scope

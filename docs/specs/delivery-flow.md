@@ -128,6 +128,6 @@ Applies to: the clauses on sub-agents and their models. They name what is handed
 
 - Whether closeout tickets stay, and a whole-feature check by a sub-agent in their place.
 - The record `/to-spec` keeps of its check of sources against the spec.
-- A check that the merge commit's tree equals the pull request's head.
+- A check that the merge commit's tree equals the pull request's head: [merge-check::REQ-016/AC-03](merge-check.md) makes it.
 - Removing or migrating the records projects already have.
 - Leaving out, by the routing, a check that the CI does not carry. Such a check is cheap, and delivery-flow::REQ-001/AC-01 already decides when it runs.
