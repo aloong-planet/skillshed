@@ -113,7 +113,11 @@ function selectorPaths(root, entry, changedPaths) {
     while (parts.length) {
       current = join(current, parts.shift())
       const stat = lstatSync(current, { throwIfNoEntry: false, bigint: true })
-      if (!stat?.isSymbolicLink()) continue
+      if (!stat) continue
+      if (!stat.isSymbolicLink()) {
+        current = realpathSync.native(current)
+        continue
+      }
       linksOnDisk.add(`${stat.dev}:${stat.ino}`)
       paths.add(relative(root, current).split(sep).join('/'))
       if (++links > 64) throw new Error(`too many symbolic links in ${absolute}`)

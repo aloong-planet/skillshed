@@ -13,7 +13,7 @@
 // nothing stops to ask (AC-04), what the delivery note gives (AC-05), that a later commit is decided again (AC-06),
 // and that a command is declared only after every file it reads is enumerated (AC-07). Testing them takes an agent
 // replaying a delivery. The same gap applies to CI precedence, input audits, and keeping checks and release
-// verification outside local selection (AC-08 to AC-10).
+// verification outside local selection (delivery-flow::REQ-007/AC-08 through delivery-flow::REQ-007/AC-10).
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
@@ -219,6 +219,21 @@ test('retargeting a link in the selector entry path keeps independent commands',
   const out = route(r, ['--local-inputs', '--base', base, '--command', 'app'], { script: join(r.dir, 'current/local-route.mjs') })
   assert.equal(out.code, 1, out.out + out.err)
   assert.match(out.out, /selection changed at "active"/)
+})
+
+test('a case alias in the selector directory preserves gate ownership', t => {
+  const r = repo({
+    'local-test-inputs.json': JSON.stringify([['gate', ['tools/change-scope.mjs']], ['app', ['app.js']]]),
+    'tools/local-route.mjs': readFileSync(SCRIPT, 'utf8'),
+    'tools/inert-path.mjs': readFileSync(join(HERE, 'inert-path.mjs'), 'utf8'),
+    'tools/change-scope.mjs': 'export default 1'
+  })
+  const script = join(r.dir, 'TOOLS/local-route.mjs')
+  if (!existsSync(script)) return t.skip('requires a case-insensitive directory')
+  commit(r, { 'tools/change-scope.mjs': 'export default 2' })
+  const out = route(r, ['--local-inputs', '--base', r.base, '--command', 'app'], { script })
+  assert.equal(out.code, 1, out.out + out.err)
+  assert.match(out.out, /selection changed at "tools\/change-scope.mjs"/)
 })
 
 test('the dependencies of a linked executable-content gate keep independent commands', () => {
