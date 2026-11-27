@@ -20,6 +20,15 @@
     "github-ops/check-action-pins.test.mjs",
     "github-ops/check-action-pins.mjs"
   ]],
+  ["node --test github-ops/merge-check.test.mjs", [
+    "github-ops/merge-check.test.mjs",
+    "github-ops/merge-check.mjs",
+    "scripts/test-support/scratch-repos.mjs",
+    "github-ops/check-action-pins.mjs",
+    "to-spec/check-spec.mjs",
+    "implement/change-scope.mjs",
+    "implement/inert-path.mjs"
+  ]],
   ["node --test domain-modeling/project-documents.test.mjs", [
     "domain-modeling/project-documents.test.mjs",
     "domain-modeling/check-adr.mjs",

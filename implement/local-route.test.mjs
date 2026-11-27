@@ -22,27 +22,39 @@ test('every consumer runs for a shared input and every command runs for unknown 
   }
 })
 
-test('Skillshed selects only consumers of each repository input across its seven suites', () => {
+test('Skillshed selects the consumers of each input and all eight suites for changes to selection', () => {
   const declarations = readInputs(readFileSync(new URL('../local-test-inputs.json', import.meta.url), 'utf8'))
   const route = 'node --test implement/local-route.test.mjs implement/delivery-flow.test.mjs'
   const adr = 'node --test domain-modeling/project-documents.test.mjs'
   const spec = 'node --test to-spec/project-documents-spec-check.test.mjs'
   const pins = 'node --test github-ops/check-action-pins.test.mjs'
+  const merge = 'node --test github-ops/merge-check.test.mjs'
   const scope = 'node --test implement/change-scope.test.mjs'
   const ci = 'node --test github-ops/assets/ci-routing/ci-routing.test.mjs github-ops/assets/ci-routing/routing-rules.test.mjs'
   const packaging = 'node --test electron-scaffold/assets/mac-packaging.test.cjs'
-  const commands = [scope, route, pins, adr, spec, ci, packaging]
-  for (const [path, runs] of [
+  const commands = [scope, route, pins, merge, adr, spec, ci, packaging]
+  const inputs = [
     ...commands.flatMap(command => command.slice('node --test '.length).split(' ').map(path => [path, [command]])),
+    ['github-ops/merge-check.mjs', [merge]],
     ['domain-modeling/check-adr.mjs', [adr]],
-    ['to-spec/check-spec.mjs', [spec]],
+    ['to-spec/check-spec.mjs', [merge, spec]],
     ['github-ops/assets/ci-routing/ci-gate.mjs', [ci]],
-    ['github-ops/check-action-pins.mjs', [pins]],
-    ['scripts/test-support/scratch-repos.mjs', [route, adr, spec]],
+    ['github-ops/check-action-pins.mjs', [pins, merge]],
+    ['scripts/test-support/scratch-repos.mjs', [route, merge, adr, spec]],
     ['github-ops/assets/ci-routing/ci-scope.mjs', [route, ci]],
     ['github-ops/assets/ci-routing/routing.json', [ci]],
-    ['electron-scaffold/assets/mac-packaging.cjs', [packaging]]
-  ]) {
+    ['electron-scaffold/assets/mac-packaging.cjs', [packaging]],
+    // Selection files trigger every suite, even those that do not consume the file.
+    ['implement/change-scope.mjs', [scope, route, merge], commands],
+    ['implement/inert-path.mjs', [scope, route, merge], commands],
+    ['implement/vendor/typescript/typescript.cjs', [scope, route], commands],
+    ['implement/local-route.mjs', [route], commands],
+    ['local-test-inputs.json', [route], commands]
+  ]
+  assert.deepEqual(new Set(declarations.keys()), new Set(commands))
+  assert.deepEqual(new Set([...declarations.values()].flat()), new Set(inputs.map(([path]) => path)))
+  for (const [path, consumers, runs = consumers] of inputs) {
+    assert.deepEqual(commands.filter(command => declarations.get(command).includes(path)), consumers, path)
     const selected = commands.filter(command => localRunReason(declarations, [path], command, 'implement/local-route.mjs') !== null)
     assert.deepEqual(selected, runs, path)
   }

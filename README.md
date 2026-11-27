@@ -94,12 +94,13 @@ A change to a specification under `docs/specs/` is also checked, before it is co
 node to-spec/check-spec.mjs --base "$(git merge-base HEAD origin/main)"
 ```
 
-The change-scope helper, the local-route helper, the action-pin check, the ADR check, the spec check and the CI routing scripts can be tested directly (the ADR check and the spec check need python3 3.11 or later):
+The change-scope helper, the local-route helper, the action-pin check, the merge check, the ADR check, the spec check and the CI routing scripts can be tested directly (the merge check, the ADR check and the spec check need python3 3.11 or later):
 
 ```sh
 node --test implement/change-scope.test.mjs
 node --test implement/local-route.test.mjs implement/delivery-flow.test.mjs
 node --test github-ops/check-action-pins.test.mjs
+node --test github-ops/merge-check.test.mjs
 node --test domain-modeling/project-documents.test.mjs
 node --test to-spec/project-documents-spec-check.test.mjs
 node --test github-ops/assets/ci-routing/ci-routing.test.mjs github-ops/assets/ci-routing/routing-rules.test.mjs
@@ -111,7 +112,7 @@ For a local delivery from this repository, first apply the [verification gate](i
 node implement/local-route.mjs --local-inputs --base "$base" --command 'node --test github-ops/check-action-pins.test.mjs'
 ```
 
-The query only reports a decision. On exit 0, skip the test command. On any other result, run it. The [input declaration](local-test-inputs.json) lists each eligible command and every repository file it consumes, including shared helpers and copied assets. Keep those lists current when changing a suite. An unowned path keeps every command unless it is `docs`, is under the root `docs/` directory, or has the extension `.md` (case-insensitive). For example, changing `github-ops/check-action-pins.mjs` together with its README or spec selects only the action-pin suite. Changing `electron-scaffold/assets/mac-packaging.cjs` selects the packaging suite. Neither query needs the packaging dependencies. Repository checks above and release verification retain their own rules. Projects with CI path routing use the CI router as described in the [verification gate](implement/full-verification-gate.md).
+The query only reports a decision. On exit 0, skip the test command. On any other result, run it. The [input declaration](local-test-inputs.json) lists each eligible command and every repository file it consumes, including shared helpers and copied assets. Keep those lists current when changing a suite. An unowned path keeps every command unless it is `docs`, is under the root `docs/` directory, or has the extension `.md` (case-insensitive). For example, changing `github-ops/check-action-pins.mjs` together with its README or spec selects the action-pin and merge-check suites. Changing `electron-scaffold/assets/mac-packaging.cjs` selects the packaging suite. Neither query needs the packaging dependencies. Repository checks above and release verification retain their own rules. Projects with CI path routing use the CI router as described in the [verification gate](implement/full-verification-gate.md).
 
 The packaging helper's tests also need `electron-builder` and its dependency tree. To provide them without adding dependencies to this checkout, install them in a temporary directory with pnpm:
 
