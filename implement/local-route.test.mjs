@@ -2,7 +2,66 @@
 // Run: node --test implement/local-route.test.mjs. Its command line is tested in delivery-flow.test.mjs.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { decision, parseArgs, readOutput } from './local-route.mjs'
+import { readFileSync } from 'node:fs'
+import { posix, win32 } from 'node:path'
+import { decision, localRunReason, parseArgs, readInputs, readOutput } from './local-route.mjs'
+
+test('every consumer runs for a shared input and every command runs for unknown scope', () => {
+  const declarations = new Map([['a', ['one', 'shared']], ['b', ['two', 'shared']], ['c', ['three']]])
+  // Even declaring the selection files as inputs of one command cannot exempt the others.
+  const selectors = ['local-test-inputs.json', 'tools/selector.mjs', 'tools/change-scope.mjs', 'tools/inert-path.mjs', 'tools/vendor/typescript/typescript.cjs']
+  declarations.get('a').push(...selectors, 'implement/change-scope.mjs')
+  for (const [paths, command, runs] of [
+    [['one', 'shared'], 'b', true], [['shared'], 'a', true], [['shared'], 'c', false],
+    [['README.MD', 'docs/specs/input.json', 'one'], 'b', false],
+    [['README.MD', 'docs/specs/input.json', 'one'], 'a', true],
+    [['one', 'docs-old/new.js'], 'c', true], [['one'], 'A', true],
+    ...selectors.map(path => [[path], 'b', true]), [['implement/change-scope.mjs'], 'b', false]
+  ]) {
+    assert.equal(localRunReason(declarations, paths, command, 'tools/selector.mjs') !== null, runs, `${command}: ${paths}`)
+  }
+})
+
+test('Skillshed selects only consumers of each repository input across its seven suites', () => {
+  const declarations = readInputs(readFileSync(new URL('../local-test-inputs.json', import.meta.url), 'utf8'))
+  const route = 'node --test implement/local-route.test.mjs implement/delivery-flow.test.mjs'
+  const adr = 'node --test domain-modeling/project-documents.test.mjs'
+  const spec = 'node --test to-spec/project-documents-spec-check.test.mjs'
+  const pins = 'node --test github-ops/check-action-pins.test.mjs'
+  const scope = 'node --test implement/change-scope.test.mjs'
+  const ci = 'node --test github-ops/assets/ci-routing/ci-routing.test.mjs github-ops/assets/ci-routing/routing-rules.test.mjs'
+  const packaging = 'node --test electron-scaffold/assets/mac-packaging.test.cjs'
+  const commands = [scope, route, pins, adr, spec, ci, packaging]
+  for (const [path, runs] of [
+    ...commands.flatMap(command => command.slice('node --test '.length).split(' ').map(path => [path, [command]])),
+    ['domain-modeling/check-adr.mjs', [adr]],
+    ['to-spec/check-spec.mjs', [spec]],
+    ['github-ops/assets/ci-routing/ci-gate.mjs', [ci]],
+    ['github-ops/check-action-pins.mjs', [pins]],
+    ['scripts/test-support/scratch-repos.mjs', [route, adr, spec]],
+    ['github-ops/assets/ci-routing/ci-scope.mjs', [route, ci]],
+    ['github-ops/assets/ci-routing/routing.json', [ci]],
+    ['electron-scaffold/assets/mac-packaging.cjs', [packaging]]
+  ]) {
+    const selected = commands.filter(command => localRunReason(declarations, [path], command, 'implement/local-route.mjs') !== null)
+    assert.deepEqual(selected, runs, path)
+  }
+})
+
+test('one invalid entry invalidates the entire declaration', () => {
+  const valid = ['node --test a', ['dir/name with spaces', 'dir/line\nbreak']]
+  assert.deepEqual(readInputs(JSON.stringify([valid])), new Map([valid]))
+  for (const value of [null, {}, [valid, valid], [valid, []], [valid, ['b', ['p'], true]],
+    ...[false, '  '].map(command => [valid, [command, ['p']]]),
+    ...[{}, [], ['p', 'p'], [42], [''], ['/a'], ['a/../b'], ['./b'], ['a//b'], ['a/'], ['a\0b']].map(inputs => [valid, ['b', inputs]])
+  ]) assert.throws(() => readInputs(JSON.stringify(value)), /local-test-inputs/, JSON.stringify(value))
+  assert.throws(() => readInputs('['), SyntaxError)
+  for (const input of ['C:/outside/file', 'C:file', String.raw`\\server\share\file`, String.raw`\outside\file`, String.raw`dir\file`]) {
+    const text = JSON.stringify([valid, ['b', [input]]])
+    assert.throws(() => readInputs(text, win32), /invalid.*input/, input)
+    assert.deepEqual(readInputs(text, posix).get('b'), [input])
+  }
+})
 
 test('the arguments are the fork point, the routing and the command, each given once with a value', () => {
   assert.deepEqual(parseArgs(['--command', 'pnpm smoke', '--base', 'abc', '--router', 'ci.mjs']), { base: 'abc', router: 'ci.mjs', command: 'pnpm smoke' })
