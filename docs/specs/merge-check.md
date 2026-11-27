@@ -4,7 +4,7 @@
 
 ## Problem Statement
 
-Before an agent merges a pull request into a public repository, it checks a dozen facts that need no judgment: the pull request is still the commit it reviewed, the texts that will be published carry no home path, account name, private email or AI attribution, the description closes only the issues it means to, every commit is published under the expected address, the CI tested this head against the current default branch, and the document checks pass. Done by hand, each fact is another command and another reading of its output, and a check that is skipped or misread lets private data into a public history or closes the wrong issue. Nobody notices afterwards.
+Before merging a pull request into a public repository, an agent needs to check the reviewed commit, the text and identities that will become public, the issues the merge will close, and the CI and document results for that commit. Checking these by hand takes several commands. Missing a finding can publish private information or close the wrong issue before anyone can intervene.
 
 ## Solution
 
