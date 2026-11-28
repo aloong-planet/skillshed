@@ -7,6 +7,10 @@
 // labelled by kind, and a Decision section holding a paragraph and a list; the entries read for the index follow the
 // status lines of entries written under the earlier rules. Chinese punctuation is built from code points, and the zh
 // map holds made-up names, so this file holds no Chinese text.
+// Gap: the checker sees the entry and its history. Testing the writer's and reviewer's judgments would require
+// replaying an ADR change with the user's confirmation and evidence about the premises, then inspecting the result.
+// This applies to project-documents::REQ-008/AC-04, project-documents::REQ-008/AC-10, project-documents::REQ-008/AC-11,
+// and the judgment required by project-documents::REQ-009/AC-01, project-documents::REQ-010/AC-01 and project-documents::REQ-010/AC-03.
 // Gap: no case reaches the exit 2 for an error the script does not expect, since no input is known to raise one.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
