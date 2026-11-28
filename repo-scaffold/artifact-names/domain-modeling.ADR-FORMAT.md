@@ -16,6 +16,7 @@
 | 中性 | Neutral |
 | 来源 | Sources |
 | 未留档 | not recorded |
+| 尚未验证 | not yet verified |
 | 总体 | General |
 | 已退役编号 | Retired numbers |
 | 作废 | Withdrawn |

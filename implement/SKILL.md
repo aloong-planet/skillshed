@@ -63,7 +63,7 @@ description: 按 spec、ticket 或用户提出的改动要求实施开发并交�
 发现处置完毕、有修复的其修复后运行通过、核心档要复审的复审也处置完毕之后,交出文档核对或交付之前,必须把只有主 agent 知道的写进持久文档:
 
 - **spec**:本次改动定下或改变的行为,写进 `docs/specs/<slug>.md`(**不删**),使它描述的是**最终实现**而非最初设想(新增的边界条目、口径修订、Out of Scope 变化);改 `docs/specs/` 下的文件之前,必须完整读取 [spec-writing.md](../to-spec/spec-writing.md);留给用户决定的发现所涉的行为,按 [post-implementation-check.md](post-implementation-check.md)「留给用户决定」条不写。
-- **新拍的决策**(尤其实现期踩坑改向的)→ ADR(按 domain-modeling/ADR-FORMAT;顺带检查有无「提议」态 ADR 该升级或推翻);
+- **新拍的决策**(尤其实现期踩坑改向的)→ 按 [ADR-FORMAT](../domain-modeling/ADR-FORMAT.md) 写进 ADR。必须对照本次实现所得的证据,按 ADR-FORMAT「后果怎么写」节复核负面后果里记录的前提,改写得到验证或被推翻的那一条。
 - **新术语/新消解的歧义** → CONTEXT.md;
 - **踩坑因果链** → `docs/` 复盘文档;**判据**:说得出根因、说得出"现有检查为什么没拦住"、且已落一道防御——三者齐备才单开一篇,缺任一的不开;
 - **/ui-design 要求报告的改动面外字符图标清单** → 交出前逐项确认已落归宿。
